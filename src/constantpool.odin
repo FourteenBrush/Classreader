@@ -1,14 +1,15 @@
 package main
 
-ConstantPoolInfo :: struct {
+ConstantPoolEntry :: struct {
     tag: ConstantType,
     info: CPInfo,
 }
 
+// TODO: fix this awful name
 CPInfo :: union {
     ConstantUtf8Info,
     ConstantIntegerInfo, // and Float alias
-    ConstantDoubleInfo,
+    ConstantDoubleInfo, // and Long alias
     ConstantClassInfo,
     ConstantStringInfo,
     ConstantFieldRefInfo, // and MethodRef, InterfaceMethodRef alias
@@ -53,31 +54,31 @@ ConstantLongInfo :: struct {
 ConstantDoubleInfo :: ConstantLongInfo
 
 ConstantClassInfo :: struct {
-    name_index: u16,
+    name_idx: u16,
 }
 
 ConstantStringInfo :: struct {
-    string_index: u16,
+    string_idx: u16,
 }
 
 ConstantFieldRefInfo :: struct {
-    class_index: u16,
-    name_and_type_index: u16,
+    class_idx: u16,
+    name_and_type_idx: u16,
 }
 
 ConstantMethodRefInfo :: ConstantFieldRefInfo
 ConstantInterfaceMethodRefInfo :: ConstantFieldRefInfo
 
 ConstantNameAndTypeInfo :: struct {
-    name_index: u16,
-    // points to a ConstantUtf8Info entry in the cp
+    name_idx: u16,
+    // Points to a ConstantUtf8Info entry in the cp
     // representing a field or method descriptor
-    descriptor_index: u16,
+    descriptor_idx: u16,
 }
 
 ConstantMethodHandleInfo :: struct {
     reference_kind: ReferenceKind,
-    reference_index: u16,
+    reference_idx: u16,
 }
 
 ReferenceKind :: enum u8 {
@@ -93,10 +94,10 @@ ReferenceKind :: enum u8 {
 }
 
 ConstantMethodTypeInfo :: struct {
-    descriptor_index: u16,
+    descriptor_idx: u16,
 }
 
 ConstantInvokeDynamicInfo :: struct {
-    bootstrap_method_attr_index: u16,
-    name_and_type_index: u16,
+    bootstrap_method_attr_idx: u16,
+    name_and_type_idx: u16,
 }

@@ -1,14 +1,17 @@
 package main
 
+import "core:fmt"
+
 ClassFileReader :: struct {
     bytes: []u8,
     pos: int,
 }
 
-reader_new :: proc(bytes: []u8) -> ClassFileReader {
+reader_new :: #force_inline proc(bytes: []u8) -> ClassFileReader {
     return ClassFileReader { bytes, 0 }
 }
 
+@private
 HEADER_MAGIC :: 0xCAFEBABE
 
 reader_read_class_file :: proc(using reader: ^ClassFileReader) -> (classfile: ClassFile, err: Errno) {
@@ -20,7 +23,7 @@ reader_read_class_file :: proc(using reader: ^ClassFileReader) -> (classfile: Cl
     classfile.minor_version = read_unsigned_short(reader) or_return
     classfile.major_version = read_unsigned_short(reader) or_return
     classfile.constant_pool_count = read_unsigned_short(reader) or_return
-    classfile.constant_pool = make([]ConstantPoolInfo, classfile.constant_pool_count)
+    classfile.constant_pool = make([]ConstantPoolEntry, classfile.constant_pool_count - 1)
     read_constant_pool(reader, &classfile) or_return
 
     classfile.access_flags = read_unsigned_short(reader) or_return
@@ -42,7 +45,6 @@ reader_read_class_file :: proc(using reader: ^ClassFileReader) -> (classfile: Cl
     classfile.attributes_count = read_unsigned_short(reader) or_return
     classfile.attributes = make([]AttributeInfo, classfile.attributes_count)
     read_attributes(reader, classfile.attributes, int(classfile.attributes_count)) or_return
-
     return
 }
 
@@ -68,7 +70,7 @@ read_constant_pool :: proc(reader: ^ClassFileReader, using classfile: ^ClassFile
 }
 
 @private
-read_constant_pool_entry :: proc(reader: ^ClassFileReader) -> (entry: ConstantPoolInfo, err: Errno) {
+read_constant_pool_entry :: proc(reader: ^ClassFileReader) -> (entry: ConstantPoolEntry, err: Errno) {
     tag := ConstantType(read_unsigned_byte(reader) or_return)
     info: CPInfo
 
@@ -112,7 +114,7 @@ read_constant_pool_entry :: proc(reader: ^ClassFileReader) -> (entry: ConstantPo
             bootstrap_method_attr_index := read_unsigned_short(reader) or_return
             name_and_type_index := read_unsigned_short(reader) or_return
     }
-    return ConstantPoolInfo { tag, info }, .None
+    return ConstantPoolEntry { tag, info }, .None
 }
 
 @private
@@ -128,8 +130,8 @@ read_interfaces :: proc(reader: ^ClassFileReader, using classfile: ^ClassFile) -
 read_methods :: proc(reader: ^ClassFileReader, using classfile: ^ClassFile) -> Errno {
     for i in 0..<methods_count {
         access_flags := read_unsigned_short(reader) or_return
-        name_index := read_unsigned_short(reader) or_return
-        descriptor_index := read_unsigned_short(reader) or_return
+        name_idx := read_unsigned_short(reader) or_return
+        descriptor_idx := read_unsigned_short(reader) or_return
         attributes_count := read_unsigned_short(reader) or_return
         attributes := make([]AttributeInfo, attributes_count)
         for j in 0..<attributes_count {
@@ -138,8 +140,8 @@ read_methods :: proc(reader: ^ClassFileReader, using classfile: ^ClassFile) -> E
 
         methods[i] = MethodInfo {
             access_flags,
-            name_index,
-            descriptor_index,
+            name_idx,
+            descriptor_idx,
             attributes_count,
             attributes,
         }
@@ -151,14 +153,14 @@ read_methods :: proc(reader: ^ClassFileReader, using classfile: ^ClassFile) -> E
 read_fields :: proc(reader: ^ClassFileReader, using classfile: ^ClassFile) -> Errno {
     for i in 0..<fields_count {
         access_flags := read_unsigned_short(reader) or_return
-        name_index := read_unsigned_short(reader) or_return
-        descriptor_index := read_unsigned_short(reader) or_return
+        name_idx := read_unsigned_short(reader) or_return
+        descriptor_idx := read_unsigned_short(reader) or_return
         attributes_count := read_unsigned_short(reader) or_return
 
         for j in 0..<attributes_count {
             fields[i] = FieldInfo {
-                access_flags, name_index,
-                descriptor_index, attributes_count,
+                access_flags, name_idx,
+                descriptor_idx, attributes_count,
                 make([]AttributeInfo, attributes_count),
             }
             read_attributes(reader, fields[i].attributes, int(attributes_count))
