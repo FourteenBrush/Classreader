@@ -16,6 +16,7 @@ CPInfo :: union {
     ConstantNameAndTypeInfo,
     ConstantMethodHandleInfo,
     ConstantMethodTypeInfo,
+    ConstantInvokeDynamicInfo,
 }
 
 ConstantType :: enum u8 {

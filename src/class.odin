@@ -72,8 +72,8 @@ cp_entry_dump :: proc(using classfile: ^ClassFile, cp_info: ^ConstantPoolEntry) 
             // TODO: interpret correctly as float or int
             fmt.printf("%i (unable to interpret as int or float)\n", cp_info.bytes)
         case ConstantDoubleInfo:
-            double_val := (cp_info.high_bytes << 32) | cp_info.low_bytes
-            fmt.println(double_val)
+            val := u64(cp_info.high_bytes << 32) + u64(cp_info.low_bytes)
+            fmt.println(val)
         case ConstantClassInfo:
             class_name := cp_get_string(classfile, cp_info.name_idx)
             fmt.println(class_name)
