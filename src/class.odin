@@ -46,7 +46,7 @@ classfile_dump :: proc(using classfile: ^ClassFile) {
     max_idx_width := count_digits(constant_pool_count)
     fmt.println("Constant pool:")
 
-    for i in 0..<constant_pool_count - 1 {
+    for i in 0..<constant_pool_count - 2 {
         MIN_PADDING :: 2 // minimum amount of spaces in front of #num
 
         using entry := &constant_pool[i]
@@ -101,6 +101,9 @@ cp_entry_dump :: proc(using classfile: ^ClassFile, cp_info: ^ConstantPoolEntry) 
         case ConstantMethodTypeInfo:
             descriptor := cp_get_string(classfile, cp_info.descriptor_idx)
             fmt.println(descriptor)
+        case ConstantInvokeDynamicInfo:
+            fmt.println("todo")
+            
     }
 }
 
@@ -176,7 +179,7 @@ FieldAccessFlag :: enum u16 {
 MethodInfo :: struct {
     access_flags: u16,
     name_index: u16,
-    descriptor_index: u16,
+    descriptor_idx: u16,
     attributes_count: u16,
     attributes: []AttributeInfo,
 }
@@ -198,7 +201,7 @@ MethodAccessFlag :: enum u16 {
 
 // Used by a ClassFile, FieldInfo, MethodInfo, and CodeAttribute
 AttributeInfo :: struct {
-    attribute_name_index: u16,
+    attribute_name_idx: u16,
     attribute_length: u16,
     info: []u8,
 }

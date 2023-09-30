@@ -6,7 +6,7 @@ ConstantPoolEntry :: struct {
 }
 
 // TODO: fix this awful name
-CPInfo :: union {
+CPInfo :: union #no_nil {
     ConstantUtf8Info,
     ConstantIntegerInfo, // and Float alias
     ConstantDoubleInfo, // and Long alias
@@ -38,7 +38,7 @@ ConstantType :: enum u8 {
 
 ConstantUtf8Info :: struct {
     length: u16,
-    bytes: []u8,
+    bytes: []u8 `fmt:"s"`,
 }
 
 ConstantIntegerInfo :: struct {
