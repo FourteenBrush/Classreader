@@ -48,8 +48,7 @@ reader_read_class_file :: proc(using reader: ^ClassFileReader) -> (classfile: Cl
     fmt.printf("[%i/%i]\n", pos, len(bytes))
 
     classfile.attributes_count = read_unsigned_short(reader) or_return
-    classfile.attributes = make([]AttributeInfo, classfile.attributes_count)
-    read_attributes(reader, classfile.attributes, int(classfile.attributes_count)) or_return
+    classfile.attributes = read_attributes(reader, int(classfile.attributes_count)) or_return
     return
 }
 
@@ -149,10 +148,7 @@ read_methods :: proc(reader: ^ClassFileReader, using classfile: ^ClassFile) -> E
         name_idx := read_unsigned_short(reader) or_return
         descriptor_idx := read_unsigned_short(reader) or_return
         attributes_count := read_unsigned_short(reader) or_return
-        attributes := make([]AttributeInfo, attributes_count)
-        for j in 0..<attributes_count {
-            attributes[j] = read_attribute(reader) or_return
-        }
+        attributes := read_attributes(reader, int(attributes_count)) or_return
 
         methods[i] = MethodInfo {
             access_flags,
@@ -176,28 +172,22 @@ read_fields :: proc(reader: ^ClassFileReader, using classfile: ^ClassFile) -> Er
         fields[i] = FieldInfo {
             access_flags, name_idx,
             descriptor_idx, attributes_count,
-            make([]AttributeInfo, attributes_count),
+            read_attributes(reader, int(attributes_count)) or_return,
         }
-
-        read_attributes(reader, fields[i].attributes, int(attributes_count))
     }
     return .None
 }
 
 @private
-read_attributes :: proc(reader: ^ClassFileReader, dest: []AttributeInfo, count: int) -> Errno {
+read_attributes :: proc(reader: ^ClassFileReader, count: int) -> (attributes: []AttributeInfo, err: Errno) {
+    attributes = make([]AttributeInfo, count)
     for i in 0..<count {
-        dest[i] = read_attribute(reader) or_return
+        name_idx := read_unsigned_short(reader) or_return
+        length := read_unsigned_short(reader) or_return
+        info := make([]u8, length)
+        attributes[i] = AttributeInfo { name_idx, length, info }
     }
-    return .None
-}
-
-@private
-read_attribute :: proc(reader: ^ClassFileReader) -> (attrib: AttributeInfo, err: Errno) {
-    attrib.attribute_name_idx = read_unsigned_short(reader) or_return
-    attrib.attribute_length = read_unsigned_short(reader) or_return
-    attrib.info = make([]u8, attrib.attribute_length)
-    return attrib, .None
+    return attributes, .None
 }
 
 @private
