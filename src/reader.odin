@@ -24,26 +24,22 @@ reader_read_class_file :: proc(using reader: ^ClassFileReader) -> (classfile: Cl
     classfile.major_version = read_unsigned_short(reader) or_return
     classfile.constant_pool_count = read_unsigned_short(reader) or_return
     fmt.println("constant_pool_count:", classfile.constant_pool_count)
-    classfile.constant_pool = make([]ConstantPoolEntry, classfile.constant_pool_count - 1)
-    read_constant_pool(reader, &classfile) or_return
+    classfile.constant_pool = read_constant_pool(reader, int(classfile.constant_pool_count)) or_return
 
     classfile.access_flags = read_unsigned_short(reader) or_return
     classfile.this_class = read_unsigned_short(reader) or_return
     classfile.super_class = read_unsigned_short(reader) or_return
 
     classfile.interfaces_count = read_unsigned_short(reader) or_return
-    classfile.interfaces = make([]u16, classfile.interfaces_count)
-    read_interfaces(reader, &classfile)
+    classfile.interfaces = read_interfaces(reader, int(classfile.interfaces_count)) or_return
 
     classfile.fields_count = read_unsigned_short(reader) or_return
     fmt.printf("fields_count: %i\n", classfile.fields_count)
-    classfile.fields = make([]FieldInfo, classfile.fields_count)
-    read_fields(reader, &classfile) or_return
+    classfile.fields = read_fields(reader, int(classfile.fields_count)) or_return
 
     classfile.methods_count = read_unsigned_short(reader) or_return
     fmt.printf("methods_count: %i\n", classfile.methods_count)
-    classfile.methods = make([]MethodInfo, classfile.methods_count)
-    read_methods(reader, &classfile)
+    classfile.methods = read_methods(reader, int(classfile.methods_count)) or_return
 
     fmt.printf("[%i/%i]\n", pos, len(bytes))
 
@@ -65,23 +61,25 @@ Errno :: enum {
 }
 
 @private
-read_constant_pool :: proc(reader: ^ClassFileReader, using classfile: ^ClassFile) -> Errno {
-    for i := 0; i < len(constant_pool) - 1; i += 1 {
+read_constant_pool :: proc(reader: ^ClassFileReader, count: int) -> (constant_pool: []ConstantPoolEntry, err: Errno) {
+    constant_pool = make([]ConstantPoolEntry, count - 1)
+
+    for i := 0; i < count - 2; i += 1 {
         tag := ConstantType(read_unsigned_byte(reader) or_return)
         entry, err := read_constant_pool_entry(reader, tag)
         if err != .None {
-            fmt.eprintln(" err: failed to read entry:", err)
+            fmt.eprintln(" err: failed to read entry:", tag)
             break
         }
 
         constant_pool[i] = ConstantPoolEntry { tag, entry }
         if tag == .Double || tag == .Float {
             fmt.println("got a float or double at idx", i)
-            //i += 1
+            // i += 1
             fmt.println("pos now at", reader.pos)
         }
     }
-    return .None
+    return constant_pool, .None
 }
 
 @private
@@ -133,17 +131,20 @@ read_constant_pool_entry :: proc(reader: ^ClassFileReader, tag: ConstantType) ->
 }
 
 @private
-read_interfaces :: proc(reader: ^ClassFileReader, using classfile: ^ClassFile) -> Errno {
-    for i in 0..<interfaces_count {
-        interface := read_unsigned_short(reader) or_return
-        interfaces[i] = interface
-    } 
-    return .None
+read_interfaces :: proc(reader: ^ClassFileReader, count: int) -> (interfaces: []u16, err: Errno) {
+    interfaces = make([]u16, count)
+
+    for i in 0..<count {
+        interfaces[i] = read_unsigned_short(reader) or_return
+    }
+    return interfaces, .None
 }
 
 @private
-read_methods :: proc(reader: ^ClassFileReader, using classfile: ^ClassFile) -> Errno {
-    for i in 0..<methods_count {
+read_methods :: proc(reader: ^ClassFileReader, count: int) -> (methods: []MethodInfo, err: Errno) {
+    methods = make([]MethodInfo, count)
+
+    for i in 0..<count {
         access_flags := read_unsigned_short(reader) or_return
         name_idx := read_unsigned_short(reader) or_return
         descriptor_idx := read_unsigned_short(reader) or_return
@@ -158,12 +159,14 @@ read_methods :: proc(reader: ^ClassFileReader, using classfile: ^ClassFile) -> E
             attributes,
         }
     }
-    return .None
+    return methods, .None
 }
 
 @private
-read_fields :: proc(reader: ^ClassFileReader, using classfile: ^ClassFile) -> Errno {
-    for i in 0..<fields_count {
+read_fields :: proc(reader: ^ClassFileReader, count: int) -> (fields: []FieldInfo, err: Errno) {
+    fields = make([]FieldInfo, count)
+
+    for i in 0..<count {
         access_flags := read_unsigned_short(reader) or_return
         name_idx := read_unsigned_short(reader) or_return
         descriptor_idx := read_unsigned_short(reader) or_return
@@ -175,12 +178,13 @@ read_fields :: proc(reader: ^ClassFileReader, using classfile: ^ClassFile) -> Er
             read_attributes(reader, int(attributes_count)) or_return,
         }
     }
-    return .None
+    return fields, .None
 }
 
 @private
 read_attributes :: proc(reader: ^ClassFileReader, count: int) -> (attributes: []AttributeInfo, err: Errno) {
     attributes = make([]AttributeInfo, count)
+    
     for i in 0..<count {
         name_idx := read_unsigned_short(reader) or_return
         length := read_unsigned_short(reader) or_return
