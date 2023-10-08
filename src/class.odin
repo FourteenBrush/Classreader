@@ -33,8 +33,7 @@ classfile_destroy :: proc(using classfile: ^ClassFile) {
 }
 
 classfile_dump :: proc(using classfile: ^ClassFile) {
-    class_name_bytes := constant_pool[this_class].info.(ConstantUtf8Info).bytes
-    class_name := string(class_name_bytes)
+    class_name := cp_get_string(classfile, this_class)
     fmt.printf("class name: %v\n", class_name)
 
     fmt.printf("minor version: %v\n", minor_version)
@@ -87,6 +86,7 @@ cp_entry_dump :: proc(using classfile: ^ClassFile, cp_info: ^ConstantPoolEntry) 
             descriptor := cp_get_string(classfile, cp_info.descriptor_idx)
             fmt.printf("%s:%s\n", name, descriptor)
         case ConstantMethodHandleInfo:
+            // TODO: these are all aliases, why bother specializing?
             switch cp_info.reference_kind {
                 case .GetField, .GetStatic, .PutField, .PutStatic:
                     field_ref := cp_get(ConstantFieldRefInfo, classfile, cp_info.reference_idx)
@@ -158,8 +158,8 @@ ClassAccessFlag :: enum u16 {
 
 FieldInfo :: struct {
     access_flags: u16,
-    name_index: u16,
-    descriptor_index: u16,
+    name_idx: u16,
+    descriptor_idx: u16,
     attributes_count: u16,
     attributes: []AttributeInfo,
 }
@@ -178,7 +178,7 @@ FieldAccessFlag :: enum u16 {
 
 MethodInfo :: struct {
     access_flags: u16,
-    name_index: u16,
+    name_idx: u16,
     descriptor_idx: u16,
     attributes_count: u16,
     attributes: []AttributeInfo,
@@ -201,7 +201,7 @@ MethodAccessFlag :: enum u16 {
 
 // Used by a ClassFile, FieldInfo, MethodInfo, and CodeAttribute
 AttributeInfo :: struct {
-    attribute_name_idx: u16,
-    attribute_length: u16,
+    name_idx: u16,
+    length: u16,
     info: []u8,
 }
