@@ -36,13 +36,13 @@ main :: proc() {
     }
 
     data, ok := os.read_entire_file_from_filename(args[1])
-    defer delete(data)
 
     if !ok {
         fmt.println("Error reading file")
         return
     }
 
+    defer delete(data)
     reader := reader_new(data) 
     classfile, err := reader_read_class_file(&reader)
     defer classfile_destroy(&classfile)
