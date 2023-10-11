@@ -102,16 +102,19 @@ UninitializedVariableInfo :: struct {
     offset: u16,
 }
 
-Exceptions :: struct {
+AttributeBase :: struct {
     attribute_name_idx: u16,
-    attribute_length: u32,
+    attribute_length: u16,
+}
+
+Exceptions :: struct {
+    using base: AttributeBase,
     number_of_exceptions: u16,
     exception_idx_table: []u16,
 }
 
 InnerClasses :: struct {
-    attribute_name_idx: u16,
-    attribute_length: u32,
+    using base: AttributeBase,
     number_of_classes: u16,
     classes: []InnerClassEntry,
 }
@@ -139,38 +142,32 @@ InnerClassAccessFlag :: enum {
 }
 
 EnclosingMethod :: struct {
-    attribute_name_idx: u16,
-    attribute_length: u32,
+    using base: AttributeBase,
     class_idx: u16,
     method_idx: u16,
 }
 
 Synthetic :: struct {
-    attribute_name_idx: u16,
-    attribute_length: u32,
+    using base: AttributeBase,
 }
 
 Signature :: struct {
-    attribute_name_idx: u16,
-    attribute_length: u32,
+    using base: AttributeBase,
     signature_idx: u16,
 }
 
 SourceFile :: struct {
-    attribute_name_idx: u16,
-    attribute_length: u32,
+    using base: AttributeBase,
     sourcefile_idx: u16,
 }
 
 SourceDebugExtension :: struct {
-    attribute_name_idx: u16,
-    attribute_length: u32,
+    using base: AttributeBase,
     debug_extension: []u8,
 }
 
 LineNumberTable :: struct {
-    attribute_name_idx: u16,
-    attribute_length: u32,
+    using base: AttributeBase,
     line_number_table_length: u16,
     line_number_table: []LineNumberTableEntry,
 }
@@ -181,8 +178,7 @@ LineNumberTableEntry :: struct {
 }
 
 LocalVariableTable :: struct {
-    attribute_name_idx: u16,
-    attribute_length: u32,
+    using base: AttributeBase,
     local_variable_table_length: u16,
     local_variable_table: []LocalVariableTableEntry,
 }
@@ -196,8 +192,7 @@ LocalVariableTableEntry :: struct {
 }
 
 LocalVariableTypeTable :: struct {
-    attribute_name_idx: u16,
-    attribute_length: u32,
+    using base: AttributeBase,
     local_variable_type_table_length: u16,
     local_variable_type_table: []LocalVariableTypeTableEntry,
 }
@@ -211,13 +206,11 @@ LocalVariableTypeTableEntry :: struct {
 }
 
 Deprecated :: struct {
-    attribute_name_idx: u16,
-    attribute_length: u32,
+    using base: AttributeBase,
 }
 
 RuntimeVisibleAnnotations :: struct {
-    attribute_name_idx: u16,
-    attribute_length: u32,
+    using base: AttributeBase,
     num_annotations: u16,
     annotations: []Annotation,
 }
@@ -258,15 +251,13 @@ ArrayValue :: struct {
 }
 
 RuntimeInvisibleAnnotations :: struct {
-    attribute_name_idx: u16,
-    attribute_length: u32,
+    using base: AttributeBase,
     num_annotations: u16,
     annotations: []Annotation,
 }
 
 RuntimeVisibleParameterAnnotations :: struct {
-    attribute_name_idx: u16,
-    attribute_length: u32,
+    using base: AttributeBase,
     num_parameters: u8,
     parameter_annotations: []ParameterAnnotation,
 }
@@ -277,18 +268,19 @@ ParameterAnnotation :: struct {
 }
 
 AnnotationDefault :: struct {
-    attribute_name_idx: u16,
-    attrbute_length: u32,
+    using base: AttributeBase,
     default_value: ElementValue,
 }
 
 BootstrapMethods :: struct {
-    attribute_name_idx: u16,
-    attribute_length: u32,
+    using base: AttributeBase,
     num_bootstrap_methods: u16,
-
 }
 
 BootstrapMethod :: struct {
-    
+    bootstrap_method_ref: u16, 
+    num_bootstrap_arguments: u16,
+    bootstrap_arguments: []u16,
 }
+
+
