@@ -33,7 +33,7 @@ classfile_destroy :: proc(using classfile: ^ClassFile) {
 }
 
 classfile_dump :: proc(using classfile: ^ClassFile) {
-    class_name := cp_get_string(classfile, this_class)
+    class_name := cp_get_str(classfile, this_class)
     fmt.printf("class name: %v\n", class_name)
 
     fmt.printf("minor version: %v\n", minor_version)
@@ -74,16 +74,16 @@ cp_entry_dump :: proc(using classfile: ^ClassFile, cp_info: ^ConstantPoolEntry) 
             val := u64(cp_info.high_bytes << 32) + u64(cp_info.low_bytes)
             fmt.println(val)
         case ConstantClassInfo:
-            class_name := cp_get_string(classfile, cp_info.name_idx)
+            class_name := cp_get_str(classfile, cp_info.name_idx)
             fmt.println(class_name)
         case ConstantStringInfo:
-            str := cp_get_string(classfile, cp_info.string_idx)
+            str := cp_get_str(classfile, cp_info.string_idx)
             fmt.println(str)
         case ConstantFieldRefInfo:
             dump_field_ref(classfile, cp_info)
         case ConstantNameAndTypeInfo:
-            name := cp_get_string(classfile, cp_info.name_idx)
-            descriptor := cp_get_string(classfile, cp_info.descriptor_idx)
+            name := cp_get_str(classfile, cp_info.name_idx)
+            descriptor := cp_get_str(classfile, cp_info.descriptor_idx)
             fmt.printf("%s:%s\n", name, descriptor)
         case ConstantMethodHandleInfo:
             // TODO: these are all aliases, why bother specializing?
@@ -99,7 +99,7 @@ cp_entry_dump :: proc(using classfile: ^ClassFile, cp_info: ^ConstantPoolEntry) 
                     dump_field_ref(classfile, interface_method_ref)
             }
         case ConstantMethodTypeInfo:
-            descriptor := cp_get_string(classfile, cp_info.descriptor_idx)
+            descriptor := cp_get_str(classfile, cp_info.descriptor_idx)
             fmt.println(descriptor)
         case ConstantInvokeDynamicInfo:
             fmt.println("todo")
@@ -111,10 +111,10 @@ cp_entry_dump :: proc(using classfile: ^ClassFile, cp_info: ^ConstantPoolEntry) 
 @private
 dump_field_ref :: proc(using classfile: ^ClassFile, using field_ref: ConstantFieldRefInfo) {
     class_name_idx := cp_get(ConstantClassInfo, classfile, class_idx).name_idx
-    class_name := cp_get_string(classfile, class_name_idx)
+    class_name := cp_get_str(classfile, class_name_idx)
 
     name_and_type := cp_get(ConstantNameAndTypeInfo, classfile, name_and_type_idx)
-    field_or_method_name := cp_get_string(classfile, name_and_type.name_idx)
+    field_or_method_name := cp_get_str(classfile, name_and_type.name_idx)
     fmt.printf("%s.%s\n", class_name, field_or_method_name)
 }
 

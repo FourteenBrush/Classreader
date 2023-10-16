@@ -3,6 +3,7 @@ package main
 import "core:os"
 import "core:fmt"
 import "core:mem"
+import "core:math/bits"
 
 main :: proc() {
     when ODIN_DEBUG {
@@ -29,7 +30,7 @@ main :: proc() {
 
     args := os.args
     if len(args) < 2 {
-        fmt.printf("Usage: %s <input file>\n");
+        fmt.printf("Usage: %s <input file>\n", args[0]);
         return
     }
 
@@ -52,4 +53,6 @@ main :: proc() {
     fmt.println("finished parsing class file")
 
     classfile_dump(&classfile)
+
+    fmt.println(bits.len_u16(23))
 }
