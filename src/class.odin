@@ -132,7 +132,7 @@ count_digits :: proc(x: u16) -> u8 {
     return count
 }
 
-cp_get_string :: proc(using classfile: ^ClassFile, idx: u16) -> string {
+cp_get_str :: proc(using classfile: ^ClassFile, idx: u16) -> string {
     return string(constant_pool[idx - 1].info.(ConstantUtf8Info).bytes)
 }
 
