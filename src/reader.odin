@@ -75,7 +75,7 @@ read_constant_pool :: proc(reader: ^ClassFileReader, count: int) -> (constant_po
         constant_pool[i] = ConstantPoolEntry { tag, entry }
         if tag == .Double || tag == .Float {
             fmt.println("got a float or double at idx", i)
-            i += 1
+            // i += 1
             fmt.println("pos now at", reader.pos)
         }
     }

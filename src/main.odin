@@ -29,13 +29,11 @@ main :: proc() {
 
     args := os.args
     if len(args) < 2 {
-        usage := fmt.aprintf("Usage: %s <input file>", args[0])
-        defer delete(usage)
-        fmt.println(usage)
+        fmt.printf("Usage: %s <input file>\n");
         return
     }
 
-    data, ok := os.read_entire_file_from_filename(args[1])
+    data, ok := os.read_entire_file(args[1])
 
     if !ok {
         fmt.println("Error reading file")
