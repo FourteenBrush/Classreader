@@ -132,12 +132,10 @@ count_digits :: proc(x: u16) -> u8 {
     return count
 }
 
-@private
 cp_get_string :: proc(using classfile: ^ClassFile, idx: u16) -> string {
     return string(constant_pool[idx - 1].info.(ConstantUtf8Info).bytes)
 }
 
-@private
 cp_get :: proc($T: typeid, using classfile: ^ClassFile, idx: u16) -> T
 where intrinsics.type_is_variant_of(CPInfo, T) {
      val, ok := constant_pool[idx - 1].info.(T)
