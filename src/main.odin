@@ -50,9 +50,6 @@ main :: proc() {
         fmt.printf("Error parsing class file: %s\n", err)
         return
     }
-    fmt.println("finished parsing class file")
 
     classfile_dump(&classfile)
-
-    fmt.println(bits.len_u16(23))
 }

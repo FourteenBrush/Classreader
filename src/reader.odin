@@ -7,44 +7,41 @@ ClassFileReader :: struct {
     pos: int,
 }
 
-reader_new :: #force_inline proc(bytes: []u8) -> ClassFileReader {
+reader_new :: proc(bytes: []u8) -> ClassFileReader {
     return ClassFileReader { bytes, 0 }
 }
 
 @private
-HEADER_MAGIC :: 0xCAFEBABE
+HEADER :: 0xCAFEBABE
 
 reader_read_class_file :: proc(using reader: ^ClassFileReader) -> (classfile: ClassFile, err: Errno) {
     magic := read_unsigned_int(reader) or_return
-    if magic != HEADER_MAGIC {
+    if magic != HEADER {
         return classfile, .InvalidHeader
     }
 
-    classfile.minor_version = read_unsigned_short(reader) or_return
-    classfile.major_version = read_unsigned_short(reader) or_return
-    classfile.constant_pool_count = read_unsigned_short(reader) or_return
-    fmt.println("constant_pool_count:", classfile.constant_pool_count)
-    classfile.constant_pool = read_constant_pool(reader, int(classfile.constant_pool_count)) or_return
+    using classfile
+    minor_version = read_unsigned_short(reader) or_return
+    major_version = read_unsigned_short(reader) or_return
+    constant_pool_count = read_unsigned_short(reader) or_return
+    fmt.println("constant_pool_count:", constant_pool_count)
+    constant_pool = read_constant_pool(reader, int(constant_pool_count)) or_return
 
-    classfile.access_flags = read_unsigned_short(reader) or_return
-    classfile.this_class = read_unsigned_short(reader) or_return
-    classfile.super_class = read_unsigned_short(reader) or_return
+    access_flags = read_unsigned_short(reader) or_return
+    this_class = read_unsigned_short(reader) or_return
+    super_class = read_unsigned_short(reader) or_return
 
-    classfile.interfaces_count = read_unsigned_short(reader) or_return
-    classfile.interfaces = read_interfaces(reader, int(classfile.interfaces_count)) or_return
+    interfaces_count = read_unsigned_short(reader) or_return
+    interfaces = read_interfaces(reader, int(interfaces_count)) or_return
 
-    classfile.fields_count = read_unsigned_short(reader) or_return
-    fmt.printf("fields_count: %i\n", classfile.fields_count)
-    classfile.fields = read_fields(reader, int(classfile.fields_count)) or_return
+    fields_count = read_unsigned_short(reader) or_return
+    fields = read_fields(reader, int(fields_count)) or_return
 
-    classfile.methods_count = read_unsigned_short(reader) or_return
-    fmt.printf("methods_count: %i\n", classfile.methods_count)
-    classfile.methods = read_methods(reader, int(classfile.methods_count)) or_return
+    methods_count = read_unsigned_short(reader) or_return
+    methods = read_methods(reader, int(methods_count)) or_return
 
-    fmt.printf("[%i/%i]\n", pos, len(bytes))
-
-    classfile.attributes_count = read_unsigned_short(reader) or_return
-    classfile.attributes = read_attributes(reader, int(classfile.attributes_count)) or_return
+    attributes_count = read_unsigned_short(reader) or_return
+    attributes = read_attributes(reader, int(attributes_count)) or_return
     return
 }
 
@@ -74,9 +71,9 @@ read_constant_pool :: proc(reader: ^ClassFileReader, count: int) -> (constant_po
 
         constant_pool[i] = ConstantPoolEntry { tag, entry }
         if tag == .Double || tag == .Float {
+            fmt.println("[", reader.pos, "/", len(reader.bytes), "]")
             fmt.println("got a float or double at idx", i)
-            // i += 1
-            fmt.println("pos now at", reader.pos)
+            i += 1
         }
     }
     return constant_pool, .None
@@ -84,50 +81,48 @@ read_constant_pool :: proc(reader: ^ClassFileReader, count: int) -> (constant_po
 
 @private
 read_constant_pool_entry :: proc(reader: ^ClassFileReader, tag: ConstantType) -> (entry: CPInfo, err: Errno) {
-    info: CPInfo
-
     switch tag {
         case .Utf8:
             length := read_unsigned_short(reader) or_return
             bytes := read_nbytes(reader, int(length)) or_return
-            info = ConstantUtf8Info { length, bytes }
+            entry = ConstantUtf8Info { length, bytes }
         case .Integer:
             value := read_unsigned_int(reader) or_return
-            info = ConstantIntegerInfo { value }
+            entry = ConstantIntegerInfo { value }
         case .Float:
             value := read_unsigned_int(reader) or_return
-            info = ConstantFloatInfo { value }
+            entry = ConstantFloatInfo { value }
         case .Long, .Double:
             high_bytes := read_unsigned_int(reader) or_return
             low_bytes := read_unsigned_int(reader) or_return
-            info = ConstantLongInfo { high_bytes, low_bytes }
+            entry = ConstantLongInfo { high_bytes, low_bytes }
         case .Class:
             name_idx := read_unsigned_short(reader) or_return
-            info = ConstantClassInfo { name_idx }
+            entry = ConstantClassInfo { name_idx }
         case .String:
             string_idx := read_unsigned_short(reader) or_return
-            info = ConstantStringInfo { string_idx }
+            entry = ConstantStringInfo { string_idx }
         case .FieldRef, .MethodRef, .InterfaceMethodRef:
             class_idx := read_unsigned_short(reader) or_return
             name_and_type_idx := read_unsigned_short(reader) or_return
-            info = ConstantFieldRefInfo { class_idx, name_and_type_idx }
+            entry = ConstantFieldRefInfo { class_idx, name_and_type_idx }
         case .NameAndType:
             name_idx := read_unsigned_short(reader) or_return
             descriptor_idx := read_unsigned_short(reader) or_return
-            info = ConstantNameAndTypeInfo { name_idx, descriptor_idx }
+            entry = ConstantNameAndTypeInfo { name_idx, descriptor_idx }
         case .MethodHandle:
             reference_kind := ReferenceKind(read_unsigned_byte(reader) or_return)
             reference_idx := read_unsigned_short(reader) or_return
-            info = ConstantMethodHandleInfo { reference_kind, reference_idx }
+            entry = ConstantMethodHandleInfo { reference_kind, reference_idx }
         case .MethodType:
             descriptor_idx := read_unsigned_short(reader) or_return
-            info = ConstantMethodTypeInfo { descriptor_idx }
+            entry = ConstantMethodTypeInfo { descriptor_idx }
         case .InvokeDynamic:
             bootstrap_method_attr_idx := read_unsigned_short(reader) or_return
             name_and_type_idx := read_unsigned_short(reader) or_return
-            info = ConstantInvokeDynamicInfo { bootstrap_method_attr_idx, name_and_type_idx }
+            entry = ConstantInvokeDynamicInfo { bootstrap_method_attr_idx, name_and_type_idx }
     }
-    return info, .None
+    return entry, .None
 }
 
 @private
@@ -228,7 +223,7 @@ read_nbytes :: proc(using reader: ^ClassFileReader, n: int) -> ([]u8, Errno) {
     if pos + n >= len(bytes) {
         return nil, .UnexpectedEof
     }
-    res := bytes[pos:pos + n]
+    res := bytes[pos:][:n]
     pos += n
     return res, .None
 }
