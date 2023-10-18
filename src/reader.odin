@@ -1,6 +1,7 @@
 package main
 
 import "core:fmt"
+import "core:encoding/endian"
 
 ClassFileReader :: struct {
     bytes: []u8,
@@ -47,6 +48,8 @@ reader_read_class_file :: proc(using reader: ^ClassFileReader) -> (classfile: Cl
 
 Errno :: enum {
     None,
+    // Some generic IO error
+    IO,
     // Magic number was not present in the file header
     InvalidHeader,
     // Expected more bytes
@@ -73,7 +76,7 @@ read_constant_pool :: proc(reader: ^ClassFileReader, count: int) -> (constant_po
         if tag == .Double || tag == .Float {
             fmt.println("[", reader.pos, "/", len(reader.bytes), "]")
             fmt.println("got a float or double at idx", i)
-            i += 1
+            //i += 1
         }
     }
     return constant_pool, .None
@@ -200,22 +203,18 @@ read_unsigned_byte :: proc(using reader: ^ClassFileReader) -> (u8, Errno) #no_bo
 
 @private
 read_unsigned_short :: proc(using reader: ^ClassFileReader) -> (u16, Errno) #no_bounds_check {
-    if pos + 1 >= len(bytes) {
-        return 0, .UnexpectedEof
-    }
-    res := (u16(bytes[pos]) << 8) | u16(bytes[pos + 1])
+    ret, ok := endian.get_u16(bytes[pos:], .Big)
+    if !ok do return ret, .UnexpectedEof
     pos += 2
-    return res, .None
+    return ret, .None
 }
 
 @private
 read_unsigned_int :: proc(using reader: ^ClassFileReader) -> (u32, Errno) #no_bounds_check {
-    if pos + 3 >= len(bytes) {
-        return 0, .UnexpectedEof
-    }
-    res := (u32(bytes[pos]) << 24) | (u32(bytes[pos + 1]) << 16) | (u32(bytes[pos + 2]) << 8) | u32(bytes[pos + 3])
+    ret, ok := endian.get_u32(bytes[pos:], .Big)
+    if !ok do return ret, .UnexpectedEof
     pos += 4
-    return res, .None
+    return ret, .None
 }
 
 @private
