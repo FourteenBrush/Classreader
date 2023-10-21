@@ -1,4 +1,4 @@
-package main
+package classreader
 
 ConstantPoolEntry :: struct {
     tag: ConstantType,
@@ -7,13 +7,13 @@ ConstantPoolEntry :: struct {
 
 // TODO: fix this awful name
 CPInfo :: union #no_nil {
-    DummyInfo, // meant to occupy the empry second slot of a long/ double
+    DummyInfo,                  // meant to occupy the empty second slot of a long/ double
     ConstantUtf8Info,
-    ConstantIntegerInfo, // and Float alias
-    ConstantDoubleInfo, // and Long alias
+    ConstantIntegerInfo,        // and Float alias
+    ConstantDoubleInfo,         // and Long alias
     ConstantClassInfo,
     ConstantStringInfo,
-    ConstantFieldRefInfo, // and MethodRef, InterfaceMethodRef alias
+    ConstantFieldRefInfo,       // and MethodRef, InterfaceMethodRef alias
     ConstantNameAndTypeInfo,
     ConstantMethodHandleInfo,
     ConstantMethodTypeInfo,

@@ -1,4 +1,4 @@
-package main
+package classreader
 
 import "core:os"
 import "core:fmt"

@@ -1,4 +1,4 @@
-package main
+package classreader
 
 @(private="file") // got a redefinition
 AttributeInfo :: struct {

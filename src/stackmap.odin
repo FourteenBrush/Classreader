@@ -1,4 +1,4 @@
-package main
+package classreader
 
 StackMapFrame :: union {
     SameFrame,
