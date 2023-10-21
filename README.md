@@ -49,10 +49,10 @@ Constant pool:
 
 ## Building yourself
 
-- Make sure you have the Odin compiler installed (instructions on how to do some can be found
+- Make sure you have the Odin compiler installed (instructions on how to do so can be found
 [here](https://odin-lang.org/docs/install/))
 
 - Run the following command:
 ```
-odin build --out=classreader.exe src
+odin build src --out=classreader.exe
 ```

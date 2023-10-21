@@ -1,0 +1,21 @@
+{
+    "version": "2.0.0",
+    "command": "",
+    "args": [],
+    "tasks": [
+        {
+            "label": "remove_pdb",
+            "type": "shell",
+            "command": "rm",
+            "args": [
+                "*.pdb"
+            ]
+        },
+        {
+            "label": "build",
+            "type": "shell",
+            "command": "odin build src -out:out.exe -debug -define:ODIN_DEBUG=1",
+            "group": "build"
+        }
+    ]
+}

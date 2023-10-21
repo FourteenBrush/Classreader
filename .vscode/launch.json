@@ -1,0 +1,17 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "cppvsdbg",
+            "request": "launch",
+            "preLaunchTask": "build",
+            "name": "Debug Odin Executable",
+            "program": "${workspaceFolder}/out.exe",
+            "args": [
+                "res/Test.class"
+            ],
+            "cwd": "${workspaceFolder}",
+            "postDebugTask": "remove_pdb"
+        }
+    ]
+}
