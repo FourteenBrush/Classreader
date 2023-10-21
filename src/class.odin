@@ -1,6 +1,7 @@
 package classreader
 
 import "core:fmt"
+import "core:reflect"
 import "core:intrinsics"
 
 ClassFile :: struct {
@@ -45,9 +46,8 @@ classfile_dump :: proc(using classfile: ^ClassFile) {
 
     fmt.println("minor version:", minor_version)
     fmt.println("major version:", major_version)
-    fmt.printf("access flags: 0x%x (", access_flags)
+    fmt.printf("access flags: 0x%x ", access_flags)
     dump_access_flags(access_flags)
-    fmt.println(')')
 
     max_idx_width := count_digits(int(constant_pool_count))
     fmt.println("Constant pool:")
@@ -70,11 +70,23 @@ classfile_dump :: proc(using classfile: ^ClassFile) {
 }
 
 @private
-dump_access_flags :: proc(flags: u16) { 
-    if flags & u16(ClassAccessFlag.AccPublic) != 0 {
-        fmt.print("ACC_PUBLIC")
+dump_access_flags :: proc(flags: u16) {
+    enum_names := reflect.enum_field_names(ClassAccessFlag)
+    first := true
+
+    for flag, idx in ClassAccessFlag {
+        // FIXME: trivial mem leak
+        str := access_flag_to_str(flag)
+        if flags & u16(flag) != 0 {
+            if first {
+                fmt.print('(', str, sep="")
+            } else {
+                fmt.print(',', str)
+            }
+            first = false
+        }
     }
-    // TODO
+    fmt.println(')')
 }
 
 cp_entry_dump :: proc(using classfile: ^ClassFile, cp_info: ^ConstantPoolEntry) {
@@ -166,6 +178,20 @@ ClassAccessFlag :: enum u16 {
     AccSynthetic = 0x1000,
     AccAnnotation = 0x2000,
     AccEnum = 0x4000,
+}
+
+access_flag_to_str :: proc(flag: ClassAccessFlag) -> string {
+    switch (flag) {
+        case .AccPublic: return "ACC_PUBLIC"
+        case .AccFinal: return "ACC_FINAL"
+        case .AccSuper: return "ACC_SUPER"
+        case .AccInterface: return "ACC_INTERFACE"
+        case .AccAbstract: return "ACC_ABSTRACT"
+        case .AccSynthetic: return "ACC_SYNTHETIC"
+        case .AccAnnotation: return "ACC_ANNOTATION"
+        case .AccEnum: return "ACC_ENUM"
+    }
+    panic("invalid args to access_flag_to_str, validate them you nerd")
 }
 
 FieldInfo :: struct {
