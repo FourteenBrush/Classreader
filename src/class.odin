@@ -54,14 +54,18 @@ classfile_dump :: proc(using classfile: ^ClassFile) {
 
     for i := 0; i < int(constant_pool_count) - 1; i += 1 {
         MIN_PADDING :: 2 // minimum amount of spaces in front of #num
+        MAX_TAG_LEN :: len("InterfaceMethodRef") // longest tag
 
         using entry := &constant_pool[i]
         padding := MIN_PADDING + max_idx_width - count_digits(i + 1) + 1
-        fmt.printf("%*s%i = %s       ", padding, "#", i + 1, tag)
+        tag_len := len(fmt.tprint(tag))
+        // #9 = Utf8      some text 
+        // TODO: determine the max length of the tags first rather than hardcoding an arbitrary one
+        fmt.printf("%*s%i = %s%*s", padding, "#", i + 1, tag, MAX_TAG_LEN - tag_len + 1, "")
+        cp_entry_dump(classfile, entry)
         if tag == .Long || tag == .Double {
             i += 1 // skip the unusable entry
         }
-        cp_entry_dump(classfile, entry)
     }
 }
 
