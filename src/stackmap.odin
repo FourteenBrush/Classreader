@@ -20,35 +20,36 @@ SaleLocals1StackItemFrame :: struct {
 }
 
 SameLocals1StackItemFrameExtended :: struct {
-    frame_type: u8,
-    offset_delta: u16,
+    using base: StackMapFrameBase,
+    // TODO: why not store it as a normal field instead?
     stack: [1]VerificationTypeInfo,
 }
 
 ChopFrame :: struct {
-    frame_type: u8,
-    offset_delta: u16,
+    using base: StackMapFrameBase,
 }
 
 SameFrameExtended :: struct {
-    frame_type: u8,
-    offset_delta: u16,
+    using base: StackMapFrameBase,
 }
 
 AppendFrame :: struct {
-    frame_type: u8,
-    offset_delta: u16,
+    using base: StackMapFrameBase,
     // size: frame_type - 251
     locals: []VerificationTypeInfo,
 }
 
 FullFrame :: struct {
-    frame_type: u8,
-    offset_delta: u16,
+    using base: StackMapFrameBase,
     number_of_locals: u16,
     locals: []VerificationTypeInfo,
     number_of_stack_items: u16,
     stack: []VerificationTypeInfo,
+}
+
+StackMapFrameBase :: struct {
+    frame_type: u8,
+    offset_delta: u16,
 }
 
 // TODO: type aliases?

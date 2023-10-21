@@ -13,11 +13,11 @@ reader_new :: proc(bytes: []u8) -> ClassFileReader {
 }
 
 @private
-HEADER :: 0xCAFEBABE
+MAGIC :: 0xCAFEBABE
 
 reader_read_class_file :: proc(using reader: ^ClassFileReader) -> (classfile: ClassFile, err: Errno) {
     magic := read_unsigned_int(reader) or_return
-    if magic != HEADER {
+    if magic != MAGIC {
         return classfile, .InvalidHeader
     }
 
@@ -25,7 +25,6 @@ reader_read_class_file :: proc(using reader: ^ClassFileReader) -> (classfile: Cl
     minor_version = read_unsigned_short(reader) or_return
     major_version = read_unsigned_short(reader) or_return
     constant_pool_count = read_unsigned_short(reader) or_return
-    fmt.println("constant_pool_count:", constant_pool_count)
     constant_pool = read_constant_pool(reader, int(constant_pool_count)) or_return
 
     access_flags = read_unsigned_short(reader) or_return
@@ -62,21 +61,21 @@ Errno :: enum {
 
 @private
 read_constant_pool :: proc(reader: ^ClassFileReader, count: int) -> (constant_pool: []ConstantPoolEntry, err: Errno) {
-    constant_pool = make([]ConstantPoolEntry, count - 1)
+    constant_pool = make([]ConstantPoolEntry, count - 1) // omit first entry
 
-    for i := 0; i < count - 2; i += 1 {
+    for i := 0; i < count - 1; i += 1 {
         tag := ConstantType(read_unsigned_byte(reader) or_return)
-        entry, err := read_constant_pool_entry(reader, tag)
-        if err != .None {
-            fmt.eprintln(" err: failed to read entry:", tag)
-            break
+        if tag == ConstantType(0) {
+            fmt.printf("tag %v\n", tag)
+            panic("trap")
         }
+        entry := read_constant_pool_entry(reader, tag) or_return
 
         constant_pool[i] = ConstantPoolEntry { tag, entry }
-        if tag == .Double || tag == .Float {
-            fmt.println("[", reader.pos, "/", len(reader.bytes), "]")
-            fmt.println("got a float or double at idx", i)
-            //i += 1
+        if tag == .Double || tag == .Long {
+            // ConstantType(0) does not exist, but doesn't matter because it's never printed
+            constant_pool[i + 1] = ConstantPoolEntry { ConstantType(0), DummyInfo{} }
+            i += 1
         }
     }
     return constant_pool, .None
@@ -89,12 +88,9 @@ read_constant_pool_entry :: proc(reader: ^ClassFileReader, tag: ConstantType) ->
             length := read_unsigned_short(reader) or_return
             bytes := read_nbytes(reader, int(length)) or_return
             entry = ConstantUtf8Info { length, bytes }
-        case .Integer:
-            value := read_unsigned_int(reader) or_return
-            entry = ConstantIntegerInfo { value }
-        case .Float:
-            value := read_unsigned_int(reader) or_return
-            entry = ConstantFloatInfo { value }
+        case .Integer, .Float:
+            bytes := read_unsigned_int(reader) or_return
+            entry = ConstantIntegerInfo { bytes }
         case .Long, .Double:
             high_bytes := read_unsigned_int(reader) or_return
             low_bytes := read_unsigned_int(reader) or_return

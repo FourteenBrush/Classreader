@@ -28,29 +28,39 @@ classfile_destroy :: proc(using classfile: ^ClassFile) {
     delete(constant_pool)
     delete(interfaces)
     delete(fields)
+    for &method in methods {
+        delete(method.attributes)
+    }
     delete(methods)
+    for &attribute in attributes {
+        delete(attribute.info)
+    }
     delete(attributes)
 }
 
 classfile_dump :: proc(using classfile: ^ClassFile) {
-    class_name := cp_get_str(classfile, this_class)
-    fmt.printf("class name: %v\n", class_name)
+    class := cp_get(ConstantClassInfo, classfile, this_class)
+    class_name := cp_get_str(classfile, class.name_idx)
+    fmt.println("class name:", class_name)
 
-    fmt.printf("minor version: %v\n", minor_version)
-    fmt.printf("major version: %v\n", major_version)
+    fmt.println("minor version:", minor_version)
+    fmt.println("major version:", major_version)
     fmt.printf("access flags: 0x%x (", access_flags)
     dump_access_flags(access_flags)
     fmt.println(')')
 
-    max_idx_width := count_digits(constant_pool_count)
+    max_idx_width := count_digits(int(constant_pool_count))
     fmt.println("Constant pool:")
 
-    for i in 0..<constant_pool_count - 2 {
+    for i := 0; i < int(constant_pool_count) - 1; i += 1 {
         MIN_PADDING :: 2 // minimum amount of spaces in front of #num
 
         using entry := &constant_pool[i]
         padding := MIN_PADDING + max_idx_width - count_digits(i + 1) + 1
         fmt.printf("%*s%i = %s       ", padding, "#", i + 1, tag)
+        if tag == .Long || tag == .Double {
+            i += 1 // skip the unusable entry
+        }
         cp_entry_dump(classfile, entry)
     }
 }
@@ -65,6 +75,8 @@ dump_access_flags :: proc(flags: u16) {
 
 cp_entry_dump :: proc(using classfile: ^ClassFile, cp_info: ^ConstantPoolEntry) {
     switch &cp_info in cp_info.info {
+        case DummyInfo:
+            // do nothing, not intended to be printed
         case ConstantUtf8Info:
             fmt.println(string(cp_info.bytes))
         case ConstantIntegerInfo:
@@ -84,9 +96,10 @@ cp_entry_dump :: proc(using classfile: ^ClassFile, cp_info: ^ConstantPoolEntry) 
         case ConstantNameAndTypeInfo:
             name := cp_get_str(classfile, cp_info.name_idx)
             descriptor := cp_get_str(classfile, cp_info.descriptor_idx)
-            fmt.printf("%s:%s\n", name, descriptor)
+            fmt.println(name, descriptor, sep=":")
         case ConstantMethodHandleInfo:
             // TODO: these are all aliases, why bother specializing?
+            // Just interpret the cp_info.tag
             switch cp_info.reference_kind {
                 case .GetField, .GetStatic, .PutField, .PutStatic:
                     field_ref := cp_get(ConstantFieldRefInfo, classfile, cp_info.reference_idx)
@@ -103,7 +116,6 @@ cp_entry_dump :: proc(using classfile: ^ClassFile, cp_info: ^ConstantPoolEntry) 
             fmt.println(descriptor)
         case ConstantInvokeDynamicInfo:
             fmt.println("todo")
-            
     }
 }
 
@@ -111,15 +123,15 @@ cp_entry_dump :: proc(using classfile: ^ClassFile, cp_info: ^ConstantPoolEntry) 
 @private
 dump_field_ref :: proc(using classfile: ^ClassFile, using field_ref: ConstantFieldRefInfo) {
     class_name_idx := cp_get(ConstantClassInfo, classfile, class_idx).name_idx
-    class_name := cp_get_str(classfile, class_name_idx)
-
     name_and_type := cp_get(ConstantNameAndTypeInfo, classfile, name_and_type_idx)
     field_or_method_name := cp_get_str(classfile, name_and_type.name_idx)
+    class_name := cp_get_str(classfile, class_name_idx)
+    
     fmt.printf("%s.%s\n", class_name, field_or_method_name)
 }
 
 @private
-count_digits :: proc(x: u16) -> u8 {
+count_digits :: proc(x: int) -> u8 {
     if x == 0 do return 1
 
     x := x
@@ -133,14 +145,12 @@ count_digits :: proc(x: u16) -> u8 {
 }
 
 cp_get_str :: proc(using classfile: ^ClassFile, idx: u16) -> string {
-    return string(constant_pool[idx - 1].info.(ConstantUtf8Info).bytes)
+    return string(cp_get(ConstantUtf8Info, classfile, idx).bytes)
 }
 
 cp_get :: proc($T: typeid, using classfile: ^ClassFile, idx: u16) -> T
 where intrinsics.type_is_variant_of(CPInfo, T) {
-     val, ok := constant_pool[idx - 1].info.(T)
-     //fmt.assertf(ok, "mismatched cp_entry type: expected %T, got %T\n", typeid_of(T), typeid_of(type_of(val)))
-     return val
+    return constant_pool[idx - 1].info.(T)
 }
 
 ClassAccessFlag :: enum u16 {

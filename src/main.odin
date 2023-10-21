@@ -3,13 +3,13 @@ package main
 import "core:os"
 import "core:fmt"
 import "core:mem"
-import "core:math/bits"
+import win32 "core:sys/windows"
 
 main :: proc() {
     when ODIN_DEBUG {
         alloc: mem.Tracking_Allocator
         mem.tracking_allocator_init(&alloc, context.allocator)
-        context.allocator = mem.tracking_allocator(&allow)
+        context.allocator = mem.tracking_allocator(&alloc)
 
         defer {
             if len(alloc.allocation_map) > 0 {
@@ -31,25 +31,29 @@ main :: proc() {
     args := os.args
     if len(args) < 2 {
         fmt.printf("Usage: %s <input file>\n", args[0]);
-        return
+        os.exit(1);
     }
 
     data, ok := os.read_entire_file(args[1])
+    defer delete(data)
 
     if !ok {
-        fmt.println("Error reading file")
-        return
+        fmt.println("Error reading file, os error", get_last_error())
+        os.exit(2)
     }
 
-    defer delete(data)
     reader := reader_new(data) 
     classfile, err := reader_read_class_file(&reader)
     defer classfile_destroy(&classfile)
 
     if err != .None {
-        fmt.printf("Error parsing class file: %s\n", err)
+        fmt.println("Error parsing class file:", err)
         return
     }
 
     classfile_dump(&classfile)
+}
+
+get_last_error :: proc() -> int {
+    return int(win32.GetLastError()) when ODIN_OS == .Windows else os.get_last_error()
 }

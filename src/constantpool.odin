@@ -7,6 +7,7 @@ ConstantPoolEntry :: struct {
 
 // TODO: fix this awful name
 CPInfo :: union #no_nil {
+    DummyInfo, // meant to occupy the empry second slot of a long/ double
     ConstantUtf8Info,
     ConstantIntegerInfo, // and Float alias
     ConstantDoubleInfo, // and Long alias
@@ -18,6 +19,8 @@ CPInfo :: union #no_nil {
     ConstantMethodTypeInfo,
     ConstantInvokeDynamicInfo,
 }
+
+DummyInfo :: struct {}
 
 ConstantType :: enum u8 {
     Utf8 = 1,
@@ -72,7 +75,7 @@ ConstantInterfaceMethodRefInfo :: ConstantFieldRefInfo
 
 ConstantNameAndTypeInfo :: struct {
     name_idx: u16,
-    // Points to a ConstantUtf8Info entry in the cp
+    // Points to a ConstantUtf8Info entry
     // representing a field or method descriptor
     descriptor_idx: u16,
 }
