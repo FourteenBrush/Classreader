@@ -1,10 +1,9 @@
 package res;
 public class Test {
+    @SuppressWarnings("unused")
     public static void main(String[] args) {
-        double d1 = 3.4;
-        double d2 = 1.8;
-
-        System.out.println(d1);
-        System.out.println(d2);
+        String s1 = "some string";
+        String s2 = "some other string";
+        String s3 = s1 + s2;
     }
 }
