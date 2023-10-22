@@ -193,7 +193,6 @@ read_attribute_info :: proc(reader: ^ClassFileReader, classfile: ^ClassFile) -> 
     inner: AttributeInfoInner
 
     attrib_name := cp_get_str(classfile, name_idx)
-    fmt.println(attrib_name)
 
     switch attrib_name {
         case "ConstantValue":
@@ -206,6 +205,7 @@ read_attribute_info :: proc(reader: ^ClassFileReader, classfile: ^ClassFile) -> 
             code := read_nbytes(reader, int(code_length)) or_return
             exception_table_length := read_unsigned_short(reader) or_return
             exception_table := make([]ExceptionHandler, exception_table_length)
+
             for i in 0..<exception_table_length {
                 start_pc := read_unsigned_short(reader) or_return
                 end_pc := read_unsigned_short(reader) or_return
@@ -213,6 +213,7 @@ read_attribute_info :: proc(reader: ^ClassFileReader, classfile: ^ClassFile) -> 
                 catch_type := read_unsigned_short(reader) or_return
                 exception_table[i] = { start_pc, end_pc, handler_pc, catch_type }
             }
+
             attributes_count := read_unsigned_short(reader) or_return
             attributes := read_attributes(reader, int(attributes_count), classfile) or_return
             inner = Code {
@@ -225,7 +226,7 @@ read_attribute_info :: proc(reader: ^ClassFileReader, classfile: ^ClassFile) -> 
             number_of_entries := read_unsigned_short(reader) or_return
             entries := make([]StackMapFrame, number_of_entries)
 
-            for i in 0..=number_of_entries {
+            for i in 0..<number_of_entries {
                 frame_type := read_unsigned_byte(reader) or_return
                 switch frame_type {
                     case 0..=63:
@@ -368,6 +369,11 @@ read_attribute_info :: proc(reader: ^ClassFileReader, classfile: ^ClassFile) -> 
                 bootstrap_method_ref := read_unsigned_short(reader) or_return
                 num_bootstrap_arguments := read_unsigned_short(reader) or_return
                 bootstrap_arguments := make([]u16, num_bootstrap_arguments)
+
+                for j in 0..<num_bootstrap_arguments {
+                    bootstrap_arguments[j] = read_unsigned_short(reader) or_return
+                }
+
                 bootstrap_methods[i] = BootstrapMethod {
                     bootstrap_method_ref,
                     num_bootstrap_arguments,
