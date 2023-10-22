@@ -1,22 +1,43 @@
 package classreader
 
-@(private="file") // got a redefinition
+// Used by a ClassFile, FieldInfo, MethodInfo, and CodeAttribute
 AttributeInfo :: struct {
     name_idx: u16,
     length: u32,
-    info: []u8,
+    info: AttributeInfoInner,
+}
+
+// TODO: rename
+AttributeInfoInner :: union {
+    ConstantValue,
+    Code,
+    StackMapTable,
+    Exceptions,
+    InnerClasses,
+    EnclosingMethod,
+    Synthetic,
+    Signature,
+    SourceFile,
+    SourceDebugExtension,
+    LineNumberTable,
+    LocalVariableTable,
+    LocalVariableTypeTable,
+    Deprecated,
+    RuntimeVisibleAnnotations,
+    RuntimeInvisibleAnnotations,
+    RuntimeVisibleParameterAnnotations,
+    RuntimeInvisibleParameterAnnotations,
+    AnnotationDefault,
+    BootstrapMethods,
 }
 
 ConstantValue :: struct {
-    name_idx: u16,
-    attribute_length: u32,
+    using base: AttributeBase,
     constantvalue_idx: u16,
 }
 
 Code :: struct {
-    // Cp index pointing to a Utf8Info entry
-    attribute_name_idx: u16,
-    attribute_length: u32,
+    using base: AttributeBase,
     max_stack: u16,
     max_locals: u16,
     code_length: u32,
@@ -35,8 +56,7 @@ ExceptionHandler :: struct {
 }
 
 StackMapTable :: struct {
-    attribute_name_idx: u16,
-    attribubte_length: u32,
+    using base: AttributeBase,
     number_of_entries: u16,
     entries: []StackMapFrame,
 }

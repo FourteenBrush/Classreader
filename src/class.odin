@@ -33,9 +33,6 @@ classfile_destroy :: proc(using classfile: ^ClassFile) {
         delete(method.attributes)
     }
     delete(methods)
-    for &attribute in attributes {
-        delete(attribute.info)
-    }
     delete(attributes)
 }
 
@@ -67,6 +64,12 @@ classfile_dump :: proc(using classfile: ^ClassFile) {
             i += 1 // skip the unusable entry
         }
     }
+
+    fmt.println("Attributes:")
+    for &attrib in attributes {
+        name := cp_get_str(classfile, attrib.name_idx)
+        fmt.println(name, attrib.length)
+    }
 }
 
 @private
@@ -75,7 +78,6 @@ dump_access_flags :: proc(flags: u16) {
     first := true
 
     for flag, idx in ClassAccessFlag {
-        // FIXME: trivial mem leak
         str := access_flag_to_str(flag)
         if flags & u16(flag) != 0 {
             if first {
@@ -131,6 +133,7 @@ cp_entry_dump :: proc(using classfile: ^ClassFile, cp_info: ^ConstantPoolEntry) 
             descriptor := cp_get_str(classfile, cp_info.descriptor_idx)
             fmt.println(descriptor)
         case ConstantInvokeDynamicInfo:
+
             fmt.println("todo")
     }
 }
@@ -235,11 +238,4 @@ MethodAccessFlag :: enum u16 {
     Abstract = 0x0400,
     Strict = 0x0800,
     Synthetic = 0x1000,
-}
-
-// Used by a ClassFile, FieldInfo, MethodInfo, and CodeAttribute
-AttributeInfo :: struct {
-    name_idx: u16,
-    length: u16,
-    info: []u8,
 }

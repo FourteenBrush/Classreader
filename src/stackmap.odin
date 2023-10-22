@@ -2,7 +2,7 @@ package classreader
 
 StackMapFrame :: union {
     SameFrame,
-    SaleLocals1StackItemFrame,
+    SameLocals1StackItemFrame,
     SameLocals1StackItemFrameExtended,
     ChopFrame,
     SameFrameExtended,
@@ -10,102 +10,78 @@ StackMapFrame :: union {
     FullFrame,
 }
 
-SameFrame :: struct {
-    frame_type: u8,
-}
+SameFrame :: struct {}
 
-SaleLocals1StackItemFrame :: struct {
-    frame_type: u8,
-    stack: [1]VerificationTypeInfo,
+SameLocals1StackItemFrame :: struct {
+    stack: VerificationTypeInfo,
 }
 
 SameLocals1StackItemFrameExtended :: struct {
-    using base: StackMapFrameBase,
-    // TODO: why not store it as a normal field instead?
-    stack: [1]VerificationTypeInfo,
+    offset_delta: u16,
+    stack: VerificationTypeInfo,
 }
 
 ChopFrame :: struct {
-    using base: StackMapFrameBase,
+    offset_delta: u16,
 }
 
 SameFrameExtended :: struct {
-    using base: StackMapFrameBase,
+    offset_delta: u16,
 }
 
 AppendFrame :: struct {
-    using base: StackMapFrameBase,
+    offset_delta: u16,
     // size: frame_type - 251
     locals: []VerificationTypeInfo,
 }
 
 FullFrame :: struct {
-    using base: StackMapFrameBase,
+    offset_delta: u16,
     number_of_locals: u16,
     locals: []VerificationTypeInfo,
     number_of_stack_items: u16,
     stack: []VerificationTypeInfo,
 }
 
-StackMapFrameBase :: struct {
-    frame_type: u8,
-    offset_delta: u16,
+// TODO: type aliases?
+VerificationTypeInfo :: union {
+    TopVariableInfo,                // 0
+    IntegerVariableInfo,            // 1
+    FloatVariableInfo,              // 2
+    LongVariableInfo,               // 4
+    DoubleVariableInfo,             // 3
+    NullVariableInfo,               // 5
+    UninitializedThisVariableInfo,  // 6
+    ObjectVariableInfo,             // 7
+    UninitializedVariableInfo,      // 8
 }
 
 // TODO: type aliases?
-VerificationTypeInfo :: union {
-    TopVariableInfo,
-    IntegerVariableInfo,
-    FloatVariableInfo,
-    LongVariableInfo,
-    DoubleVariableInfo,
-    NullVariableInfo,
-    UninitializedThisVariableInfo,
-    ObjectVariableInfo,
-    UninitializedVariableInfo,
-}
+TopVariableInfo :: struct {}
 
-TopVariableInfo :: struct {
-    tag: u8,
-}
+IntegerVariableInfo :: struct {}
 
-IntegerVariableInfo :: struct {
-    tag: u8,
-}
+FloatVariableInfo :: struct {}
 
-FloatVariableInfo :: struct {
-    tag: u8,
-}
+LongVariableInfo :: struct {}
 
-LongVariableInfo :: struct {
-    tag: u8,
-}
+DoubleVariableInfo :: struct {}
 
-DoubleVariableInfo :: struct {
-    tag: u8,
-}
+NullVariableInfo :: struct {}
 
-NullVariableInfo :: struct {
-    tag: u8,
-}
-
-UninitializedThisVariableInfo :: struct {
-    tag: u8,
-}
+UninitializedThisVariableInfo :: struct {}
 
 ObjectVariableInfo :: struct {
-    tag: u8,
     cp_idx: u16,
 }
 
 UninitializedVariableInfo :: struct {
-    tag: u8,
     offset: u16,
 }
 
 AttributeBase :: struct {
-    attribute_name_idx: u16,
-    attribute_length: u16,
+    name_idx: u16,
+    length: u32,
 }
 
 Exceptions :: struct {
@@ -124,8 +100,8 @@ InnerClasses :: struct {
 InnerClassEntry :: struct {
     inner_class_info_idx: u16,
     outer_class_info_idx: u16,
-    inner_name_idx: u16,
-    inner_class_access_flags: u16,
+    name_idx: u16,
+    access_flags: u16,
 }
 
 // don't confuse this with ClassAccessFlag
@@ -227,6 +203,9 @@ ElementValuePair :: struct {
     value: ElementValue,
 }
 
+// discriminated union representing the value of an element-value pair.
+// It is used to represent element values in all attributes that describe annotations
+// (RuntimeVisibleAnnotations, RuntimeInvisibleAnnotations, RuntimeVisibleParameterAnnotations, and RuntimeInvisibleParameterAnnotations
 ElementValue :: struct {
     tag: u8,
     value: ActualElementValue,
@@ -263,6 +242,12 @@ RuntimeVisibleParameterAnnotations :: struct {
     parameter_annotations: []ParameterAnnotation,
 }
 
+RuntimeInvisibleParameterAnnotations :: struct {
+    using base: AttributeBase,
+    num_parameters: u8,
+    parameter_annotations: []ParameterAnnotation,
+}
+
 ParameterAnnotation :: struct {
     num_annotations: u16,
     annotations: []Annotation,
@@ -276,6 +261,7 @@ AnnotationDefault :: struct {
 BootstrapMethods :: struct {
     using base: AttributeBase,
     num_bootstrap_methods: u16,
+    bootstrap_methods: []BootstrapMethod,
 }
 
 BootstrapMethod :: struct {
@@ -283,5 +269,3 @@ BootstrapMethod :: struct {
     num_bootstrap_arguments: u16,
     bootstrap_arguments: []u16,
 }
-
-

@@ -48,7 +48,7 @@ main :: proc() {
 
     if err != .None {
         fmt.println("Error parsing class file:", err)
-        return
+        os.exit(3)
     }
 
     classfile_dump(&classfile)
