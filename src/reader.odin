@@ -181,35 +181,32 @@ read_attributes :: proc(reader: ^ClassFileReader, count: int, classfile: ^ClassF
     attributes = make([]AttributeInfo, count)
     
     for i in 0..<count {
-        name_idx := read_unsigned_short(reader) or_return
-        length := read_unsigned_int(reader) or_return
-        info := read_attribute_info(reader, name_idx, classfile) or_return
-        attributes[i] = AttributeInfo { name_idx, length, info }
+        attributes[i] = read_attribute_info(reader, classfile) or_return
     }
     return attributes, .None
 }
 
 @private
-read_attribute_info :: proc(reader: ^ClassFileReader, name_idx: u16, classfile: ^ClassFile) -> (attrib: AttributeInfoInner, err: Errno) {
+read_attribute_info :: proc(reader: ^ClassFileReader, classfile: ^ClassFile) -> (attribute: AttributeInfo, err: Errno) {
+    name_idx := read_unsigned_short(reader) or_return
+    length := read_unsigned_int(reader) or_return
+    inner: AttributeInfoInner
+
     attrib_name := cp_get_str(classfile, name_idx)
-    attrib_base := read_attribute_base(reader) or_return
     fmt.println(attrib_name)
 
     switch attrib_name {
         case "ConstantValue":
             constantvalue_idx := read_unsigned_short(reader) or_return
-            attrib = ConstantValue { attrib_base, constantvalue_idx }
+            inner = ConstantValue { constantvalue_idx }
         case "Code":
             max_stack := read_unsigned_short(reader) or_return
-            fmt.println("max stack:", max_stack)
             max_locals := read_unsigned_short(reader) or_return
-            fmt.println("max locals", max_locals)
             code_length := read_unsigned_int(reader) or_return
-            fmt.println("code length", code_length)
             code := read_nbytes(reader, int(code_length)) or_return
             exception_table_length := read_unsigned_short(reader) or_return
             exception_table := make([]ExceptionHandler, exception_table_length)
-            for i in 0..=exception_table_length {
+            for i in 0..<exception_table_length {
                 start_pc := read_unsigned_short(reader) or_return
                 end_pc := read_unsigned_short(reader) or_return
                 handler_pc := read_unsigned_short(reader) or_return
@@ -218,8 +215,8 @@ read_attribute_info :: proc(reader: ^ClassFileReader, name_idx: u16, classfile: 
             }
             attributes_count := read_unsigned_short(reader) or_return
             attributes := read_attributes(reader, int(attributes_count), classfile) or_return
-            attrib = Code {
-                attrib_base, max_stack, max_locals,
+            inner = Code {
+                max_stack, max_locals,
                 code_length, code,
                 exception_table_length, exception_table,
                 attributes_count, attributes,
@@ -266,7 +263,7 @@ read_attribute_info :: proc(reader: ^ClassFileReader, name_idx: u16, classfile: 
                         }
                 }
             }
-            attrib = StackMapTable { attrib_base, number_of_entries, entries }
+            inner = StackMapTable { number_of_entries, entries }
         case "Exceptions":
             number_of_exceptions := read_unsigned_short(reader) or_return
             exception_idx_table := make([]u16, number_of_exceptions)
@@ -274,7 +271,7 @@ read_attribute_info :: proc(reader: ^ClassFileReader, name_idx: u16, classfile: 
             for j in 0..<number_of_exceptions {
                 exception_idx_table[j] = read_unsigned_short(reader) or_return
             }
-            attrib = Exceptions { attrib_base, number_of_exceptions, exception_idx_table }
+            inner = Exceptions { number_of_exceptions, exception_idx_table }
         case "InnerClasses":
             number_of_classes := read_unsigned_short(reader) or_return
             classes := make([]InnerClassEntry, number_of_classes)
@@ -290,21 +287,21 @@ read_attribute_info :: proc(reader: ^ClassFileReader, name_idx: u16, classfile: 
                     name_idx, access_flags,
                 }
             }
-            attrib = InnerClasses { attrib_base, number_of_classes, classes }
+            inner = InnerClasses { number_of_classes, classes }
         case "EnclosingMethod":
             class_idx := read_unsigned_short(reader) or_return
             method_idx := read_unsigned_short(reader) or_return
-            attrib = EnclosingMethod { attrib_base, class_idx, method_idx }
-        case "Synthetic": attrib = Synthetic { attrib_base }
+            inner = EnclosingMethod { class_idx, method_idx }
+        case "Synthetic": inner = Synthetic {}
         case "Signature": 
             signature_idx := read_unsigned_short(reader) or_return
-            attrib = Signature { attrib_base, signature_idx }
+            inner = Signature { signature_idx }
         case "SourceFile": 
             sourcefile_idx := read_unsigned_short(reader) or_return
-            attrib = SourceFile { attrib_base, sourcefile_idx }
+            inner = SourceFile { sourcefile_idx }
         case "SourceDebugExtension":
-            debug_extension := read_nbytes(reader, int(attrib_base.length)) or_return
-            attrib = SourceDebugExtension { attrib_base, debug_extension }
+            debug_extension := read_nbytes(reader, int(length)) or_return
+            inner = SourceDebugExtension { debug_extension }
         case "LineNumberTable":
             table_length := read_unsigned_short(reader) or_return
             table := make([]LineNumberTableEntry, table_length)
@@ -313,11 +310,7 @@ read_attribute_info :: proc(reader: ^ClassFileReader, name_idx: u16, classfile: 
                 line_number := read_unsigned_short(reader) or_return
                 table[i] = LineNumberTableEntry { start_pc, line_number }
             }
-            attrib = LineNumberTable {
-                attrib_base,
-                table_length,
-                table,
-            }
+            inner = LineNumberTable { table_length, table }
         case "LocalVariableTable":
             table_length := read_unsigned_short(reader) or_return
             table := make([]LocalVariableTableEntry, table_length)
@@ -333,10 +326,7 @@ read_attribute_info :: proc(reader: ^ClassFileReader, name_idx: u16, classfile: 
                     idx,
                 }
             }
-            attrib = LocalVariableTable  {
-                attrib_base,
-                table_length, table,
-            }
+            inner = LocalVariableTable  { table_length, table }
         case "LocalVariableTypeTable":
             table_length := read_unsigned_short(reader) or_return
             table := make([]LocalVariableTypeTableEntry, table_length)
@@ -352,24 +342,24 @@ read_attribute_info :: proc(reader: ^ClassFileReader, name_idx: u16, classfile: 
                     idx,
                 }
             }
-            attrib = LocalVariableTypeTable { attrib_base, table_length, table }
-        case "Deprecated": attrib = Deprecated { attrib_base }
+            inner = LocalVariableTypeTable { table_length, table }
+        case "Deprecated": inner = Deprecated {}
         case "RuntimeVisibleAnnotations":
             num_annotations := read_unsigned_short(reader) or_return
             annotations := read_annotations(reader) or_return
-            attrib = RuntimeVisibleAnnotations { attrib_base, num_annotations, annotations }
+            inner = RuntimeVisibleAnnotations { num_annotations, annotations }
         case "RuntimeInvisibleAnnotations":
             annotations := read_annotations(reader) or_return
-            attrib = RuntimeInvisibleAnnotations { attrib_base, u16(len(annotations)), annotations }
+            inner = RuntimeInvisibleAnnotations { u16(len(annotations)), annotations }
         case "RuntimeVisibleParameterAnnotations":
             parameter_annotations := read_parameter_annotations(reader) or_return
-            attrib = RuntimeVisibleParameterAnnotations { attrib_base, u8(len(parameter_annotations)), parameter_annotations }
+            inner = RuntimeVisibleParameterAnnotations { u8(len(parameter_annotations)), parameter_annotations }
         case "RuntimeInvisibleParameterAnnotations":
             parameter_annotations := read_parameter_annotations(reader) or_return
-            attrib = RuntimeInvisibleParameterAnnotations { attrib_base, u8(len(parameter_annotations)), parameter_annotations }
+            inner = RuntimeInvisibleParameterAnnotations { u8(len(parameter_annotations)), parameter_annotations }
         case "AnnotationDefault":
             default_value := read_element_value(reader) or_return
-            attrib := AnnotationDefault { attrib_base, default_value }
+            inner := AnnotationDefault { default_value }
         case "BootstrapMethods":
             num_bootstrap_methods := read_unsigned_short(reader) or_return
             bootstrap_methods := make([]BootstrapMethod, num_bootstrap_methods)
@@ -384,10 +374,10 @@ read_attribute_info :: proc(reader: ^ClassFileReader, name_idx: u16, classfile: 
                     bootstrap_arguments,
                 }
             }
-            attrib = BootstrapMethods { attrib_base, num_bootstrap_methods, bootstrap_methods }
-        case: return attrib, .UnknownAttribute
+            inner = BootstrapMethods { num_bootstrap_methods, bootstrap_methods }
+        case: return attribute, .UnknownAttribute
     }
-    return attrib, .None
+    return AttributeInfo { name_idx, length, inner }, .None
 }
 
 @private
@@ -462,13 +452,6 @@ read_element_value :: proc(reader: ^ClassFileReader) -> (element_value: ElementV
             value.array_value = ArrayValue { num_values, values }
     }
     return element_value, .None
-}
-
-@private
-read_attribute_base :: proc(reader: ^ClassFileReader) -> (base: AttributeBase, err: Errno) {
-    name_idx := read_unsigned_short(reader) or_return
-    length := read_unsigned_int(reader) or_return
-    return AttributeBase { name_idx, length }, .None
 }
 
 @private

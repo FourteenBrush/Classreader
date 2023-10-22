@@ -78,8 +78,3 @@ ObjectVariableInfo :: struct {
 UninitializedVariableInfo :: struct {
     offset: u16,
 }
-
-AttributeBase :: struct {
-    name_idx: u16,
-    length: u32,
-}

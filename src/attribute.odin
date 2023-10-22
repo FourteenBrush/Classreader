@@ -32,12 +32,10 @@ AttributeInfoInner :: union {
 }
 
 ConstantValue :: struct {
-    using base: AttributeBase,
     constantvalue_idx: u16,
 }
 
 Code :: struct {
-    using base: AttributeBase,
     max_stack: u16,
     max_locals: u16,
     code_length: u32,
@@ -56,19 +54,16 @@ ExceptionHandler :: struct {
 }
 
 StackMapTable :: struct {
-    using base: AttributeBase,
     number_of_entries: u16,
     entries: []StackMapFrame,
 }
 
 Exceptions :: struct {
-    using base: AttributeBase,
     number_of_exceptions: u16,
     exception_idx_table: []u16,
 }
 
 InnerClasses :: struct {
-    using base: AttributeBase,
     number_of_classes: u16,
     classes: []InnerClassEntry,
 }
@@ -96,32 +91,25 @@ InnerClassAccessFlag :: enum {
 }
 
 EnclosingMethod :: struct {
-    using base: AttributeBase,
     class_idx: u16,
     method_idx: u16,
 }
 
-Synthetic :: struct {
-    using base: AttributeBase,
-}
+Synthetic :: struct {}
 
 Signature :: struct {
-    using base: AttributeBase,
     signature_idx: u16,
 }
 
 SourceFile :: struct {
-    using base: AttributeBase,
     sourcefile_idx: u16,
 }
 
 SourceDebugExtension :: struct {
-    using base: AttributeBase,
     debug_extension: []u8,
 }
 
 LineNumberTable :: struct {
-    using base: AttributeBase,
     line_number_table_length: u16,
     line_number_table: []LineNumberTableEntry,
 }
@@ -132,7 +120,6 @@ LineNumberTableEntry :: struct {
 }
 
 LocalVariableTable :: struct {
-    using base: AttributeBase,
     local_variable_table_length: u16,
     local_variable_table: []LocalVariableTableEntry,
 }
@@ -146,7 +133,6 @@ LocalVariableTableEntry :: struct {
 }
 
 LocalVariableTypeTable :: struct {
-    using base: AttributeBase,
     local_variable_type_table_length: u16,
     local_variable_type_table: []LocalVariableTypeTableEntry,
 }
@@ -159,12 +145,9 @@ LocalVariableTypeTableEntry :: struct {
     idx: u16,
 }
 
-Deprecated :: struct {
-    using base: AttributeBase,
-}
+Deprecated :: struct {}
 
 RuntimeVisibleAnnotations :: struct {
-    using base: AttributeBase,
     num_annotations: u16,
     annotations: []Annotation,
 }
@@ -208,19 +191,16 @@ ArrayValue :: struct {
 }
 
 RuntimeInvisibleAnnotations :: struct {
-    using base: AttributeBase,
     num_annotations: u16,
     annotations: []Annotation,
 }
 
 RuntimeVisibleParameterAnnotations :: struct {
-    using base: AttributeBase,
     num_parameters: u8,
     parameter_annotations: []ParameterAnnotation,
 }
 
 RuntimeInvisibleParameterAnnotations :: struct {
-    using base: AttributeBase,
     num_parameters: u8,
     parameter_annotations: []ParameterAnnotation,
 }
@@ -231,12 +211,10 @@ ParameterAnnotation :: struct {
 }
 
 AnnotationDefault :: struct {
-    using base: AttributeBase,
     default_value: ElementValue,
 }
 
 BootstrapMethods :: struct {
-    using base: AttributeBase,
     num_bootstrap_methods: u16,
     bootstrap_methods: []BootstrapMethod,
 }
