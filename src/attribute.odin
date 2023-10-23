@@ -19,7 +19,6 @@ attribute_destroy :: proc(using attrib: AttributeInfo) {
         case Code:
             delete(attrib.exception_table)
             attributes_destroy(attrib.attributes)
-            delete(attrib.attributes)
         case StackMapTable:
             for frame in attrib.entries {
                 stack_map_frame_destroy(frame)
