@@ -51,7 +51,7 @@ main :: proc() {
         os.exit(3)
     }
 
-    classfile_dump(&classfile)
+    classfile_dump(classfile)
 
     assert(int(classfile.methods_count) == len(classfile.methods))
     assert(int(classfile.interfaces_count) == len(classfile.interfaces))

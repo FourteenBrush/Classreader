@@ -39,9 +39,11 @@ SameFrameExtended :: struct {
     offset_delta: u16,
 }
 
+APPEND_FRAME_LOCALS_OFFSET :: 251
+
 AppendFrame :: struct {
     offset_delta: u16,
-    // size: frame_type - 251
+    // size: frame_type - APPEND_FRAME_LOCALS_OFFSET
     locals: []VerificationTypeInfo,
 }
 

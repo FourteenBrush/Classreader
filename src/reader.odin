@@ -26,23 +26,23 @@ reader_read_class_file :: proc(using reader: ^ClassFileReader) -> (classfile: Cl
     minor_version = read_unsigned_short(reader) or_return
     major_version = read_unsigned_short(reader) or_return
     constant_pool_count = read_unsigned_short(reader) or_return
-    constant_pool = read_constant_pool(reader, int(constant_pool_count)) or_return
+    constant_pool = read_constant_pool(reader, constant_pool_count) or_return
 
     access_flags = read_unsigned_short(reader) or_return
     this_class = read_unsigned_short(reader) or_return
     super_class = read_unsigned_short(reader) or_return
 
     interfaces_count = read_unsigned_short(reader) or_return
-    interfaces = read_interfaces(reader, int(interfaces_count)) or_return
+    interfaces = read_interfaces(reader, interfaces_count) or_return
 
     fields_count = read_unsigned_short(reader) or_return
-    fields = read_fields(reader, int(fields_count), &classfile) or_return
+    fields = read_fields(reader, int(fields_count), classfile) or_return
 
     methods_count = read_unsigned_short(reader) or_return
-    methods = read_methods(reader, int(methods_count), &classfile) or_return
+    methods = read_methods(reader, int(methods_count), classfile) or_return
 
     attributes_count = read_unsigned_short(reader) or_return
-    attributes = read_attributes(reader, int(attributes_count), &classfile) or_return
+    attributes = read_attributes(reader, attributes_count, classfile) or_return
     return
 }
 
@@ -65,10 +65,10 @@ Errno :: enum {
 }
 
 @private
-read_constant_pool :: proc(reader: ^ClassFileReader, count: int) -> (constant_pool: []ConstantPoolEntry, err: Errno) {
+read_constant_pool :: proc(reader: ^ClassFileReader, count: u16) -> (constant_pool: []ConstantPoolEntry, err: Errno) {
     constant_pool = make([]ConstantPoolEntry, count - 1) // omit first entry
 
-    for i := 0; i < count - 1; i += 1 {
+    for i := 0; i < int(count) - 1; i += 1 {
         tag := ConstantType(read_unsigned_byte(reader) or_return)
         entry := read_constant_pool_entry(reader, tag) or_return
 
@@ -126,18 +126,15 @@ read_constant_pool_entry :: proc(reader: ^ClassFileReader, tag: ConstantType) ->
 }
 
 @private
-read_interfaces :: proc(reader: ^ClassFileReader, count: int) -> (interfaces: []u16, err: Errno) {
+read_interfaces :: proc(reader: ^ClassFileReader, count: u16) -> (interfaces: []u16, err: Errno) {
+    count := int(count)
     bytes := read_nbytes(reader, count * 2) or_return
     interfaces = slice.reinterpret([]u16, bytes)
-
-    for i in 0..<count {
-        interfaces[i] = read_unsigned_short(reader) or_return
-    }
     return interfaces, .None
 }
 
 @private
-read_methods :: proc(reader: ^ClassFileReader, count: int, classfile: ^ClassFile) -> (methods: []MethodInfo, err: Errno) {
+read_methods :: proc(reader: ^ClassFileReader, count: int, classfile: ClassFile) -> (methods: []MethodInfo, err: Errno) {
     methods = make([]MethodInfo, count)
 
     for i in 0..<count {
@@ -145,7 +142,7 @@ read_methods :: proc(reader: ^ClassFileReader, count: int, classfile: ^ClassFile
         name_idx := read_unsigned_short(reader) or_return
         descriptor_idx := read_unsigned_short(reader) or_return
         attributes_count := read_unsigned_short(reader) or_return
-        attributes := read_attributes(reader, int(attributes_count), classfile) or_return
+        attributes := read_attributes(reader, attributes_count, classfile) or_return
 
         methods[i] = MethodInfo {
             access_flags,
@@ -159,7 +156,7 @@ read_methods :: proc(reader: ^ClassFileReader, count: int, classfile: ^ClassFile
 }
 
 @private
-read_fields :: proc(reader: ^ClassFileReader, count: int, classfile: ^ClassFile) -> (fields: []FieldInfo, err: Errno) {
+read_fields :: proc(reader: ^ClassFileReader, count: int, classfile: ClassFile) -> (fields: []FieldInfo, err: Errno) {
     fields = make([]FieldInfo, count)
 
     for i in 0..<count {
@@ -171,14 +168,15 @@ read_fields :: proc(reader: ^ClassFileReader, count: int, classfile: ^ClassFile)
         fields[i] = FieldInfo {
             access_flags, name_idx,
             descriptor_idx, attributes_count,
-            read_attributes(reader, int(attributes_count), classfile) or_return,
+            read_attributes(reader, attributes_count, classfile) or_return,
         }
     }
     return fields, .None
 }
 
 @private
-read_attributes :: proc(reader: ^ClassFileReader, count: int, classfile: ^ClassFile) -> (attributes: []AttributeInfo, err: Errno) {
+read_attributes :: proc(reader: ^ClassFileReader, count: u16, classfile: ClassFile) -> (attributes: []AttributeInfo, err: Errno) {
+    count := int(count)
     attributes = make([]AttributeInfo, count)
     
     for i in 0..<count {
@@ -188,7 +186,7 @@ read_attributes :: proc(reader: ^ClassFileReader, count: int, classfile: ^ClassF
 }
 
 @private
-read_attribute_info :: proc(reader: ^ClassFileReader, classfile: ^ClassFile) -> (attribute: AttributeInfo, err: Errno) {
+read_attribute_info :: proc(reader: ^ClassFileReader, classfile: ClassFile) -> (attribute: AttributeInfo, err: Errno) {
     name_idx := read_unsigned_short(reader) or_return
     length := read_unsigned_int(reader) or_return
     inner: AttributeInfoInner
@@ -216,7 +214,7 @@ read_attribute_info :: proc(reader: ^ClassFileReader, classfile: ^ClassFile) -> 
             }
 
             attributes_count := read_unsigned_short(reader) or_return
-            attributes := read_attributes(reader, int(attributes_count), classfile) or_return
+            attributes := read_attributes(reader, attributes_count, classfile) or_return
             inner = Code {
                 max_stack, max_locals,
                 code_length, code,
@@ -247,7 +245,7 @@ read_attribute_info :: proc(reader: ^ClassFileReader, classfile: ^ClassFile) -> 
                         entries[i] = SameFrameExtended { offset_delta }
                     case 252..=254:
                         offset_delta := read_unsigned_short(reader) or_return
-                        locals := make([]VerificationTypeInfo, frame_type - 251)
+                        locals := make([]VerificationTypeInfo, frame_type - APPEND_FRAME_LOCALS_OFFSET)
                         for j in 0..<len(locals) {
                             locals[j] = read_verification_type_info(reader) or_return
                         }
@@ -270,8 +268,8 @@ read_attribute_info :: proc(reader: ^ClassFileReader, classfile: ^ClassFile) -> 
             number_of_exceptions := read_unsigned_short(reader) or_return
             exception_idx_table := make([]u16, number_of_exceptions)
 
-            for j in 0..<number_of_exceptions {
-                exception_idx_table[j] = read_unsigned_short(reader) or_return
+            for i in 0..<number_of_exceptions {
+                exception_idx_table[i] = read_unsigned_short(reader) or_return
             }
             inner = Exceptions { number_of_exceptions, exception_idx_table }
         case "InnerClasses":
@@ -307,6 +305,7 @@ read_attribute_info :: proc(reader: ^ClassFileReader, classfile: ^ClassFile) -> 
         case "LineNumberTable":
             table_length := read_unsigned_short(reader) or_return
             table := make([]LineNumberTableEntry, table_length)
+
             for i in 0..<table_length {
                 start_pc := read_unsigned_short(reader) or_return
                 line_number := read_unsigned_short(reader) or_return
@@ -316,12 +315,14 @@ read_attribute_info :: proc(reader: ^ClassFileReader, classfile: ^ClassFile) -> 
         case "LocalVariableTable":
             table_length := read_unsigned_short(reader) or_return
             table := make([]LocalVariableTableEntry, table_length)
+
             for i in 0..<table_length {
                 start_pc := read_unsigned_short(reader) or_return
                 length := read_unsigned_short(reader) or_return
                 name_idx := read_unsigned_short(reader) or_return
                 descriptor_idx := read_unsigned_short(reader) or_return
                 idx := read_unsigned_short(reader) or_return
+
                 table[i] = LocalVariableTableEntry {
                     start_pc, length,
                     name_idx, descriptor_idx,
@@ -332,12 +333,14 @@ read_attribute_info :: proc(reader: ^ClassFileReader, classfile: ^ClassFile) -> 
         case "LocalVariableTypeTable":
             table_length := read_unsigned_short(reader) or_return
             table := make([]LocalVariableTypeTableEntry, table_length)
+
             for i in 0..<table_length {
                 start_pc := read_unsigned_short(reader) or_return
                 length := read_unsigned_short(reader) or_return
                 name_idx := read_unsigned_short(reader) or_return
                 signature_idx := read_unsigned_short(reader) or_return
                 idx := read_unsigned_short(reader) or_return
+
                 table[i] = LocalVariableTypeTableEntry {
                     start_pc, length,
                     name_idx, signature_idx,

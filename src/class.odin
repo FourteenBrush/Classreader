@@ -30,19 +30,13 @@ classfile_destroy :: proc(using classfile: ^ClassFile) {
     defer delete(fields)
     defer delete(methods)
 
-    for field in fields do attributes_destroy(field.attributes)
-    for method in methods do attributes_destroy(method.attributes)
+    for &field in fields do attributes_destroy(field.attributes)
+    for &method in methods do attributes_destroy(method.attributes)
 
     attributes_destroy(attributes)
 }
 
-foreach :: proc(elems: $T/[]$E, fn: proc(E)) {
-    for elem in elems {
-        fn(elem)
-    }
-}
-
-classfile_dump :: proc(using classfile: ^ClassFile) {
+classfile_dump :: proc(using classfile: ClassFile) {
     class := cp_get(ConstantClassInfo, classfile, this_class)
     class_name := cp_get_str(classfile, class.name_idx)
     fmt.println("class name:", class_name)
@@ -59,7 +53,7 @@ classfile_dump :: proc(using classfile: ^ClassFile) {
         MIN_PADDING :: 2 // minimum amount of spaces in front of #num
         MAX_TAG_LEN :: len("InterfaceMethodRef") // longest tag
 
-        using entry := &constant_pool[i]
+        using entry := constant_pool[i]
         padding := MIN_PADDING + max_idx_width - count_digits(i + 1) + 1
         tag_len := len(fmt.tprint(tag))
         // #9 = Utf8      some text 
@@ -73,7 +67,7 @@ classfile_dump :: proc(using classfile: ^ClassFile) {
     }
 
     fmt.println("Attributes:")
-    for attrib in attributes {
+    for &attrib in attributes {
         name := cp_get_str(classfile, attrib.name_idx)
         fmt.println(name)
     }
@@ -98,7 +92,7 @@ dump_access_flags :: proc(flags: u16) {
     fmt.println(')')
 }
 
-cp_entry_dump :: proc(using classfile: ^ClassFile, cp_info: ^ConstantPoolEntry) {
+cp_entry_dump :: proc(using classfile: ClassFile, cp_info: ConstantPoolEntry) {
     switch &cp_info in cp_info.info {
         case DummyInfo:
             // do nothing, not intended to be printed
@@ -147,7 +141,7 @@ cp_entry_dump :: proc(using classfile: ^ClassFile, cp_info: ^ConstantPoolEntry) 
 
 // TODO: rename, method_ref is an alias for field_ref
 @private
-dump_field_ref :: proc(using classfile: ^ClassFile, using field_ref: ConstantFieldRefInfo) {
+dump_field_ref :: proc(using classfile: ClassFile, using field_ref: ConstantFieldRefInfo) {
     class_name_idx := cp_get(ConstantClassInfo, classfile, class_idx).name_idx
     name_and_type := cp_get(ConstantNameAndTypeInfo, classfile, name_and_type_idx)
     field_or_method_name := cp_get_str(classfile, name_and_type.name_idx)
@@ -170,11 +164,11 @@ count_digits :: proc(x: int) -> u8 {
     return count
 }
 
-cp_get_str :: proc(using classfile: ^ClassFile, idx: u16) -> string {
+cp_get_str :: proc(using classfile: ClassFile, idx: u16) -> string {
     return string(cp_get(ConstantUtf8Info, classfile, idx).bytes)
 }
 
-cp_get :: proc($T: typeid, using classfile: ^ClassFile, idx: u16) -> T
+cp_get :: proc($T: typeid, using classfile: ClassFile, idx: u16) -> T
 where intrinsics.type_is_variant_of(CPInfo, T) {
     return constant_pool[idx - 1].info.(T)
 }
