@@ -10,6 +10,16 @@ StackMapFrame :: union {
     FullFrame,
 }
 
+stack_map_frame_destroy :: proc(frame: StackMapFrame) {
+    #partial switch &frame in frame {
+        case AppendFrame:
+            delete(frame.locals)
+        case FullFrame:
+            delete(frame.locals)
+            delete(frame.stack)
+    }
+}
+
 SameFrame :: struct {}
 
 SameLocals1StackItemFrame :: struct {
@@ -57,18 +67,12 @@ VerificationTypeInfo :: union {
 }
 
 // TODO: type aliases?
-TopVariableInfo :: struct {}
-
+TopVariableInfo     :: struct {}
 IntegerVariableInfo :: struct {}
-
-FloatVariableInfo :: struct {}
-
-LongVariableInfo :: struct {}
-
-DoubleVariableInfo :: struct {}
-
-NullVariableInfo :: struct {}
-
+FloatVariableInfo   :: struct {}
+LongVariableInfo    :: struct {}
+DoubleVariableInfo  :: struct {}
+NullVariableInfo    :: struct {}
 UninitializedThisVariableInfo :: struct {}
 
 ObjectVariableInfo :: struct {

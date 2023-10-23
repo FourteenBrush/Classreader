@@ -1,6 +1,7 @@
 package classreader
 
 import "core:fmt"
+import "core:slice"
 import "core:encoding/endian"
 
 ClassFileReader :: struct {
@@ -126,8 +127,8 @@ read_constant_pool_entry :: proc(reader: ^ClassFileReader, tag: ConstantType) ->
 
 @private
 read_interfaces :: proc(reader: ^ClassFileReader, count: int) -> (interfaces: []u16, err: Errno) {
-    // TODO: transmute byte array instead
-    interfaces = make([]u16, count)
+    bytes := read_nbytes(reader, count * 2) or_return
+    interfaces = slice.reinterpret([]u16, bytes)
 
     for i in 0..<count {
         interfaces[i] = read_unsigned_short(reader) or_return
@@ -368,11 +369,8 @@ read_attribute_info :: proc(reader: ^ClassFileReader, classfile: ^ClassFile) -> 
             for i in 0..<num_bootstrap_methods {
                 bootstrap_method_ref := read_unsigned_short(reader) or_return
                 num_bootstrap_arguments := read_unsigned_short(reader) or_return
-                bootstrap_arguments := make([]u16, num_bootstrap_arguments)
-
-                for j in 0..<num_bootstrap_arguments {
-                    bootstrap_arguments[j] = read_unsigned_short(reader) or_return
-                }
+                bootstrap_arguments_bytes := read_nbytes(reader, int(num_bootstrap_arguments) * 2) or_return
+                bootstrap_arguments := slice.reinterpret([]u16, bootstrap_arguments_bytes)
 
                 bootstrap_methods[i] = BootstrapMethod {
                     bootstrap_method_ref,
@@ -439,23 +437,23 @@ read_element_value :: proc(reader: ^ClassFileReader) -> (element_value: ElementV
 
     switch element_value_tag {
         case 'B', 'C', 'D', 'F', 'I', 'J', 'S', 'Z', 's':
-            value.const_value_idx = read_unsigned_short(reader) or_return
+            value = ConstValueIdx(read_unsigned_short(reader) or_return)
         case 'e':
             type_name_idx := read_unsigned_short(reader) or_return
             const_name_idx := read_unsigned_short(reader) or_return
-            value.enum_const_value = EnumConstValue { type_name_idx, const_name_idx }
+            value = EnumConstValue { type_name_idx, const_name_idx }
         case 'c':
             class_info_idx := read_unsigned_short(reader) or_return
-            value.class_info_idx = class_info_idx
+            value = ClassInfoIdx(class_info_idx)
         case '@':
-            value.annotation_value = read_annotation(reader) or_return
+            value = read_annotation(reader) or_return
         case '[':
             num_values := read_unsigned_short(reader) or_return
             values := make([]ElementValue, num_values)
             for i in 0..<num_values {
                 values[i] = read_element_value(reader) or_return
             }
-            value.array_value = ArrayValue { num_values, values }
+            value = ArrayValue { num_values, values }
     }
     return element_value, .None
 }
@@ -489,15 +487,6 @@ read_verification_type_info :: proc(reader: ^ClassFileReader) -> (info: Verifica
         case: return info, .UnknownVerificationType
     }
     return info, .None
-}
-
-@private
-read_all :: proc($T: typeid, reader: ^ClassFileReader, count: u16, fn: proc(^ClassFileReader) -> (T, Errno)) -> (ret: []T, err: Errno) {
-    ret = make([]T, count)
-    for i in 0..<count {
-        ret[i] = fn(reader) or_return
-    }
-    return ret, .None
 }
 
 @private

@@ -7,7 +7,80 @@ AttributeInfo :: struct {
     info: AttributeInfoInner,
 }
 
-// TODO: rename
+attributes_destroy :: proc(attributes: []AttributeInfo) {
+    for attrib in attributes {
+        attribute_destroy(attrib)
+    }
+    delete(attributes)
+}
+
+attribute_destroy :: proc(using attrib: AttributeInfo) {
+    #partial switch &attrib in info {
+        case Code:
+            delete(attrib.exception_table)
+            attributes_destroy(attrib.attributes)
+            delete(attrib.attributes)
+        case StackMapTable:
+            for frame in attrib.entries {
+                stack_map_frame_destroy(frame)
+            }
+        case Exceptions:
+            delete(attrib.exception_idx_table)
+        case InnerClasses:
+            delete(attrib.classes)
+        case SourceDebugExtension:
+            delete(attrib.debug_extension)
+        case LineNumberTable:
+            delete(attrib.line_number_table)
+        case LocalVariableTable:
+            delete(attrib.local_variable_table)
+        case LocalVariableTypeTable:
+            delete(attrib.local_variable_type_table)
+        case RuntimeVisibleAnnotations:
+            annotations_destroy(attrib.annotations)
+        case RuntimeInvisibleAnnotations:
+            annotations_destroy(attrib.annotations)
+        case RuntimeVisibleParameterAnnotations:
+            for param in attrib.parameter_annotations {
+                annotations_destroy(param.annotations)
+            }
+            delete(attrib.parameter_annotations)
+        case RuntimeInvisibleParameterAnnotations:
+            for param in attrib.parameter_annotations {
+                annotations_destroy(param.annotations)
+            }
+            delete(attrib.parameter_annotations)
+        case AnnotationDefault:
+            element_value_destroy(attrib.default_value.value)
+        case BootstrapMethods:
+            delete(attrib.bootstrap_methods)
+    }
+}
+
+element_value_destroy :: proc(value: ElementValueInner) {
+    #partial switch &value in value {
+        case Annotation:
+            annotation_destroy(value)
+        case ArrayValue:
+            for element in value.values {
+                element_value_destroy(element.value)
+            }
+    }
+}
+
+annotations_destroy :: proc(annotations: []Annotation) {
+    for annotation in annotations {
+        annotation_destroy(annotation)
+    }
+    delete(annotations)
+}
+
+annotation_destroy :: proc(annotation: Annotation) {
+    for pair in annotation.element_value_pairs {
+        element_value_destroy(pair.value.value)
+    }
+}
+
 AttributeInfoInner :: union {
     ConstantValue,
     Code,
@@ -78,16 +151,16 @@ InnerClassEntry :: struct {
 
 // don't confuse this with ClassAccessFlag
 InnerClassAccessFlag :: enum {
-    AccPublic = 0x0001,     // 0b0000 0000 0000 0001
-    AccPrivate = 0x0002,    // 0b0000 0000 0000 0010
-    AccProteced = 0x0004,   // 0b0000 0000 0000 0100
-    AccStatic = 0x0008,     // 0b0000 0000 0000 1000
-    AccFinal = 0x0010,      // 0b0000 0000 0001 0000 
-    AccInterface = 0x0200,  // 0b0000 0010 0000 0000 
-    AccAbstract = 0x0400,   // 0b0000 0100 0000 0000 
-    AccSynthetic = 0x1000,  // 0b0001 0000 0000 0000 
+    AccPublic     = 0x0001, // 0b0000 0000 0000 0001
+    AccPrivate    = 0x0002, // 0b0000 0000 0000 0010
+    AccProteced   = 0x0004, // 0b0000 0000 0000 0100
+    AccStatic     = 0x0008, // 0b0000 0000 0000 1000
+    AccFinal      = 0x0010, // 0b0000 0000 0001 0000 
+    AccInterface  = 0x0200, // 0b0000 0010 0000 0000 
+    AccAbstract   = 0x0400, // 0b0000 0100 0000 0000 
+    AccSynthetic  = 0x1000, // 0b0001 0000 0000 0000 
     AccAnnotation = 0x2000, // 0b0010 0000 0000 0000 
-    AccEnum = 0x4000,       // 0b0100 0000 0000 0000 
+    AccEnum       = 0x4000, // 0b0100 0000 0000 0000 
 }
 
 EnclosingMethod :: struct {
@@ -168,17 +241,20 @@ ElementValuePair :: struct {
 // (RuntimeVisibleAnnotations, RuntimeInvisibleAnnotations, RuntimeVisibleParameterAnnotations, and RuntimeInvisibleParameterAnnotations
 ElementValue :: struct {
     tag: u8,
-    value: ActualElementValue,
+    value: ElementValueInner,
 }
 
-// TODO: rename
-ActualElementValue :: struct #raw_union {
-    const_value_idx: u16,
-    enum_const_value: EnumConstValue,
-    class_info_idx: u16,
-    annotation_value: Annotation,
-    array_value: ArrayValue,
+ElementValueInner :: union {
+    ConstValueIdx,
+    EnumConstValue,
+    ClassInfoIdx,
+    Annotation,
+    ArrayValue,
 }
+
+// needed because we can't alias a u16 in a union twice
+ConstValueIdx :: distinct u16
+ClassInfoIdx :: distinct u16
 
 EnumConstValue :: struct {
     type_name_idx: u16,

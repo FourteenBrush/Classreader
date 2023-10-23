@@ -26,13 +26,20 @@ ClassFile :: struct {
 }
 
 classfile_destroy :: proc(using classfile: ^ClassFile) {
-    delete(constant_pool)
-    delete(fields)
-    for &method in methods {
-        delete(method.attributes)
+    defer delete(constant_pool)
+    defer delete(fields)
+    defer delete(methods)
+
+    for field in fields do attributes_destroy(field.attributes)
+    for method in methods do attributes_destroy(method.attributes)
+
+    attributes_destroy(attributes)
+}
+
+foreach :: proc(elems: $T/[]$E, fn: proc(E)) {
+    for elem in elems {
+        fn(elem)
     }
-    delete(methods)
-    delete(attributes)
 }
 
 classfile_dump :: proc(using classfile: ^ClassFile) {
@@ -57,6 +64,7 @@ classfile_dump :: proc(using classfile: ^ClassFile) {
         tag_len := len(fmt.tprint(tag))
         // #9 = Utf8      some text 
         // TODO: determine the max length of the tags first rather than hardcoding an arbitrary one
+        // also clean this up
         fmt.printf("%*s%i = %s%*s", padding, "#", i + 1, tag, MAX_TAG_LEN - tag_len + 1, "")
         cp_entry_dump(classfile, entry)
         if tag == .Long || tag == .Double {
@@ -65,9 +73,9 @@ classfile_dump :: proc(using classfile: ^ClassFile) {
     }
 
     fmt.println("Attributes:")
-    for &attrib in attributes {
+    for attrib in attributes {
         name := cp_get_str(classfile, attrib.name_idx)
-        fmt.println(name, attrib.length)
+        fmt.println(name)
     }
 }
 
@@ -172,14 +180,14 @@ where intrinsics.type_is_variant_of(CPInfo, T) {
 }
 
 ClassAccessFlag :: enum u16 {
-    AccPublic = 0x0001,
-    AccFinal = 0x0010,
-    AccSuper = 0x0020,
-    AccInterface = 0x0200,
-    AccAbstract = 0x0400,
-    AccSynthetic = 0x1000,
+    AccPublic     = 0x0001,
+    AccFinal      = 0x0010,
+    AccSuper      = 0x0020,
+    AccInterface  = 0x0200,
+    AccAbstract   = 0x0400,
+    AccSynthetic  = 0x1000,
     AccAnnotation = 0x2000,
-    AccEnum = 0x4000,
+    AccEnum       = 0x4000,
 }
 
 access_flag_to_str :: proc(flag: ClassAccessFlag) -> string {
@@ -205,15 +213,15 @@ FieldInfo :: struct {
 }
 
 FieldAccessFlag :: enum u16 {
-    Public = 0x0001,
-    Private = 0x0002,
+    Public    = 0x0001,
+    Private   = 0x0002,
     Protected = 0x0004,
-    Static = 0x0008,
-    Final = 0x0010,
-    Volatile = 0x0040,
+    Static    = 0x0008,
+    Final     = 0x0010,
+    Volatile  = 0x0040,
     Transient = 0x0080,
     Synthetic = 0x1000,
-    Enum = 0x4000,
+    Enum      = 0x4000,
 }
 
 MethodInfo :: struct {
@@ -225,16 +233,16 @@ MethodInfo :: struct {
 }
 
 MethodAccessFlag :: enum u16 {
-    Public = 0x0001,
-    Private = 0x0002,
-    Protected = 0x0004,
-    Static = 0x0008,
-    Final = 0x0010,
+    Public       = 0x0001,
+    Private      = 0x0002,
+    Protected    = 0x0004,
+    Static       = 0x0008,
+    Final        = 0x0010,
     Synchronized = 0x0020,
-    Bridge = 0x0040,
-    Varargs = 0x0080,
-    Native = 0x0100,
-    Abstract = 0x0400,
-    Strict = 0x0800,
-    Synthetic = 0x1000,
+    Bridge       = 0x0040,
+    Varargs      = 0x0080,
+    Native       = 0x0100,
+    Abstract     = 0x0400,
+    Strict       = 0x0800,
+    Synthetic    = 0x1000,
 }
