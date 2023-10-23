@@ -27,7 +27,6 @@ ClassFile :: struct {
 
 classfile_destroy :: proc(using classfile: ^ClassFile) {
     delete(constant_pool)
-    delete(interfaces)
     delete(fields)
     for &method in methods {
         delete(method.attributes)
