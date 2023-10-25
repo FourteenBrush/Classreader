@@ -121,11 +121,8 @@ ConstantValue :: struct {
 Code :: struct {
     max_stack: u16,
     max_locals: u16,
-    code_length: u32,
     code: []u8,
-    exception_table_length: u16,
     exception_table: []ExceptionHandler,
-    attributes_count: u16,
     attributes: []AttributeInfo,
 }
 
@@ -140,19 +137,16 @@ ExceptionHandler :: struct {
 // This attribute is used during the process of verification by type checking.
 // A method's Code attribute may have at most one StackMapTable attribute.
 StackMapTable :: struct {
-    number_of_entries: u16,
     entries: []StackMapFrame,
 }
 
 // Indicates which checked exceptions a method may throw.
 // There may be at most one Exceptions attribute in each MethodInfo structure.
 Exceptions :: struct {
-    number_of_exceptions: u16,
     exception_idx_table: []u16,
 }
 
 InnerClasses :: struct {
-    number_of_classes: u16,
     classes: []InnerClassEntry,
 }
 
@@ -199,7 +193,6 @@ SourceDebugExtension :: struct {
 }
 
 LineNumberTable :: struct {
-    line_number_table_length: u16,
     line_number_table: []LineNumberTableEntry,
 }
 
@@ -209,7 +202,6 @@ LineNumberTableEntry :: struct {
 }
 
 LocalVariableTable :: struct {
-    local_variable_table_length: u16,
     local_variable_table: []LocalVariableTableEntry,
 }
 
@@ -222,7 +214,6 @@ LocalVariableTableEntry :: struct {
 }
 
 LocalVariableTypeTable :: struct {
-    local_variable_type_table_length: u16,
     local_variable_type_table: []LocalVariableTypeTableEntry,
 }
 
@@ -237,13 +228,11 @@ LocalVariableTypeTableEntry :: struct {
 Deprecated :: struct {}
 
 RuntimeVisibleAnnotations :: struct {
-    num_annotations: u16,
     annotations: []Annotation,
 }
 
 Annotation :: struct {
     type_idx: u16,
-    num_element_value_pairs: u16,
     element_value_pairs: []ElementValuePair,
 }
 
@@ -278,12 +267,10 @@ EnumConstValue :: struct {
 }
 
 ArrayValue :: struct {
-    num_values: u16,
     values: []ElementValue,
 }
 
 RuntimeInvisibleAnnotations :: struct {
-    num_annotations: u16,
     annotations: []Annotation,
 }
 
@@ -298,7 +285,6 @@ RuntimeInvisibleParameterAnnotations :: struct {
 }
 
 ParameterAnnotation :: struct {
-    num_annotations: u16,
     annotations: []Annotation,
 }
 
@@ -307,12 +293,10 @@ AnnotationDefault :: struct {
 }
 
 BootstrapMethods :: struct {
-    num_bootstrap_methods: u16,
     bootstrap_methods: []BootstrapMethod,
 }
 
 BootstrapMethod :: struct {
-    bootstrap_method_ref: u16, 
-    num_bootstrap_arguments: u16,
+    bootstrap_method_ref: u16,
     bootstrap_arguments: []u16,
 }
