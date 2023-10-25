@@ -22,8 +22,6 @@ attribute_destroy :: proc(using attrib: AttributeInfo) {
             for frame in attrib.entries {
                 stack_map_frame_destroy(frame)
             }
-        case Exceptions:
-            delete(attrib.exception_idx_table)
         case InnerClasses:
             delete(attrib.classes)
         case SourceDebugExtension:
@@ -217,13 +215,7 @@ LocalVariableTypeTable :: struct {
     local_variable_type_table: []LocalVariableTypeTableEntry,
 }
 
-LocalVariableTypeTableEntry :: struct {
-    start_pc: u16,
-    length: u16,
-    name_idx: u16,
-    signature_idx: u16,
-    idx: u16,
-}
+LocalVariableTypeTableEntry :: LocalVariableTableEntry
 
 Deprecated :: struct {}
 

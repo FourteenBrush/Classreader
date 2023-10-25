@@ -71,9 +71,7 @@ AppendFrame :: struct {
 // Represented by the tag value 255.
 FullFrame :: struct {
     offset_delta: u16,
-    number_of_locals: u16,
     locals: []VerificationTypeInfo,
-    number_of_stack_items: u16,
     stack: []VerificationTypeInfo,
 }
 

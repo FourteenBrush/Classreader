@@ -61,9 +61,13 @@ Errno :: enum {
     // Unknown VerificationTypeInfo tag
     UnknownVerificationType,
     // Unknown attribute name
-    UnknownAttribute,
+    UnknownAttributeName,
     // Unknown ElementValue tag
     UnknownElementValueTag,
+    // Using a reserved StackMapFrame type
+    ReservedFrameType,
+    // Unknown StackMapFrame type
+    UnknownFrameType,
 }
 
 @private
@@ -218,10 +222,10 @@ read_attribute_info :: proc(reader: ^ClassFileReader, classfile: ClassFile) -> (
             attributes_count := read_unsigned_short(reader) or_return
             attributes := read_attributes(reader, attributes_count, classfile) or_return
             inner = Code {
-                max_stack, max_locals,
-                code_length, code,
-                exception_table_length, exception_table,
-                attributes_count, attributes,
+                max_stack, max_locals, 
+                code,
+                exception_table,
+                attributes,
             }
         case "StackMapTable":
             number_of_entries := read_unsigned_short(reader) or_return
@@ -235,6 +239,8 @@ read_attribute_info :: proc(reader: ^ClassFileReader, classfile: ClassFile) -> (
                     case 64..=127:
                         stack := read_verification_type_info(reader) or_return
                         entries[i] = SameLocals1StackItemFrame { stack }
+                    case 128..=246:
+                        return attribute, .ReservedFrameType
                     case 247:
                         offset_delta := read_unsigned_short(reader) or_return
                         stack := read_verification_type_info(reader) or_return
@@ -247,10 +253,7 @@ read_attribute_info :: proc(reader: ^ClassFileReader, classfile: ClassFile) -> (
                         entries[i] = SameFrameExtended { offset_delta }
                     case 252..=254:
                         offset_delta := read_unsigned_short(reader) or_return
-                        locals := make([]VerificationTypeInfo, frame_type - FRAME_LOCALS_OFFSET)
-                        for j in 0..<len(locals) {
-                            locals[j] = read_verification_type_info(reader) or_return
-                        }
+                        locals := read_verification_type_infos(reader, u16(frame_type) - FRAME_LOCALS_OFFSET) or_return
                         entries[i] = AppendFrame { offset_delta, locals }
                     case 255:
                         offset_delta := read_unsigned_short(reader) or_return
@@ -258,22 +261,17 @@ read_attribute_info :: proc(reader: ^ClassFileReader, classfile: ClassFile) -> (
                         locals := read_verification_type_infos(reader, number_of_locals) or_return
                         number_of_stack_items := read_unsigned_short(reader) or_return
                         stack := read_verification_type_infos(reader, number_of_stack_items) or_return
-                        entries[i] = FullFrame {
-                            offset_delta,
-                            number_of_locals, locals,
-                            number_of_stack_items, stack,
-                        }
+                        entries[i] = FullFrame { offset_delta, locals, stack }
+                    case:
+                        return attribute, .UnknownFrameType
                 }
             }
-            inner = StackMapTable { number_of_entries, entries }
+            inner = StackMapTable { entries }
         case "Exceptions":
             number_of_exceptions := read_unsigned_short(reader) or_return
-            exception_idx_table := make([]u16, number_of_exceptions)
-
-            for i in 0..<number_of_exceptions {
-                exception_idx_table[i] = read_unsigned_short(reader) or_return
-            }
-            inner = Exceptions { number_of_exceptions, exception_idx_table }
+            exception_idx_table_bytes := read_nbytes(reader, int(number_of_exceptions * 2)) or_return
+            exception_idx_table := slice.reinterpret([]u16, exception_idx_table_bytes)
+            inner = Exceptions { exception_idx_table }
         case "InnerClasses":
             number_of_classes := read_unsigned_short(reader) or_return
             classes := make([]InnerClassEntry, number_of_classes)
@@ -289,7 +287,7 @@ read_attribute_info :: proc(reader: ^ClassFileReader, classfile: ClassFile) -> (
                     name_idx, access_flags,
                 }
             }
-            inner = InnerClasses { number_of_classes, classes }
+            inner = InnerClasses { classes }
         case "EnclosingMethod":
             class_idx := read_unsigned_short(reader) or_return
             method_idx := read_unsigned_short(reader) or_return
@@ -313,51 +311,20 @@ read_attribute_info :: proc(reader: ^ClassFileReader, classfile: ClassFile) -> (
                 line_number := read_unsigned_short(reader) or_return
                 table[i] = LineNumberTableEntry { start_pc, line_number }
             }
-            inner = LineNumberTable { table_length, table }
+            inner = LineNumberTable { table }
         case "LocalVariableTable":
-            table_length := read_unsigned_short(reader) or_return
-            table := make([]LocalVariableTableEntry, table_length)
-
-            for i in 0..<table_length {
-                start_pc := read_unsigned_short(reader) or_return
-                length := read_unsigned_short(reader) or_return
-                name_idx := read_unsigned_short(reader) or_return
-                descriptor_idx := read_unsigned_short(reader) or_return
-                idx := read_unsigned_short(reader) or_return
-
-                table[i] = LocalVariableTableEntry {
-                    start_pc, length,
-                    name_idx, descriptor_idx,
-                    idx,
-                }
-            }
-            inner = LocalVariableTable  { table_length, table }
+            table := read_local_variable_table(reader) or_return
+            inner = LocalVariableTable  { table }
         case "LocalVariableTypeTable":
-            table_length := read_unsigned_short(reader) or_return
-            table := make([]LocalVariableTypeTableEntry, table_length)
-
-            for i in 0..<table_length {
-                start_pc := read_unsigned_short(reader) or_return
-                length := read_unsigned_short(reader) or_return
-                name_idx := read_unsigned_short(reader) or_return
-                signature_idx := read_unsigned_short(reader) or_return
-                idx := read_unsigned_short(reader) or_return
-
-                table[i] = LocalVariableTypeTableEntry {
-                    start_pc, length,
-                    name_idx, signature_idx,
-                    idx,
-                }
-            }
-            inner = LocalVariableTypeTable { table_length, table }
+            table := read_local_variable_type_table(reader) or_return
+            inner = LocalVariableTypeTable { table }
         case "Deprecated": inner = Deprecated {}
         case "RuntimeVisibleAnnotations":
-            num_annotations := read_unsigned_short(reader) or_return
             annotations := read_annotations(reader) or_return
-            inner = RuntimeVisibleAnnotations { num_annotations, annotations }
+            inner = RuntimeVisibleAnnotations { annotations }
         case "RuntimeInvisibleAnnotations":
             annotations := read_annotations(reader) or_return
-            inner = RuntimeInvisibleAnnotations { u16(len(annotations)), annotations }
+            inner = RuntimeInvisibleAnnotations { annotations }
         case "RuntimeVisibleParameterAnnotations":
             parameter_annotations := read_parameter_annotations(reader) or_return
             inner = RuntimeVisibleParameterAnnotations { u8(len(parameter_annotations)), parameter_annotations }
@@ -374,19 +341,46 @@ read_attribute_info :: proc(reader: ^ClassFileReader, classfile: ClassFile) -> (
             for i in 0..<num_bootstrap_methods {
                 bootstrap_method_ref := read_unsigned_short(reader) or_return
                 num_bootstrap_arguments := read_unsigned_short(reader) or_return
-                bootstrap_arguments_bytes := read_nbytes(reader, int(num_bootstrap_arguments) * 2) or_return
+                bootstrap_arguments_bytes := read_nbytes(reader, int(num_bootstrap_arguments * 2)) or_return
                 bootstrap_arguments := slice.reinterpret([]u16, bootstrap_arguments_bytes)
 
                 bootstrap_methods[i] = BootstrapMethod {
                     bootstrap_method_ref,
-                    num_bootstrap_arguments,
                     bootstrap_arguments,
                 }
             }
-            inner = BootstrapMethods { num_bootstrap_methods, bootstrap_methods }
-        case: return attribute, .UnknownAttribute
+            inner = BootstrapMethods { bootstrap_methods }
+        case "NestHost":
+        case "NestMates":
+            panic("todo")
+        case: 
+            fmt.println("unknown attribute", attrib_name)
+            return attribute, .UnknownAttributeName
     }
     return AttributeInfo { name_idx, length, inner }, .None
+}
+
+read_local_variable_type_table :: read_local_variable_table
+
+@private
+read_local_variable_table :: proc(reader: ^ClassFileReader) -> (table: []LocalVariableTableEntry, err: Errno) {
+    table_length := read_unsigned_short(reader) or_return
+    table = make([]LocalVariableTableEntry, table_length)
+
+    for i in 0..<table_length {
+        start_pc := read_unsigned_short(reader) or_return
+        length := read_unsigned_short(reader) or_return
+        name_idx := read_unsigned_short(reader) or_return
+        signature_idx := read_unsigned_short(reader) or_return
+        idx := read_unsigned_short(reader) or_return
+
+        table[i] = LocalVariableTypeTableEntry {
+            start_pc, length,
+            name_idx, signature_idx,
+            idx,
+        }
+    }
+    return table, .None
 }
 
 @private
@@ -395,11 +389,9 @@ read_parameter_annotations :: proc(reader: ^ClassFileReader) -> (param_annotatio
     param_annotations = make([]ParameterAnnotation, num_parameters)
 
     for i in 0..<num_parameters {
-        num_annotations := read_unsigned_short(reader) or_return
         annotations := read_annotations(reader) or_return
-        param_annotations[i] = ParameterAnnotation { num_annotations, annotations }
+        param_annotations[i] = ParameterAnnotation { annotations }
     }
-
     return param_annotations, .None
 }
 
@@ -417,22 +409,16 @@ read_annotations :: proc(reader: ^ClassFileReader) -> (annotations: []Annotation
 @private
 read_annotation :: proc(reader: ^ClassFileReader) -> (annotation: Annotation, err: Errno) {
     type_idx := read_unsigned_short(reader) or_return
-    element_value_pairs := read_annotation_element_value_pairs(reader) or_return
-
-    return Annotation { type_idx, u16(len(element_value_pairs)), element_value_pairs }, .None
-}
-
-@private
-read_annotation_element_value_pairs :: proc(reader: ^ClassFileReader) -> (element_value_pairs: []ElementValuePair, err: Errno) {
     num_element_value_pairs := read_unsigned_short(reader) or_return
-    element_value_pairs = make([]ElementValuePair, num_element_value_pairs)
+    element_value_pairs := make([]ElementValuePair, num_element_value_pairs)
 
     for i in 0..<num_element_value_pairs {
         element_value_idx := read_unsigned_short(reader) or_return
         element_value := read_element_value(reader) or_return
         element_value_pairs[i] = ElementValuePair { element_value_idx, element_value }
     }
-    return element_value_pairs, .None
+
+    return Annotation { type_idx, element_value_pairs }, .None
 }
 
 @private
@@ -458,7 +444,7 @@ read_element_value :: proc(reader: ^ClassFileReader) -> (element_value: ElementV
             for i in 0..<num_values {
                 values[i] = read_element_value(reader) or_return
             }
-            value = ArrayValue { num_values, values }
+            value = ArrayValue { values }
         case:
             return element_value, .UnknownElementValueTag
     }
