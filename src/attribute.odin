@@ -6,6 +6,31 @@ AttributeInfo :: struct {
     info: AttributeInfoInner,
 }
 
+AttributeInfoInner :: union {
+    ConstantValue,
+    Code,
+    StackMapTable,
+    Exceptions,
+    InnerClasses,
+    EnclosingMethod,
+    Synthetic,
+    Signature,
+    SourceFile,
+    SourceDebugExtension,
+    LineNumberTable,
+    LocalVariableTable,
+    LocalVariableTypeTable,
+    Deprecated,
+    RuntimeVisibleAnnotations,
+    RuntimeInvisibleAnnotations,
+    RuntimeVisibleParameterAnnotations,
+    RuntimeInvisibleParameterAnnotations,
+    AnnotationDefault,
+    BootstrapMethods,
+    NestHost,
+    NestMembers,
+}
+
 attributes_destroy :: proc(attributes: []AttributeInfo) {
     for attrib in attributes {
         attribute_destroy(attrib)
@@ -75,29 +100,6 @@ annotation_destroy :: proc(annotation: Annotation) {
     for pair in annotation.element_value_pairs {
         element_value_destroy(pair.value.value)
     }
-}
-
-AttributeInfoInner :: union {
-    ConstantValue,
-    Code,
-    StackMapTable,
-    Exceptions,
-    InnerClasses,
-    EnclosingMethod,
-    Synthetic,
-    Signature,
-    SourceFile,
-    SourceDebugExtension,
-    LineNumberTable,
-    LocalVariableTable,
-    LocalVariableTypeTable,
-    Deprecated,
-    RuntimeVisibleAnnotations,
-    RuntimeInvisibleAnnotations,
-    RuntimeVisibleParameterAnnotations,
-    RuntimeInvisibleParameterAnnotations,
-    AnnotationDefault,
-    BootstrapMethods,
 }
 
 // Represents the value of a constant field
@@ -291,4 +293,19 @@ BootstrapMethods :: struct {
 BootstrapMethod :: struct {
     bootstrap_method_ref: u16,
     bootstrap_arguments: []u16,
+}
+
+// Records the nest host of the nest to which
+// the current class or interface claims to belong.
+NestHost :: struct {
+    // Constant pool index to a ConstantClassInfo
+    host_class_idx: u16,
+}
+
+// Records the classes and interfaces that are authorized to claim membership 
+// in the nest hosted by the current class or interface.
+NestMembers :: struct {
+    // A number of indices pointing to a ConstantClassInfo structure
+    // Representing a class or interface which is a member of the nest hosted by the current class or interface.
+    classes: []u16,
 }

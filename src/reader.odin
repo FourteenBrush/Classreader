@@ -351,8 +351,13 @@ read_attribute_info :: proc(reader: ^ClassFileReader, classfile: ClassFile) -> (
             }
             inner = BootstrapMethods { bootstrap_methods }
         case "NestHost":
-        case "NestMates":
-            panic("todo")
+            host_class_idx := read_unsigned_short(reader) or_return
+            inner = NestHost { host_class_idx }
+        case "NestMembers":
+            number_of_classes := read_unsigned_short(reader) or_return
+            classes_bytes := read_nbytes(reader, int(number_of_classes * 2)) or_return
+            classes := slice.reinterpret([]u16, classes_bytes)
+            inner = NestMembers { classes }
         case: 
             fmt.println("unknown attribute", attrib_name)
             return attribute, .UnknownAttributeName
