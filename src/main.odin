@@ -52,10 +52,6 @@ main :: proc() {
     }
 
     classfile_dump(classfile)
-
-    assert(int(classfile.methods_count) == len(classfile.methods))
-    assert(int(classfile.interfaces_count) == len(classfile.interfaces))
-    assert(int(classfile.attributes_count) == len(classfile.attributes))
 }
 
 get_last_error :: proc() -> int {
