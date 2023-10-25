@@ -58,10 +58,12 @@ Errno :: enum {
     InvalidCPIndex,
     // Constant pool index points to an entry with the wrong type
     WrongCPType,
-    // unknown verification_type_info tag
+    // Unknown VerificationTypeInfo tag
     UnknownVerificationType,
-    // unknown attribute name
+    // Unknown attribute name
     UnknownAttribute,
+    // Unknown ElementValue tag
+    UnknownElementValueTag,
 }
 
 @private
@@ -245,7 +247,7 @@ read_attribute_info :: proc(reader: ^ClassFileReader, classfile: ClassFile) -> (
                         entries[i] = SameFrameExtended { offset_delta }
                     case 252..=254:
                         offset_delta := read_unsigned_short(reader) or_return
-                        locals := make([]VerificationTypeInfo, frame_type - APPEND_FRAME_LOCALS_OFFSET)
+                        locals := make([]VerificationTypeInfo, frame_type - FRAME_LOCALS_OFFSET)
                         for j in 0..<len(locals) {
                             locals[j] = read_verification_type_info(reader) or_return
                         }
@@ -457,6 +459,8 @@ read_element_value :: proc(reader: ^ClassFileReader) -> (element_value: ElementV
                 values[i] = read_element_value(reader) or_return
             }
             value = ArrayValue { num_values, values }
+        case:
+            return element_value, .UnknownElementValueTag
     }
     return element_value, .None
 }

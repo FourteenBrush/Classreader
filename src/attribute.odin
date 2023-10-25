@@ -1,6 +1,5 @@
 package classreader
 
-// Used by a ClassFile, FieldInfo, MethodInfo, and CodeAttribute
 AttributeInfo :: struct {
     name_idx: u16,
     length: u32,
@@ -103,10 +102,22 @@ AttributeInfoInner :: union {
     BootstrapMethods,
 }
 
+// Represents the value of a constant field
 ConstantValue :: struct {
+    // The constant_pool entry at this index gives the constant value represented by this attribute
+    // Field Type 	                    Entry Type
+    // long 	                        CONSTANT_Long
+    // float 	                        CONSTANT_Float
+    // double 	                        CONSTANT_Double
+    // int, short, char, byte, boolean 	CONSTANT_Integer
+    // String 	                        CONSTANT_String
     constantvalue_idx: u16,
 }
 
+// Contains the Java Virtual Machine instructions and auxiliary information for 
+// a single method, instance initialization method, or class or interface initialization method
+// If the method is either native or abstract, its method_info structure must not have a Code attribute.
+// Otherwise, its method_info structure must have exactly one Code attribute.
 Code :: struct {
     max_stack: u16,
     max_locals: u16,
@@ -118,6 +129,7 @@ Code :: struct {
     attributes: []AttributeInfo,
 }
 
+// Describes one exception handler in the code array.
 ExceptionHandler :: struct {
     start_pc: u16,
     end_pc: u16,
@@ -125,11 +137,15 @@ ExceptionHandler :: struct {
     catch_type: u16,
 }
 
+// This attribute is used during the process of verification by type checking.
+// A method's Code attribute may have at most one StackMapTable attribute.
 StackMapTable :: struct {
     number_of_entries: u16,
     entries: []StackMapFrame,
 }
 
+// Indicates which checked exceptions a method may throw.
+// There may be at most one Exceptions attribute in each MethodInfo structure.
 Exceptions :: struct {
     number_of_exceptions: u16,
     exception_idx_table: []u16,
@@ -149,6 +165,7 @@ InnerClassEntry :: struct {
 }
 
 // don't confuse this with ClassAccessFlag
+// Used in an InnerClassEntry
 InnerClassAccessFlag :: enum {
     AccPublic     = 0x0001, // 0b0000 0000 0000 0001
     AccPrivate    = 0x0002, // 0b0000 0000 0000 0010
