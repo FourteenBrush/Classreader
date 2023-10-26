@@ -146,15 +146,23 @@ Exceptions :: struct {
     exception_idx_table: []u16,
 }
 
+// If the constant pool of a class or interface C contains a ConstantClassInfo entry which represents a class or interface 
+// that is not a member of a package, then C's ClassFile structure must have exactly one InnerClasses attribute. 
 InnerClasses :: struct {
     classes: []InnerClassEntry,
 }
 
-// TODO: rename to a more proper name
+// Represents a class or interface that's not a package member.
 InnerClassEntry :: struct {
+    // Points to a ConstantClassInfo representing the class this entry represents (let's call it C).
     inner_class_info_idx: u16,
+    // If C is not a member of a class or interface, this must be zero.
+    // Otherwise points to the ConstantClassInfo representing the class or interface of which C is a member.
     outer_class_info_idx: u16,
+    // If C is anonymous, this must be zero. 
+    // Otherwise this points to a ConstantUtf8Info, representing the simple name of C, in its sourcecode.
     name_idx: u16,
+    // A mask of flags used to denote access permissions to and properties of class or interface C.
     access_flags: u16,
 }
 
@@ -173,43 +181,68 @@ InnerClassAccessFlag :: enum {
     AccEnum       = 0x4000, // 0b0100 0000 0000 0000 
 }
 
+// A class must have an EnclosingMethod attribute if and only if
+// it is a local or anonymous class.
 EnclosingMethod :: struct {
+    // Points to a ConstantClassInfo structure, representing the innermost class 
+    // that encloses the declaration of the current class.
     class_idx: u16,
+    // If the current class is not immediately enclosed by a method or constructur, this must be zero.
+    // Otherwise points to a ConstantNameAndTypeInfo representing the method referenced by the class_idx above.
     method_idx: u16,
 }
 
+// A class member that doesn't appear in the source code must have this attribute,
+// or else have the AccSynthetic flag set, the only exceptions are compiler generated methods, like Enum::valueOf().
 Synthetic :: struct {}
 
+// Records generic signature info for any class, interface constructor or class member.
 Signature :: struct {
+    // Points to a ConstantUtf8Info representing a class signature.
     signature_idx: u16,
 }
 
+// An optional classfile attribute, acting as a filename marker.
 SourceFile :: struct {
+    // points to a ConstantUtf8Info representing the name of the source file
+    // from which this class file was compiled.
     sourcefile_idx: u16,
 }
 
+// A vendor specific debugging extension.
 SourceDebugExtension :: struct {
+    // TODO: transform
+    // The debugging information, this holds a string which is not zero terminated.
     debug_extension: []u8,
 }
 
+// Line number table present within the Code attribute.
 LineNumberTable :: struct {
     line_number_table: []LineNumberTableEntry,
 }
 
 LineNumberTableEntry :: struct {
+    // The index in the code array where the code for a new line begins.
     start_pc: u16,
+    // The corresponding line number in the source file.
     line_number: u16,
 }
 
+// Used by debuggers to determine the value of a given local variable
+// during the execution of a method.
 LocalVariableTable :: struct {
     local_variable_table: []LocalVariableTableEntry,
 }
 
 LocalVariableTableEntry :: struct {
+    // variable located at code[start_pc][:length]
     start_pc: u16,
     length: u16,
+    // Points to a ConstantUtf8Info entry representing a valid unqualified name.
     name_idx: u16,
+    // Points to a ConstantUtf8Info entry representing a field descriptor.
     descriptor_idx: u16,
+    // Index into the local variable array of the current frame.
     idx: u16,
 }
 
@@ -219,25 +252,52 @@ LocalVariableTypeTable :: struct {
 
 LocalVariableTypeTableEntry :: LocalVariableTableEntry
 
+// Denotes a deprecated element.
 Deprecated :: struct {}
 
+// Run-time-visible annotations on classes, fields or methods.
 RuntimeVisibleAnnotations :: struct {
     annotations: []Annotation,
 }
 
+// Annotations that must not be made available for return by reflective apis.
+RuntimeInvisibleAnnotations :: struct {
+    annotations: []Annotation,
+}
+
+// Records run-time-visible annotations on the parameters of the corresponding method.
+RuntimeVisibleParameterAnnotations :: struct {
+    // The number of parameters of the method represented by the method_info structure on which the annotation occurs.
+    num_parameters: u8,
+    // Each value of the parameter_annotations table represents all of the run-time-visible annotations on a single parameter.
+    parameter_annotations: []ParameterAnnotation,
+}
+
+// Similar to RuntimeVisibleParameterAnnotations, but these annotations must not be made available for
+// return by reflective apis.
+RuntimeInvisibleParameterAnnotations :: struct {
+    num_parameters: u8,
+    parameter_annotations: []ParameterAnnotation,
+}
+
 Annotation :: struct {
+    // Points to a ConstantUtf8Info, representing a field descriptor for the annotation type.
     type_idx: u16,
     element_value_pairs: []ElementValuePair,
 }
 
+// Represents a single element-value pair in an annotation.
 ElementValuePair :: struct {
+    // Points to a ConstantUtf8Info representing a field descriptor that denotes the name of the annotation type element value.
     element_name_idx: u16,
+    // The element value.
     value: ElementValue,
 }
 
 // discriminated union representing the value of an element-value pair.
 // It is used to represent element values in all attributes that describe annotations
-// (RuntimeVisibleAnnotations, RuntimeInvisibleAnnotations, RuntimeVisibleParameterAnnotations, and RuntimeInvisibleParameterAnnotations
+// (RuntimeVisibleAnnotations, RuntimeInvisibleAnnotations, RuntimeVisibleParameterAnnotations,
+// and RuntimeInvisibleParameterAnnotations.
 ElementValue :: struct {
     tag: u8,
     value: ElementValueInner,
@@ -256,42 +316,41 @@ ConstValueIdx :: distinct u16
 ClassInfoIdx :: distinct u16
 
 EnumConstValue :: struct {
+    // Points to a ConstantUtf8Info entry representing a field descriptor that denotes the internal
+    // form of the binary name of enum type represented by this ElementValue.
     type_name_idx: u16,
+    // Points to a ConstantUtf8Info entry representing the simple name of the enum constant.
     const_name_idx: u16,
 }
 
 ArrayValue :: struct {
+    // The elements in the array typed ElementValue.
     values: []ElementValue,
 }
 
-RuntimeInvisibleAnnotations :: struct {
-    annotations: []Annotation,
-}
-
-RuntimeVisibleParameterAnnotations :: struct {
-    num_parameters: u8,
-    parameter_annotations: []ParameterAnnotation,
-}
-
-RuntimeInvisibleParameterAnnotations :: struct {
-    num_parameters: u8,
-    parameter_annotations: []ParameterAnnotation,
-}
-
+// Annotation container.
 ParameterAnnotation :: struct {
     annotations: []Annotation,
 }
 
+// Contained within the attributes of MethodInfo structures, the AnnotationDefault records the default value
+// for the value represented by the MethodInfo structure.
 AnnotationDefault :: struct {
+    // The actual default value.
     default_value: ElementValue,
 }
 
+// Bootstrap method specifiers referenced by invokedynamic instructions.
+// There can be at most one BootstrapMethods attribute in a Classfile's attributes.
 BootstrapMethods :: struct {
     bootstrap_methods: []BootstrapMethod,
 }
 
+// Each bootstrap method represents a MethodHandle.
 BootstrapMethod :: struct {
+    // Points to a ConstantMethodHandleInfo.
     bootstrap_method_ref: u16,
+    // Each entry must point to a ConstantStringInfo, Class, Integer, Long, Float, Double, MethodHandle or ConstantMethodTypeInfo.
     bootstrap_arguments: []u16,
 }
 

@@ -1,6 +1,6 @@
 # Notes for myself
 
-## String concatenations
+## String Concatenations
 
 When doing string concatenations, the following entries can be found in the constant pool:
 ```
@@ -19,7 +19,7 @@ to roughly `format("\u0001\u0001", s1, s2)`. Also occurrences of `StringConcatFa
 
 Remember that javac doesn't optimize much and the JIT compiler will do the heavy work.
 
-## Import attributes
+## Important Attributes
 
 Six attributes are critical to correct implementation of a class file by the JVM:
 
@@ -59,3 +59,7 @@ Thirteen attributes are not critical to correct interpretation of the class file
 - ModuleMainClass
 
 `~ source: https://cr.openjdk.org/~dlsmith/jep181/nestmates.html`
+
+## Legal Notice
+
+*This document includes text and content originally authored by contributors to the OpenJDK project and is used under the terms of the GNU General Public License*

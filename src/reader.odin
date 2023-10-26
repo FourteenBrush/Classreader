@@ -94,7 +94,7 @@ read_constant_pool_entry :: proc(reader: ^ClassFileReader, tag: ConstantType) ->
         case .Utf8:
             length := read_unsigned_short(reader) or_return
             bytes := read_nbytes(reader, int(length)) or_return
-            entry = ConstantUtf8Info { length, bytes }
+            entry = ConstantUtf8Info { bytes }
         case .Integer, .Float:
             bytes := read_unsigned_int(reader) or_return
             entry = ConstantIntegerInfo { bytes }
