@@ -1,6 +1,5 @@
 package classreader
 
-import "core:fmt"
 import "core:slice"
 import "core:encoding/endian"
 
@@ -16,7 +15,7 @@ reader_new :: proc(bytes: []u8) -> ClassFileReader {
 @private
 MAGIC :: 0xCAFEBABE
 
-reader_read_class_file :: proc(using reader: ^ClassFileReader) -> (classfile: ClassFile, err: Errno) {
+reader_read_class_file :: proc(using reader: ^ClassFileReader, allocator := context.allocator) -> (classfile: ClassFile, err: Errno) {
     magic := read_unsigned_int(reader) or_return
     if magic != MAGIC {
         return classfile, .InvalidHeader
@@ -33,9 +32,9 @@ reader_read_class_file :: proc(using reader: ^ClassFileReader) -> (classfile: Cl
     super_class = read_unsigned_short(reader) or_return
 
     interfaces = read_interfaces(reader) or_return
-    fields = read_fields(reader, classfile) or_return
-    methods = read_methods(reader, classfile) or_return
-    attributes = read_attributes(reader, classfile) or_return
+    fields = read_fields(reader, classfile, allocator) or_return
+    methods = read_methods(reader, classfile, allocator) or_return
+    attributes = read_attributes(reader, classfile, allocator) or_return
     return
 }
 
@@ -61,6 +60,8 @@ Errno :: enum {
     ReservedFrameType,
     // Unknown StackMapFrame type
     UnknownFrameType,
+    // Missing attribute in some attribute holder
+    MissingAttribute,
 }
 
 @private
@@ -133,9 +134,9 @@ read_interfaces :: proc(reader: ^ClassFileReader) -> (interfaces: []u16, err: Er
 }
 
 @private
-read_methods :: proc(reader: ^ClassFileReader, classfile: ClassFile) -> (methods: []MethodInfo, err: Errno) {
+read_methods :: proc(reader: ^ClassFileReader, classfile: ClassFile, allocator := context.allocator) -> (methods: []MethodInfo, err: Errno) {
     count := read_unsigned_short(reader) or_return
-    methods = make([]MethodInfo, count)
+    methods = make([]MethodInfo, count, allocator)
 
     for i in 0..<count {
         access_flags := read_unsigned_short(reader) or_return
@@ -154,9 +155,9 @@ read_methods :: proc(reader: ^ClassFileReader, classfile: ClassFile) -> (methods
 }
 
 @private
-read_fields :: proc(reader: ^ClassFileReader, classfile: ClassFile) -> (fields: []FieldInfo, err: Errno) {
+read_fields :: proc(reader: ^ClassFileReader, classfile: ClassFile, allocator := context.allocator) -> (fields: []FieldInfo, err: Errno) {
     count := read_unsigned_short(reader) or_return
-    fields = make([]FieldInfo, count)
+    fields = make([]FieldInfo, count, allocator)
 
     for i in 0..<count {
         access_flags := read_unsigned_short(reader) or_return
@@ -173,9 +174,9 @@ read_fields :: proc(reader: ^ClassFileReader, classfile: ClassFile) -> (fields: 
 }
 
 @private
-read_attributes :: proc(reader: ^ClassFileReader, classfile: ClassFile) -> (attributes: []AttributeInfo, err: Errno) {
+read_attributes :: proc(reader: ^ClassFileReader, classfile: ClassFile, allocator := context.allocator) -> (attributes: []AttributeInfo, err: Errno) {
     count := read_unsigned_short(reader) or_return
-    attributes = make([]AttributeInfo, count)
+    attributes = make([]AttributeInfo, count, allocator)
     
     for i in 0..<count {
         attributes[i] = read_attribute_info(reader, classfile) or_return
@@ -184,7 +185,7 @@ read_attributes :: proc(reader: ^ClassFileReader, classfile: ClassFile) -> (attr
 }
 
 @private
-read_attribute_info :: proc(reader: ^ClassFileReader, classfile: ClassFile) -> (attribute: AttributeInfo, err: Errno) {
+read_attribute_info :: proc(reader: ^ClassFileReader, classfile: ClassFile, allocator := context.allocator) -> (attribute: AttributeInfo, err: Errno) {
     name_idx := read_unsigned_short(reader) or_return
     length := read_unsigned_int(reader) or_return
     inner: AttributeInfoInner
@@ -201,7 +202,7 @@ read_attribute_info :: proc(reader: ^ClassFileReader, classfile: ClassFile) -> (
             code_length := read_unsigned_int(reader) or_return
             code := read_nbytes(reader, int(code_length)) or_return
             exception_table_length := read_unsigned_short(reader) or_return
-            exception_table := make([]ExceptionHandler, exception_table_length)
+            exception_table := make([]ExceptionHandler, exception_table_length, allocator)
 
             for i in 0..<exception_table_length {
                 start_pc := read_unsigned_short(reader) or_return
@@ -220,7 +221,7 @@ read_attribute_info :: proc(reader: ^ClassFileReader, classfile: ClassFile) -> (
             }
         case "StackMapTable":
             number_of_entries := read_unsigned_short(reader) or_return
-            entries := make([]StackMapFrame, number_of_entries)
+            entries := make([]StackMapFrame, number_of_entries, allocator)
 
             for i in 0..<number_of_entries {
                 frame_type := read_unsigned_byte(reader) or_return
@@ -265,7 +266,7 @@ read_attribute_info :: proc(reader: ^ClassFileReader, classfile: ClassFile) -> (
             inner = Exceptions { exception_idx_table }
         case "InnerClasses":
             number_of_classes := read_unsigned_short(reader) or_return
-            classes := make([]InnerClassEntry, number_of_classes)
+            classes := make([]InnerClassEntry, number_of_classes, allocator)
 
             for i in 0..<number_of_classes {
                 inner_class_info_idx := read_unsigned_short(reader) or_return
@@ -292,10 +293,11 @@ read_attribute_info :: proc(reader: ^ClassFileReader, classfile: ClassFile) -> (
             inner = SourceFile { sourcefile_idx }
         case "SourceDebugExtension":
             debug_extension := read_nbytes(reader, int(length)) or_return
-            inner = SourceDebugExtension { debug_extension }
+            inner = SourceDebugExtension { string(debug_extension) }
         case "LineNumberTable":
+            // TODO: slice.reinterpret?
             table_length := read_unsigned_short(reader) or_return
-            table := make([]LineNumberTableEntry, table_length)
+            table := make([]LineNumberTableEntry, table_length, allocator)
 
             for i in 0..<table_length {
                 start_pc := read_unsigned_short(reader) or_return
@@ -327,7 +329,7 @@ read_attribute_info :: proc(reader: ^ClassFileReader, classfile: ClassFile) -> (
             inner := AnnotationDefault { default_value }
         case "BootstrapMethods":
             num_bootstrap_methods := read_unsigned_short(reader) or_return
-            bootstrap_methods := make([]BootstrapMethod, num_bootstrap_methods)
+            bootstrap_methods := make([]BootstrapMethod, num_bootstrap_methods, allocator)
 
             for i in 0..<num_bootstrap_methods {
                 bootstrap_method_ref := read_unsigned_short(reader) or_return
@@ -358,9 +360,9 @@ read_attribute_info :: proc(reader: ^ClassFileReader, classfile: ClassFile) -> (
 read_local_variable_type_table :: read_local_variable_table
 
 @private
-read_local_variable_table :: proc(reader: ^ClassFileReader) -> (table: []LocalVariableTableEntry, err: Errno) {
+read_local_variable_table :: proc(reader: ^ClassFileReader, allocator := context.allocator) -> (table: []LocalVariableTableEntry, err: Errno) {
     table_length := read_unsigned_short(reader) or_return
-    table = make([]LocalVariableTableEntry, table_length)
+    table = make([]LocalVariableTableEntry, table_length, allocator)
 
     for i in 0..<table_length {
         start_pc := read_unsigned_short(reader) or_return
@@ -379,9 +381,9 @@ read_local_variable_table :: proc(reader: ^ClassFileReader) -> (table: []LocalVa
 }
 
 @private
-read_parameter_annotations :: proc(reader: ^ClassFileReader) -> (param_annotations: []ParameterAnnotation, err: Errno) {
+read_parameter_annotations :: proc(reader: ^ClassFileReader, allocator := context.allocator) -> (param_annotations: []ParameterAnnotation, err: Errno) {
     num_parameters := read_unsigned_byte(reader) or_return
-    param_annotations = make([]ParameterAnnotation, num_parameters)
+    param_annotations = make([]ParameterAnnotation, num_parameters, allocator)
 
     for i in 0..<num_parameters {
         annotations := read_annotations(reader) or_return
@@ -391,9 +393,9 @@ read_parameter_annotations :: proc(reader: ^ClassFileReader) -> (param_annotatio
 }
 
 @private
-read_annotations :: proc(reader: ^ClassFileReader) -> (annotations: []Annotation, err: Errno) {
+read_annotations :: proc(reader: ^ClassFileReader, allocator := context.allocator) -> (annotations: []Annotation, err: Errno) {
     num_annotations := read_unsigned_short(reader) or_return
-    annotations = make([]Annotation, num_annotations)
+    annotations = make([]Annotation, num_annotations, allocator)
 
     for i in 0..<num_annotations {
         annotations[i] = read_annotation(reader) or_return
@@ -402,10 +404,10 @@ read_annotations :: proc(reader: ^ClassFileReader) -> (annotations: []Annotation
 }
 
 @private
-read_annotation :: proc(reader: ^ClassFileReader) -> (annotation: Annotation, err: Errno) {
+read_annotation :: proc(reader: ^ClassFileReader, allocator := context.allocator) -> (annotation: Annotation, err: Errno) {
     type_idx := read_unsigned_short(reader) or_return
     num_element_value_pairs := read_unsigned_short(reader) or_return
-    element_value_pairs := make([]ElementValuePair, num_element_value_pairs)
+    element_value_pairs := make([]ElementValuePair, num_element_value_pairs, allocator)
 
     for i in 0..<num_element_value_pairs {
         element_value_idx := read_unsigned_short(reader) or_return
@@ -417,7 +419,7 @@ read_annotation :: proc(reader: ^ClassFileReader) -> (annotation: Annotation, er
 }
 
 @private
-read_element_value :: proc(reader: ^ClassFileReader) -> (element_value: ElementValue, err: Errno) {
+read_element_value :: proc(reader: ^ClassFileReader, allocator := context.allocator) -> (element_value: ElementValue, err: Errno) {
     element_value_tag := read_unsigned_byte(reader) or_return
     using element_value 
 
@@ -435,7 +437,7 @@ read_element_value :: proc(reader: ^ClassFileReader) -> (element_value: ElementV
             value = read_annotation(reader) or_return
         case '[':
             num_values := read_unsigned_short(reader) or_return
-            values := make([]ElementValue, num_values)
+            values := make([]ElementValue, num_values, allocator)
             for i in 0..<num_values {
                 values[i] = read_element_value(reader) or_return
             }
@@ -447,8 +449,8 @@ read_element_value :: proc(reader: ^ClassFileReader) -> (element_value: ElementV
 }
 
 @private
-read_verification_type_infos :: proc(reader: ^ClassFileReader, count: u16) -> (locals: []VerificationTypeInfo, err: Errno) {
-    locals = make([]VerificationTypeInfo, count)
+read_verification_type_infos :: proc(reader: ^ClassFileReader, count: u16, allocator := context.allocator) -> (locals: []VerificationTypeInfo, err: Errno) {
+    locals = make([]VerificationTypeInfo, count, allocator)
     for i in 0..<count {
         locals[i] = read_verification_type_info(reader) or_return
     }
