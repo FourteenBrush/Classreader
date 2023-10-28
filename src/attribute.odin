@@ -211,9 +211,7 @@ SourceFile :: struct {
 
 // A vendor specific debugging extension.
 SourceDebugExtension :: struct {
-    // TODO: transform
-    // The debugging information, this holds a string which is not zero terminated.
-    debug_extension: []u8,
+    debug_extension: string,
 }
 
 // Line number table present within the Code attribute.
