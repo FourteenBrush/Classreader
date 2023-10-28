@@ -1,7 +1,6 @@
 package classreader
 
 import "core:fmt"
-import "core:reflect"
 import "core:intrinsics"
 
 ClassFile :: struct {
@@ -75,10 +74,9 @@ classfile_dump :: proc(using classfile: ClassFile) {
 
 @private
 dump_access_flags :: proc(flags: u16) {
-    enum_names := reflect.enum_field_names(ClassAccessFlag)
     first := true
 
-    for flag, idx in ClassAccessFlag {
+    for flag in ClassAccessFlag {
         str := access_flag_to_str(flag)
         if flags & u16(flag) != 0 {
             if first {
@@ -195,6 +193,7 @@ access_flag_to_str :: proc(flag: ClassAccessFlag) -> string {
         case .AccAnnotation: return "ACC_ANNOTATION"
         case .AccEnum: return "ACC_ENUM"
     }
+    // in case someone would pass ClassAccessFlags(9999) or something
     panic("invalid args to access_flag_to_str, validate them you nerd")
 }
 
