@@ -6,7 +6,6 @@ ConstantPoolEntry :: struct {
     info: CPInfo,
 }
 
-// TODO: fix this awful name
 CPInfo :: union #no_nil {
     DummyInfo,                  // meant to occupy the empty second slot of a long/ double
     ConstantUtf8Info,
