@@ -82,6 +82,8 @@ ConstantInterfaceMethodRefInfo :: ConstantFieldRefInfo
 
 // Represents a field or method, without indicating which class or interface it belongs to.
 ConstantNameAndTypeInfo :: struct {
+    // Points to a ConstantUtf8Info entry representing either the method name <init>
+    // or the fully unqualified name, denoting a field or method.
     name_idx: u16,
     // Points to a ConstantUtf8Info entry
     // representing a field or method descriptor

@@ -89,8 +89,6 @@ VerificationTypeInfo :: union {
     UninitializedVariableInfo,      // 8
 }
 
-// TODO: type aliases?
-
 // Indicates that the local variable has the verification type top.
 TopVariableInfo     :: struct {}
 // Indicates that the location contains the verification type int.
