@@ -14,13 +14,9 @@ ClassFile :: struct {
     access_flags: u16,
     this_class: u16,
     super_class: u16,
-    interfaces_count: u16,
     interfaces: []u16,
-    fields_count: u16,
     fields: []FieldInfo,
-    methods_count: u16,
     methods: []MethodInfo,
-    attributes_count: u16,
     attributes: []AttributeInfo,
 }
 
@@ -78,14 +74,14 @@ dump_access_flags :: proc(flags: u16) {
 
     for flag in ClassAccessFlag {
         str := access_flag_to_str(flag)
-        if flags & u16(flag) != 0 {
-            if first {
-                fmt.print('(', str, sep="")
-            } else {
-                fmt.print(',', str)
-            }
-            first = false
+        if flags & u16(flag) == 0 do continue
+
+        if first {
+            fmt.print('(', str, sep="")
+        } else {
+            fmt.print(',', str)
         }
+        first = false
     }
     fmt.println(')')
 }
@@ -201,7 +197,6 @@ FieldInfo :: struct {
     access_flags: u16,
     name_idx: u16,
     descriptor_idx: u16,
-    attributes_count: u16,
     attributes: []AttributeInfo,
 }
 
@@ -221,7 +216,6 @@ MethodInfo :: struct {
     access_flags: u16,
     name_idx: u16,
     descriptor_idx: u16,
-    attributes_count: u16,
     attributes: []AttributeInfo,
 }
 

@@ -32,17 +32,10 @@ reader_read_class_file :: proc(using reader: ^ClassFileReader) -> (classfile: Cl
     this_class = read_unsigned_short(reader) or_return
     super_class = read_unsigned_short(reader) or_return
 
-    interfaces_count = read_unsigned_short(reader) or_return
-    interfaces = read_interfaces(reader, interfaces_count) or_return
-
-    fields_count = read_unsigned_short(reader) or_return
-    fields = read_fields(reader, int(fields_count), classfile) or_return
-
-    methods_count = read_unsigned_short(reader) or_return
-    methods = read_methods(reader, int(methods_count), classfile) or_return
-
-    attributes_count = read_unsigned_short(reader) or_return
-    attributes = read_attributes(reader, attributes_count, classfile) or_return
+    interfaces = read_interfaces(reader) or_return
+    fields = read_fields(reader, classfile) or_return
+    methods = read_methods(reader, classfile) or_return
+    attributes = read_attributes(reader, classfile) or_return
     return
 }
 
@@ -132,29 +125,28 @@ read_constant_pool_entry :: proc(reader: ^ClassFileReader, tag: ConstantType) ->
 }
 
 @private
-read_interfaces :: proc(reader: ^ClassFileReader, count: u16) -> (interfaces: []u16, err: Errno) {
-    count := int(count)
-    bytes := read_nbytes(reader, count * 2) or_return
+read_interfaces :: proc(reader: ^ClassFileReader) -> (interfaces: []u16, err: Errno) {
+    count := read_unsigned_short(reader) or_return
+    bytes := read_nbytes(reader, int(count * 2)) or_return
     interfaces = slice.reinterpret([]u16, bytes)
     return interfaces, .None
 }
 
 @private
-read_methods :: proc(reader: ^ClassFileReader, count: int, classfile: ClassFile) -> (methods: []MethodInfo, err: Errno) {
+read_methods :: proc(reader: ^ClassFileReader, classfile: ClassFile) -> (methods: []MethodInfo, err: Errno) {
+    count := read_unsigned_short(reader) or_return
     methods = make([]MethodInfo, count)
 
     for i in 0..<count {
         access_flags := read_unsigned_short(reader) or_return
         name_idx := read_unsigned_short(reader) or_return
         descriptor_idx := read_unsigned_short(reader) or_return
-        attributes_count := read_unsigned_short(reader) or_return
-        attributes := read_attributes(reader, attributes_count, classfile) or_return
+        attributes := read_attributes(reader, classfile) or_return
 
         methods[i] = MethodInfo {
             access_flags,
             name_idx,
             descriptor_idx,
-            attributes_count,
             attributes,
         }
     }
@@ -162,27 +154,27 @@ read_methods :: proc(reader: ^ClassFileReader, count: int, classfile: ClassFile)
 }
 
 @private
-read_fields :: proc(reader: ^ClassFileReader, count: int, classfile: ClassFile) -> (fields: []FieldInfo, err: Errno) {
+read_fields :: proc(reader: ^ClassFileReader, classfile: ClassFile) -> (fields: []FieldInfo, err: Errno) {
+    count := read_unsigned_short(reader) or_return
     fields = make([]FieldInfo, count)
 
     for i in 0..<count {
         access_flags := read_unsigned_short(reader) or_return
         name_idx := read_unsigned_short(reader) or_return
         descriptor_idx := read_unsigned_short(reader) or_return
-        attributes_count := read_unsigned_short(reader) or_return
 
         fields[i] = FieldInfo {
             access_flags, name_idx,
-            descriptor_idx, attributes_count,
-            read_attributes(reader, attributes_count, classfile) or_return,
+            descriptor_idx,
+            read_attributes(reader, classfile) or_return,
         }
     }
     return fields, .None
 }
 
 @private
-read_attributes :: proc(reader: ^ClassFileReader, count: u16, classfile: ClassFile) -> (attributes: []AttributeInfo, err: Errno) {
-    count := int(count)
+read_attributes :: proc(reader: ^ClassFileReader, classfile: ClassFile) -> (attributes: []AttributeInfo, err: Errno) {
+    count := read_unsigned_short(reader) or_return
     attributes = make([]AttributeInfo, count)
     
     for i in 0..<count {
@@ -219,8 +211,7 @@ read_attribute_info :: proc(reader: ^ClassFileReader, classfile: ClassFile) -> (
                 exception_table[i] = { start_pc, end_pc, handler_pc, catch_type }
             }
 
-            attributes_count := read_unsigned_short(reader) or_return
-            attributes := read_attributes(reader, attributes_count, classfile) or_return
+            attributes := read_attributes(reader, classfile) or_return
             inner = Code {
                 max_stack, max_locals, 
                 code,
@@ -358,8 +349,7 @@ read_attribute_info :: proc(reader: ^ClassFileReader, classfile: ClassFile) -> (
             classes_bytes := read_nbytes(reader, int(number_of_classes * 2)) or_return
             classes := slice.reinterpret([]u16, classes_bytes)
             inner = NestMembers { classes }
-        case: 
-            fmt.println("unknown attribute", attrib_name)
+        case:
             return attribute, .UnknownAttributeName
     }
     return AttributeInfo { name_idx, length, inner }, .None
