@@ -38,7 +38,7 @@ main :: proc() {
     defer delete(data)
 
     if !ok {
-        fmt.println("Error reading file, os error", os.get_last_error())
+        fmt.println("Error reading file, os error", get_last_error())
         os.exit(2)
     }
 
@@ -52,4 +52,8 @@ main :: proc() {
     }
 
     classfile_dump(classfile)
+}
+
+get_last_error :: proc() -> int {
+    return int(win32.GetLastError()) when ODIN_OS == .Windows else os.get_last_error()
 }
