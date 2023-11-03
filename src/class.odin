@@ -3,6 +3,8 @@ package classreader
 import "core:fmt"
 import "core:intrinsics"
 
+// A code representation of a in-memory classfile.
+// To obtain an instance, call reader_read_classfile().
 ClassFile :: struct {
     minor_version: u16,
     major_version: u16,
@@ -20,6 +22,7 @@ ClassFile :: struct {
     attributes: []AttributeInfo,
 }
 
+// ClassFile destructor.
 classfile_destroy :: proc(using classfile: ^ClassFile) {
     defer delete(constant_pool)
     defer delete(fields)
@@ -31,6 +34,7 @@ classfile_destroy :: proc(using classfile: ^ClassFile) {
     attributes_destroy(attributes)
 }
 
+// Dumps a whole classfile structure to the stdout.
 classfile_dump :: proc(using classfile: ClassFile) {
     class := cp_get(ConstantClassInfo, classfile, this_class)
     class_name := cp_get_str(classfile, class.name_idx)
@@ -41,10 +45,10 @@ classfile_dump :: proc(using classfile: ClassFile) {
     fmt.printf("access flags: 0x%x ", access_flags)
     dump_access_flags(access_flags)
 
-    max_idx_width := count_digits(int(constant_pool_count))
+    max_idx_width := count_digits(constant_pool_count)
     fmt.println("Constant pool:")
 
-    for i := 0; i < int(constant_pool_count) - 1; i += 1 {
+    for i := u16(0); i < constant_pool_count - 1; i += 1 {
         MIN_PADDING :: 2 // minimum amount of spaces in front of #num
         MAX_TAG_LEN :: len("InterfaceMethodRef") // longest tag
 
@@ -73,8 +77,8 @@ dump_access_flags :: proc(flags: u16) {
     first := true
 
     for flag in ClassAccessFlag {
-        str := access_flag_to_str(flag)
         if flags & u16(flag) == 0 do continue
+        str := access_flag_to_str(flag)
 
         if first {
             fmt.print('(', str, sep="")
@@ -86,6 +90,7 @@ dump_access_flags :: proc(flags: u16) {
     fmt.println(')')
 }
 
+// Dumps a constantpool entry's data to the stdout.
 cp_entry_dump :: proc(using classfile: ClassFile, cp_info: ConstantPoolEntry) {
     switch &cp_info in cp_info.info {
         case DummyInfo:
@@ -147,11 +152,10 @@ dump_field_ref :: proc(using classfile: ClassFile, using field_ref: ConstantFiel
 }
 
 @private
-count_digits :: proc(x: int) -> u8 {
+count_digits :: proc(x: u16) -> (count: u8) {
     if x == 0 do return 1
 
     x := x
-    count := byte(0)
 
     for x != 0 {
         x /= 10
@@ -160,10 +164,13 @@ count_digits :: proc(x: int) -> u8 {
     return count
 }
 
+// Returns a string stored within the constantpool.
+// Assuming that the entry at that index is a ConstantUtf8Info.
 cp_get_str :: proc(using classfile: ClassFile, idx: u16) -> string {
     return string(cp_get(ConstantUtf8Info, classfile, idx).bytes)
 }
 
+// Returns the constantpool entry stored at the given index.
 cp_get :: proc($T: typeid, using classfile: ClassFile, idx: u16) -> T
 where intrinsics.type_is_variant_of(CPInfo, T) {
     return constant_pool[idx - 1].info.(T)
@@ -182,23 +189,35 @@ ClassAccessFlag :: enum u16 {
 
 access_flag_to_str :: proc(flag: ClassAccessFlag) -> string {
     switch (flag) {
-        case .AccPublic: return "ACC_PUBLIC"
-        case .AccFinal: return "ACC_FINAL"
-        case .AccSuper: return "ACC_SUPER"
-        case .AccInterface: return "ACC_INTERFACE"
-        case .AccAbstract: return "ACC_ABSTRACT"
-        case .AccSynthetic: return "ACC_SYNTHETIC"
+        case .AccPublic:     return "ACC_PUBLIC"
+        case .AccFinal:      return "ACC_FINAL"
+        case .AccSuper:      return "ACC_SUPER"
+        case .AccInterface:  return "ACC_INTERFACE"
+        case .AccAbstract:   return "ACC_ABSTRACT"
+        case .AccSynthetic:  return "ACC_SYNTHETIC"
         case .AccAnnotation: return "ACC_ANNOTATION"
-        case .AccEnum: return "ACC_ENUM"
+        case .AccEnum:       return "ACC_ENUM"
     }
     // in case someone would pass ClassAccessFlags(9999) or something
-    panic("invalid args to access_flag_to_str, validate them you nerd")
+    panic("invalid args passed to access_flag_to_str")
 }
 
+// A method descriptor.
 FieldInfo :: struct {
+    // A mask of FieldAccessFlag flags, denoting
+    // access permissions to and properties of this field.
     access_flags: u16,
+    // Points to a ConstantUtf8Info representing the unqualified field name.
     name_idx: u16,
+    // Points to a ConstantUtf8Info representing a field descriptor.
     descriptor_idx: u16,
+    // Valid attributes for a field descriptor are:
+    // - ConstantValue
+    // - Synthetic
+    // - Signature
+    // - Deprecated
+    // - RuntimeVisibleAnnotations
+    // - RuntimeInvisibleAnnotations
     attributes: []AttributeInfo,
 }
 
@@ -214,10 +233,27 @@ FieldAccessFlag :: enum u16 {
     Enum      = 0x4000,
 }
 
+// A method descriptor.
 MethodInfo :: struct {
+    // A mask of MethodAccessFlag flags, denoting
+    // access permissions to and properties of this method.
     access_flags: u16,
+    // Points to a ConstantUtf8Info, representing either the unqualified method name
+    // or one of the special method names <init> or <clinit>.
     name_idx: u16,
+    // Points to a ConstantUtf8Info, representing a method descriptor.
     descriptor_idx: u16,
+    // Valid attributes for a method descriptor are:
+    // - Code
+    // - Exceptions
+    // - Synthetic
+    // - Signature
+    // - Deprecated
+    // - RuntimeVisibleAnnotations
+    // - RuntimeInvisibleAnnotations
+    // - RuntimeVisibleParameterAnnotations
+    // - RuntimeInvisibleParameterAnnotations
+    // - AnnotationDefault
     attributes: []AttributeInfo,
 }
 
@@ -228,10 +264,12 @@ MethodAccessFlag :: enum u16 {
     Static       = 0x0008,
     Final        = 0x0010,
     Synchronized = 0x0020,
+    // A bridge method generated by the compiler.
     Bridge       = 0x0040,
     Varargs      = 0x0080,
     Native       = 0x0100,
     Abstract     = 0x0400,
+    // stricfp
     Strict       = 0x0800,
     Synthetic    = 0x1000,
 }

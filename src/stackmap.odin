@@ -12,6 +12,7 @@ StackMapFrame :: union {
     FullFrame,
 }
 
+// StackMapFrame destructor.
 stack_map_frame_destroy :: proc(frame: StackMapFrame) {
     #partial switch &frame in frame {
         case AppendFrame:
@@ -24,11 +25,12 @@ stack_map_frame_destroy :: proc(frame: StackMapFrame) {
 
 // The frame has exactly the same locals as the previous stack map frame 
 // and the number of stack items is zero.
+// Represented by tags in the range [0, 63].
 SameFrame :: struct {}
 
 // The frame has exactly the same locals as the previous stack map frame
 // and the number of stack items is 1.
-// Represented by tags in the range [64, 127]
+// Represented by tags in the range [64, 127].
 SameLocals1StackItemFrame :: struct {
     stack: VerificationTypeInfo,
 }
