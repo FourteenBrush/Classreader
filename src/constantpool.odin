@@ -6,9 +6,7 @@ ConstantPoolEntry :: struct {
     info: CPInfo,
 }
 
-CPInfo :: union #no_nil {
-    // meant to occupy the empty second slot of a long/ double
-    DummyInfo,
+CPInfo :: union {
     ConstantUtf8Info,
     ConstantIntegerInfo,   
     ConstantFloatInfo,
@@ -16,15 +14,13 @@ CPInfo :: union #no_nil {
     ConstantDoubleInfo,
     ConstantClassInfo,
     ConstantStringInfo,
-    ConstantFieldRefInfo, // and MethodRef, InterfaceMethodRef alias
+    // Aliased as ConstantMethodRefInfo and ConstantInterfaceMethodRefInfo.
+    ConstantFieldRefInfo,
     ConstantNameAndTypeInfo,
     ConstantMethodHandleInfo,
     ConstantMethodTypeInfo,
     ConstantInvokeDynamicInfo,
 }
-
-// A dummy CPInfo to insert after entries where the second slot is unusable (float and long).
-DummyInfo :: struct {}
 
 // A ConstantPoolEntry tag.
 ConstantType :: enum u8 {

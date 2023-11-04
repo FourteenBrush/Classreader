@@ -75,7 +75,7 @@ read_constant_pool :: proc(reader: ^ClassFileReader, count: u16) -> (constant_po
         constant_pool[i] = ConstantPoolEntry { tag, entry }
         if tag == .Double || tag == .Long {
             // ConstantType(0) does not exist, but doesn't matter because it's never printed
-            constant_pool[i + 1] = ConstantPoolEntry { ConstantType(0), DummyInfo{} }
+            constant_pool[i + 1] = ConstantPoolEntry { ConstantType(0), nil }
             i += 1
         }
     }

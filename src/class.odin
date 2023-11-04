@@ -94,11 +94,6 @@ dump_access_flags :: proc(flags: u16) {
 // Dumps a constantpool entry's data to the stdout.
 cp_entry_dump :: proc(using classfile: ClassFile, cp_info: ConstantPoolEntry) {
     switch &cp_info in cp_info.info {
-        case DummyInfo:
-            // do nothing, not intended to be printed
-            // does not even trigger as we are skipping this in classfile_dump
-            // due to otherwise printing an empty "Dummy = " header
-            // TODO: use nil instead?
         case ConstantUtf8Info:
             fmt.println(string(cp_info.bytes))
         case ConstantIntegerInfo:
