@@ -69,7 +69,7 @@ classfile_dump :: proc(using classfile: ClassFile) {
     fmt.println("Attributes:")
     for &attrib in attributes {
         name := cp_get_str(classfile, attrib.name_idx)
-        fmt.println(name)
+        fmt.println(" ", name)
     }
 }
 
@@ -128,25 +128,15 @@ cp_entry_dump :: proc(using classfile: ClassFile, cp_info: ConstantPoolEntry) {
             str := cp_get_str(classfile, cp_info.string_idx)
             fmt.println(str)
         case ConstantFieldRefInfo:
-            dump_field_ref(classfile, cp_info)
+            dump_ref(classfile, cp_info)
         case ConstantNameAndTypeInfo:
             name := cp_get_str(classfile, cp_info.name_idx)
             descriptor := cp_get_str(classfile, cp_info.descriptor_idx)
             fmt.println(name, descriptor, sep=":")
         case ConstantMethodHandleInfo:
-            // TODO: these are all aliases, why bother specializing?
-            // Just interpret the cp_info.tag
-            switch cp_info.reference_kind {
-                case .GetField, .GetStatic, .PutField, .PutStatic:
-                    field_ref := cp_get(ConstantFieldRefInfo, classfile, cp_info.reference_idx)
-                    dump_field_ref(classfile, field_ref) 
-                case .InvokeVirtual, .InvokeStatic, .InvokeSpecial, .NewInvokeSpecial:
-                    method_ref := cp_get(ConstantMethodRefInfo, classfile, cp_info.reference_idx)
-                    dump_field_ref(classfile, method_ref)
-                case .InvokeInterface:
-                    interface_method_ref := cp_get(ConstantInterfaceMethodRefInfo, classfile, cp_info.reference_idx)
-                    dump_field_ref(classfile, interface_method_ref)
-            }
+            // note that ConstantFieldRefInfo has multiple aliases, see constantpool file
+            ref := cp_get(ConstantFieldRefInfo, classfile, cp_info.reference_idx)
+            dump_ref(classfile, ref)
         case ConstantMethodTypeInfo:
             descriptor := cp_get_str(classfile, cp_info.descriptor_idx)
             fmt.println(descriptor)
@@ -158,15 +148,14 @@ cp_entry_dump :: proc(using classfile: ClassFile, cp_info: ConstantPoolEntry) {
     }
 }
 
-// TODO: rename, method_ref is an alias for field_ref
 @private
-dump_field_ref :: proc(using classfile: ClassFile, using field_ref: ConstantFieldRefInfo) {
+dump_ref :: proc(using classfile: ClassFile, using field_ref: ConstantFieldRefInfo) {
     class_name_idx := cp_get(ConstantClassInfo, classfile, class_idx).name_idx
     name_and_type := cp_get(ConstantNameAndTypeInfo, classfile, name_and_type_idx)
     field_or_method_name := cp_get_str(classfile, name_and_type.name_idx)
     class_name := cp_get_str(classfile, class_name_idx)
     
-    fmt.printf("%s.%s\n", class_name, field_or_method_name)
+    fmt.println(class_name, field_or_method_name, sep=".")
 }
 
 @private

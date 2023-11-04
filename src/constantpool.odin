@@ -13,10 +13,10 @@ CPInfo :: union #no_nil {
     ConstantIntegerInfo,   
     ConstantFloatInfo,
     ConstantLongInfo,
-    ConstantDoubleInfo,         // and Long alias
+    ConstantDoubleInfo,
     ConstantClassInfo,
     ConstantStringInfo,
-    ConstantFieldRefInfo,       // and MethodRef, InterfaceMethodRef alias
+    ConstantFieldRefInfo, // and MethodRef, InterfaceMethodRef alias
     ConstantNameAndTypeInfo,
     ConstantMethodHandleInfo,
     ConstantMethodTypeInfo,

@@ -51,7 +51,7 @@ Errno :: enum {
     // Constant pool index points to an entry with the wrong type
     WrongCPType,
     // Unknown VerificationTypeInfo tag
-    UnknownVerificationType,
+    UnknownVerificationTypeInfoTag,
     // Unknown attribute name
     UnknownAttributeName,
     // Unknown ElementValue tag
@@ -481,7 +481,8 @@ read_verification_type_info :: proc(reader: ^ClassFileReader) -> (info: Verifica
         case 8:
             offset := read_unsigned_short(reader) or_return
             info = UninitializedVariableInfo { offset }
-        case: return info, .UnknownVerificationType
+        case: 
+            return info, .UnknownVerificationTypeInfoTag
     }
     return info, .None
 }
