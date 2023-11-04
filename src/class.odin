@@ -1,6 +1,7 @@
 package classreader
 
 import "core:fmt"
+import "core:math"
 import "core:intrinsics"
 
 // A code representation of a in-memory classfile.
@@ -95,13 +96,30 @@ cp_entry_dump :: proc(using classfile: ClassFile, cp_info: ConstantPoolEntry) {
     switch &cp_info in cp_info.info {
         case DummyInfo:
             // do nothing, not intended to be printed
+            // does not even trigger as we are skipping this in classfile_dump
+            // due to otherwise printing an empty "Dummy = " header
+            // TODO: use nil instead?
         case ConstantUtf8Info:
             fmt.println(string(cp_info.bytes))
         case ConstantIntegerInfo:
-            // TODO: interpret correctly as float or int
-            fmt.printf("%i (unable to interpret as int or float)\n", cp_info.bytes)
+            fmt.println(cp_info.bytes)
+        case ConstantFloatInfo:
+            switch cp_info.bytes {
+                case 0x7f800000: fmt.println("infinity")
+                case 0xff800000: fmt.println("-infinity")
+                case 0x7f800001..=0x7fffffff,
+                     0xff800001..=0xffffffff:
+                    fmt.println("NaN")
+                case:
+                    val := transmute(f32)cp_info.bytes
+                    fmt.println(val)
+            }
+        case ConstantLongInfo:
+            long_val := i64(cp_info.high_bytes) << 32 + i64(cp_info.low_bytes)
+            fmt.println(long_val)
         case ConstantDoubleInfo:
-            val := u64(cp_info.high_bytes) << 32 + u64(cp_info.low_bytes)
+            int_val := u64(cp_info.high_bytes) << 32 + u64(cp_info.low_bytes)
+            val := transmute(f64)int_val
             fmt.println(val)
         case ConstantClassInfo:
             class_name := cp_get_str(classfile, cp_info.name_idx)

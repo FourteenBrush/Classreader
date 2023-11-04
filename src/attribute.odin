@@ -265,9 +265,11 @@ RuntimeInvisibleAnnotations :: struct {
 
 // Records run-time-visible annotations on the parameters of the corresponding method.
 RuntimeVisibleParameterAnnotations :: struct {
-    // The number of parameters of the method represented by the method_info structure on which the annotation occurs.
+    // The number of parameters of the method represented by 
+    // the method_info structure on which the annotation occurs.
     num_parameters: u8,
-    // Each value of the parameter_annotations table represents all of the run-time-visible annotations on a single parameter.
+    // Each value of the parameter_annotations table represents all of 
+    // the run-time-visible annotations on a single parameter.
     parameter_annotations: []ParameterAnnotation,
 }
 
@@ -286,7 +288,8 @@ Annotation :: struct {
 
 // Represents a single element-value pair in an annotation.
 ElementValuePair :: struct {
-    // Points to a ConstantUtf8Info representing a field descriptor that denotes the name of the annotation type element value.
+    // Points to a ConstantUtf8Info representing a field descriptor that denotes 
+    // the name of the annotation type element value.
     element_name_idx: u16,
     // The element value.
     value: ElementValue,
@@ -348,7 +351,8 @@ BootstrapMethods :: struct {
 BootstrapMethod :: struct {
     // Points to a ConstantMethodHandleInfo.
     bootstrap_method_ref: u16,
-    // Each entry must point to a ConstantStringInfo, Class, Integer, Long, Float, Double, MethodHandle or ConstantMethodTypeInfo.
+    // Each entry must point to a ConstantStringInfo, Class, Integer, Long, 
+    // Float, Double, MethodHandle or ConstantMethodTypeInfo.
     bootstrap_arguments: []u16,
 }
 

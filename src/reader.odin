@@ -89,13 +89,20 @@ read_constant_pool_entry :: proc(reader: ^ClassFileReader, tag: ConstantType) ->
             length := read_unsigned_short(reader) or_return
             bytes := read_nbytes(reader, int(length)) or_return
             entry = ConstantUtf8Info { bytes }
-        case .Integer, .Float:
+        case .Integer:
             bytes := read_unsigned_int(reader) or_return
             entry = ConstantIntegerInfo { bytes }
-        case .Long, .Double:
+        case .Float:
+            bytes := read_unsigned_int(reader) or_return
+            entry = ConstantFloatInfo { bytes }
+        case .Long:
             high_bytes := read_unsigned_int(reader) or_return
             low_bytes := read_unsigned_int(reader) or_return
             entry = ConstantLongInfo { high_bytes, low_bytes }
+        case .Double:
+            high_bytes := read_unsigned_int(reader) or_return
+            low_bytes := read_unsigned_int(reader) or_return
+            entry = ConstantDoubleInfo { high_bytes, low_bytes }
         case .Class:
             name_idx := read_unsigned_short(reader) or_return
             entry = ConstantClassInfo { name_idx }

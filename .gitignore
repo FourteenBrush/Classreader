@@ -1,4 +1,7 @@
+# build artifacts
 /*.exe
 /*.pdb
 /*.o
-/classreader
+/classreader*
+# LLVM IR
+/*.ll

@@ -7,9 +7,12 @@ ConstantPoolEntry :: struct {
 }
 
 CPInfo :: union #no_nil {
-    DummyInfo,                  // meant to occupy the empty second slot of a long/ double
+    // meant to occupy the empty second slot of a long/ double
+    DummyInfo,
     ConstantUtf8Info,
-    ConstantIntegerInfo,        // and Float alias
+    ConstantIntegerInfo,   
+    ConstantFloatInfo,
+    ConstantLongInfo,
     ConstantDoubleInfo,         // and Long alias
     ConstantClassInfo,
     ConstantStringInfo,
@@ -49,14 +52,14 @@ ConstantIntegerInfo :: struct {
     bytes: u32,
 }
 
-ConstantFloatInfo :: ConstantIntegerInfo
+ConstantFloatInfo :: distinct ConstantIntegerInfo
 
 ConstantLongInfo :: struct {
     high_bytes: u32,
     low_bytes: u32,
 }
 
-ConstantDoubleInfo :: ConstantLongInfo
+ConstantDoubleInfo :: distinct ConstantLongInfo
 
 ConstantClassInfo :: struct {
     // Points to a ConstantNameAndTypeInfo entry representing a class or interface name.
