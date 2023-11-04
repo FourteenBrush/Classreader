@@ -2,7 +2,6 @@ package classreader
 
 AttributeInfo :: struct {
     name_idx: u16,
-    length: u32,
     info: AttributeInfoInner,
 }
 
@@ -115,7 +114,7 @@ ConstantValue :: struct {
 }
 
 // Contains the Java Virtual Machine instructions and auxiliary information for 
-// a single method, instance initialization method, or class or interface initialization method
+// a single method, instance initialization method, or class or interface initialization method.
 // If the method is either native or abstract, its method_info structure must not have a Code attribute.
 // Otherwise, its method_info structure must have exactly one Code attribute.
 Code :: struct {

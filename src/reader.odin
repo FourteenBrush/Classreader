@@ -361,7 +361,7 @@ read_attribute_info :: proc(reader: ^ClassFileReader, classfile: ClassFile, allo
         case:
             return attribute, .UnknownAttributeName
     }
-    return AttributeInfo { name_idx, length, inner }, .None
+    return AttributeInfo { name_idx, inner }, .None
 }
 
 read_local_variable_type_table :: read_local_variable_table
