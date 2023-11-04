@@ -317,7 +317,8 @@ read_attribute_info :: proc(reader: ^ClassFileReader, classfile: ClassFile, allo
             inner = LocalVariableTable  { table }
         case "LocalVariableTypeTable":
             table := read_local_variable_type_table(reader) or_return
-            inner = LocalVariableTypeTable { table }
+            // SAFETY: this should keep working as long as both entry types have the same size
+            inner = LocalVariableTypeTable { transmute([]LocalVariableTypeTableEntry)table }
         case "Deprecated": inner = Deprecated {}
         case "RuntimeVisibleAnnotations":
             annotations := read_annotations(reader) or_return
@@ -378,7 +379,7 @@ read_local_variable_table :: proc(reader: ^ClassFileReader, allocator := context
         signature_idx := read_unsigned_short(reader) or_return
         idx := read_unsigned_short(reader) or_return
 
-        table[i] = LocalVariableTypeTableEntry {
+        table[i] = LocalVariableTableEntry {
             start_pc, length,
             name_idx, signature_idx,
             idx,

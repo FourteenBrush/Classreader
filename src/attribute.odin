@@ -37,6 +37,7 @@ attributes_destroy :: proc(attributes: []AttributeInfo) {
     delete(attributes)
 }
 
+// AttributeInfo destructor
 attribute_destroy :: proc(using attrib: AttributeInfo) {
     #partial switch &attrib in info {
         case Code:
@@ -95,6 +96,7 @@ annotations_destroy :: proc(annotations: []Annotation) {
     delete(annotations)
 }
 
+// Annotation destructor
 annotation_destroy :: proc(annotation: Annotation) {
     for pair in annotation.element_value_pairs {
         element_value_destroy(pair.value.value)
@@ -118,18 +120,37 @@ ConstantValue :: struct {
 // If the method is either native or abstract, its method_info structure must not have a Code attribute.
 // Otherwise, its method_info structure must have exactly one Code attribute.
 Code :: struct {
+    // Max depth of the operand stack of the corresponding method.
     max_stack: u16,
+    // The number of local variables in the local variable array, allocated
+    // upon invocation of this method. Including the local variables used to pass
+    // parameters to the method on its invocation.
     max_locals: u16,
+    // The actual bytecode.
     code: []u8,
+    // A list of exception handlers, the order is significant.
+    // When an exception is thrown, this table will be searched from the beginning.
     exception_table: []ExceptionHandler,
+    // Valid attributes for a Code attribute are:
+    // - LineNumberTable
+    // - LocalVariableTable
+    // - LocalVariableTypeTable
+    // - StackMapTable
     attributes: []AttributeInfo,
 }
 
 // Describes one exception handler in the code array.
 ExceptionHandler :: struct {
+    // Indicates the start in the code array at which the handler is active.
     start_pc: u16,
+    // Same but for the end of the handler, this value is an exclusive index in the code array.
     end_pc: u16,
+    // An index into the code array, indicating the start of the exception handler.
+    // (Points to an instruction).
     handler_pc: u16,
+    // If zero, this exception handler is called for all exceptions, to implement *finally*.
+    // When nonzero, this points to a ConstantClassInfo structure representing
+    // a class of exceptions that this handler is designated to catch.
     catch_type: u16,
 }
 
@@ -142,6 +163,8 @@ StackMapTable :: struct {
 // Indicates which checked exceptions a method may throw.
 // There may be at most one Exceptions attribute in each MethodInfo structure.
 Exceptions :: struct {
+    // Each entry points to a ConstantClassInfo structure, representing
+    // a class that this method is declared to throw.
     exception_idx_table: []u16,
 }
 
@@ -243,11 +266,22 @@ LocalVariableTableEntry :: struct {
     idx: u16,
 }
 
+// A table that may be used by debuggers to determine the value of a given
+// local variable during the execution of a method.
 LocalVariableTypeTable :: struct {
     local_variable_type_table: []LocalVariableTypeTableEntry,
 }
 
-LocalVariableTypeTableEntry :: LocalVariableTableEntry
+// See LocalVariableTypeTable
+LocalVariableTypeTableEntry :: struct {
+    start_pc: u16,
+    length: u16,
+    name_idx: u16,
+    // Points to a ConstantUtf8Info structure, representing
+    // a field type signature encoding the type of the local variable.
+    signature_idx: u16,
+    idx: u16,
+}
 
 // Denotes a deprecated element.
 Deprecated :: struct {}
@@ -311,7 +345,7 @@ ElementValueInner :: union {
     ArrayValue,
 }
 
-// needed because we can't alias a u16 in a union twice
+// Needed because we can't alias a u16 in ElementValueInner twice.
 ConstValueIdx :: distinct u16
 ClassInfoIdx :: distinct u16
 
@@ -358,7 +392,7 @@ BootstrapMethod :: struct {
 // Records the nest host of the nest to which
 // the current class or interface claims to belong.
 NestHost :: struct {
-    // Constant pool index to a ConstantClassInfo
+    // Constant pool index to a ConstantClassInfo.
     host_class_idx: u16,
 }
 
@@ -366,6 +400,6 @@ NestHost :: struct {
 // in the nest hosted by the current class or interface.
 NestMembers :: struct {
     // A number of indices pointing to a ConstantClassInfo structure
-    // Representing a class or interface which is a member of the nest hosted by the current class or interface.
+    // representing a class or interface which is a member of the nest hosted by the current class or interface.
     classes: []u16,
 }
