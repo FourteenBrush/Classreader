@@ -77,7 +77,6 @@ FullFrame :: struct {
     stack: []VerificationTypeInfo,
 }
 
-// TODO: type aliases?
 // Each verification_type_info structure specifies the verification type of one or two locations.
 VerificationTypeInfo :: union {
     TopVariableInfo,                // 0

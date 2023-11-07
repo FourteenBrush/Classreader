@@ -30,7 +30,7 @@ main :: proc() {
 
     args := os.args
     if len(args) < 2 {
-        fmt.printf("Usage: %s <input file>\n", args[0]);
+        fmt.printf("Usage: %s <input file>\n", args[0])
         os.exit(1);
     }
 
@@ -44,7 +44,7 @@ main :: proc() {
 
     reader := reader_new(data) 
     classfile, err := reader_read_class_file(&reader)
-    defer classfile_destroy(&classfile)
+    defer classfile_destroy(classfile)
 
     if err != .None {
         fmt.println("Error parsing class file:", err)

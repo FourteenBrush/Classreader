@@ -1,7 +1,7 @@
 package classreader
 
 import "core:fmt"
-import "core:math"
+import "core:reflect"
 import "core:intrinsics"
 
 // A code representation of a in-memory classfile.
@@ -24,15 +24,14 @@ ClassFile :: struct {
 }
 
 // ClassFile destructor.
-classfile_destroy :: proc(using classfile: ^ClassFile) {
-    defer delete(constant_pool)
-    defer delete(fields)
-    defer delete(methods)
-
+classfile_destroy :: proc(using classfile: ClassFile) {
     for &field in fields do attributes_destroy(field.attributes)
     for &method in methods do attributes_destroy(method.attributes)
 
     attributes_destroy(attributes)
+    delete(constant_pool)
+    delete(fields)
+    delete(methods)
 }
 
 // Dumps a whole classfile structure to the stdout.
@@ -44,37 +43,38 @@ classfile_dump :: proc(using classfile: ClassFile) {
     fmt.println("minor version:", minor_version)
     fmt.println("major version:", major_version)
     fmt.printf("access flags: 0x%x ", access_flags)
-    dump_access_flags(access_flags)
+    dump_class_access_flags(access_flags)
 
     max_idx_width := count_digits(constant_pool_count)
+    i := u16(1)
     fmt.println("Constant pool:")
 
-    for i := u16(0); i < constant_pool_count - 1; i += 1 {
+    for entry in constant_pool {
+        if entry.info == nil { i += 1; continue } // skip unusable entry
+
         MIN_PADDING :: 2 // minimum amount of spaces in front of #num
+        // TODO: determine the max length of the tags first rather than hardcoding an arbitrary one
         MAX_TAG_LEN :: len("InterfaceMethodRef") // longest tag
 
-        using entry := constant_pool[i]
-        padding := MIN_PADDING + max_idx_width - count_digits(i + 1) + 1
-        tag_len := len(fmt.tprint(tag))
-        // #9 = Utf8      some text 
-        // TODO: determine the max length of the tags first rather than hardcoding an arbitrary one
-        // also clean this up
-        fmt.printf("%*s%i = %s%*s", padding, "#", i + 1, tag, MAX_TAG_LEN - tag_len + 1, "")
+        padding := MIN_PADDING + max_idx_width - count_digits(i) + 1
+        tag_len := len(reflect.enum_string(entry.tag))
+        description_padding := MAX_TAG_LEN - tag_len + 1
+
+        fmt.printf("%*s%i = %s%*s", padding, "#", i, entry.tag, description_padding, "")
         cp_entry_dump(classfile, entry)
-        if tag == .Long || tag == .Double {
-            i += 1 // skip the unusable entry
-        }
+        i += 1
     }
 
     fmt.println("Attributes:")
-    for &attrib in attributes {
+
+    for attrib in attributes {
         name := cp_get_str(classfile, attrib.name_idx)
         fmt.println(" ", name)
     }
 }
 
 @private
-dump_access_flags :: proc(flags: u16) {
+dump_class_access_flags :: proc(flags: u16) {
     first := true
 
     for flag in ClassAccessFlag {
@@ -91,6 +91,9 @@ dump_access_flags :: proc(flags: u16) {
     fmt.println(')')
 }
 
+FLOAT_NEG_INFINITY :: 0xff800000
+FLOAT_POS_INFINITY :: 0x7f800000
+
 // Dumps a constantpool entry's data to the stdout.
 cp_entry_dump :: proc(using classfile: ClassFile, cp_info: ConstantPoolEntry) {
     switch &cp_info in cp_info.info {
@@ -100,8 +103,8 @@ cp_entry_dump :: proc(using classfile: ClassFile, cp_info: ConstantPoolEntry) {
             fmt.println(cp_info.bytes)
         case ConstantFloatInfo:
             switch cp_info.bytes {
-                case 0x7f800000: fmt.println("infinity")
-                case 0xff800000: fmt.println("-infinity")
+                case FLOAT_POS_INFINITY: fmt.println("infinity")
+                case FLOAT_NEG_INFINITY: fmt.println("-infinity")
                 case 0x7f800001..=0x7fffffff,
                      0xff800001..=0xffffffff:
                     fmt.println("NaN")
@@ -199,9 +202,9 @@ access_flag_to_str :: proc(flag: ClassAccessFlag) -> string {
         case .AccSynthetic:  return "ACC_SYNTHETIC"
         case .AccAnnotation: return "ACC_ANNOTATION"
         case .AccEnum:       return "ACC_ENUM"
+        // in case someone would pass ClassAccessFlags(9999) or something
+        case: panic("invalid args passed to access_flag_to_str")
     }
-    // in case someone would pass ClassAccessFlags(9999) or something
-    panic("invalid args passed to access_flag_to_str")
 }
 
 // A method descriptor.
