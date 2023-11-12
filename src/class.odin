@@ -4,22 +4,38 @@ import "core:fmt"
 import "core:reflect"
 import "core:intrinsics"
 
-// A code representation of a in-memory classfile.
+// A code representation of an in-memory classfile.
 // To obtain an instance, call reader_read_classfile().
 ClassFile :: struct {
     minor_version: u16,
     major_version: u16,
     constant_pool_count: u16,
     // The constant pool reserves the first entry as absent, we don't
-    // So any accesses of the constant pool should offset the index by -1
+    // So any accesses of the constant pool should offset the index by -1 (see cp_get())
     // Indices valid from 0 to constant_pool_count - 2
     constant_pool: []ConstantPoolEntry,
+    // A mask of ClassAccessFlag flags.
     access_flags: u16,
+    // Points to a ConstantClassInfo entry, representing this class.
     this_class: u16,
+    // Zero if there are no superclasses (use java.lang.Object instead)
+    // or an index to a ConstantClassInfo entry, representing the super class.
     super_class: u16,
+    // List if indices, pointing to a ConstantClassInfo entry,
+    // representing interfaces that are a direct superinterface.
     interfaces: []u16,
     fields: []FieldInfo,
     methods: []MethodInfo,
+    // Valid attributes for a ClassFile are:
+    // - InnerClasses
+    // - EnclosingMethod
+    // - Synthetic
+    // - Signature
+    // - SourceFile
+    // - SourceDebugExtension
+    // - Deprecated
+    // - Runtime(In)VisibleAttributes
+    // - BootstrapMethods
     attributes: []AttributeInfo,
 }
 
@@ -27,14 +43,14 @@ ClassFile :: struct {
 classfile_destroy :: proc(using classfile: ClassFile) {
     for &field in fields do attributes_destroy(field.attributes)
     for &method in methods do attributes_destroy(method.attributes)
+    attributes_destroy(attributes) 
 
-    attributes_destroy(attributes)
     delete(constant_pool)
     delete(fields)
     delete(methods)
 }
 
-// Dumps a whole classfile structure to the stdout.
+// Dumps a ClassFile to the stdout.
 classfile_dump :: proc(using classfile: ClassFile) {
     class := cp_get(ConstantClassInfo, classfile, this_class)
     class_name := cp_get_str(classfile, class.name_idx)
@@ -181,6 +197,7 @@ where intrinsics.type_is_variant_of(CPInfo, T) {
     return constant_pool[idx - 1].info.(T)
 }
 
+// Access flags for a ClassFile structure.
 ClassAccessFlag :: enum u16 {
     AccPublic     = 0x0001,
     AccFinal      = 0x0010,
@@ -221,11 +238,11 @@ FieldInfo :: struct {
     // - Synthetic
     // - Signature
     // - Deprecated
-    // - RuntimeVisibleAnnotations
-    // - RuntimeInvisibleAnnotations
+    // - Runtime(In)VisibleAnnotations
     attributes: []AttributeInfo,
 }
 
+// Access flags for a FieldInfo structure.
 FieldAccessFlag :: enum u16 {
     Public    = 0x0001,
     Private   = 0x0002,
@@ -254,14 +271,13 @@ MethodInfo :: struct {
     // - Synthetic
     // - Signature
     // - Deprecated
-    // - RuntimeVisibleAnnotations
-    // - RuntimeInvisibleAnnotations
-    // - RuntimeVisibleParameterAnnotations
-    // - RuntimeInvisibleParameterAnnotations
+    // - Runtime(In)VisibleAnnotations
+    // - Runtime(In)VisibleParameterAnnotations
     // - AnnotationDefault
     attributes: []AttributeInfo,
 }
 
+// Access flags for a MethodInfo structure.
 MethodAccessFlag :: enum u16 {
     Public       = 0x0001,
     Private      = 0x0002,

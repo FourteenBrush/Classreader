@@ -8,6 +8,8 @@ ClassFileReader :: struct {
     pos: int,
 }
 
+// Creates a new ClassFileReader, reading the given bytes.
+// These bytes must be deallocated by the caller.
 reader_new :: proc(bytes: []u8) -> ClassFileReader {
     return ClassFileReader { bytes, 0 }
 }
@@ -15,11 +17,10 @@ reader_new :: proc(bytes: []u8) -> ClassFileReader {
 @private
 MAGIC :: 0xCAFEBABE
 
-reader_read_class_file :: proc(using reader: ^ClassFileReader, allocator := context.allocator) -> (classfile: ClassFile, err: Errno) {
+// Attempts to a read a classfile, returning the error if failed.
+reader_read_class_file :: proc(reader: ^ClassFileReader, allocator := context.allocator) -> (classfile: ClassFile, err: Errno) {
     magic := read_unsigned_int(reader) or_return
-    if magic != MAGIC {
-        return classfile, .InvalidHeader
-    }
+    if magic != MAGIC do return classfile, .InvalidHeader
 
     using classfile
     minor_version = read_unsigned_short(reader) or_return
@@ -74,6 +75,7 @@ read_constant_pool :: proc(reader: ^ClassFileReader, count: u16) -> (constant_po
 
         constant_pool[i] = ConstantPoolEntry { tag, entry }
         if tag == .Double || tag == .Long {
+            // unusable entry
             // ConstantType(0) does not exist, but doesn't matter because it's never printed
             constant_pool[i + 1] = ConstantPoolEntry { ConstantType(0), nil }
             i += 1
@@ -193,17 +195,18 @@ read_attributes :: proc(reader: ^ClassFileReader, classfile: ClassFile, allocato
 
 @private
 read_attribute_info :: proc(reader: ^ClassFileReader, classfile: ClassFile, allocator := context.allocator) -> (attribute: AttributeInfo, err: Errno) {
-    name_idx := read_unsigned_short(reader) or_return
-    length := read_unsigned_int(reader) or_return
-    inner: AttributeInfoInner
+    using attribute
 
+    name_idx = read_unsigned_short(reader) or_return
+    length := read_unsigned_int(reader) or_return
     attrib_name := cp_get_str(classfile, name_idx)
 
     switch attrib_name {
         case "ConstantValue":
             constantvalue_idx := read_unsigned_short(reader) or_return
-            inner = ConstantValue { constantvalue_idx }
+            info = ConstantValue { constantvalue_idx }
         case "Code":
+            // TODO: read bytecode
             max_stack := read_unsigned_short(reader) or_return
             max_locals := read_unsigned_short(reader) or_return
             code_length := read_unsigned_int(reader) or_return
@@ -220,7 +223,7 @@ read_attribute_info :: proc(reader: ^ClassFileReader, classfile: ClassFile, allo
             }
 
             attributes := read_attributes(reader, classfile) or_return
-            inner = Code {
+            info = Code {
                 max_stack, max_locals, 
                 code,
                 exception_table,
@@ -265,12 +268,12 @@ read_attribute_info :: proc(reader: ^ClassFileReader, classfile: ClassFile, allo
                         return attribute, .UnknownFrameType
                 }
             }
-            inner = StackMapTable { entries }
+            info = StackMapTable { entries }
         case "Exceptions":
             number_of_exceptions := read_unsigned_short(reader) or_return
             exception_idx_table_bytes := read_nbytes(reader, int(number_of_exceptions * 2)) or_return
             exception_idx_table := slice.reinterpret([]u16, exception_idx_table_bytes)
-            inner = Exceptions { exception_idx_table }
+            info = Exceptions { exception_idx_table }
         case "InnerClasses":
             number_of_classes := read_unsigned_short(reader) or_return
             classes := make([]InnerClassEntry, number_of_classes, allocator)
@@ -286,21 +289,21 @@ read_attribute_info :: proc(reader: ^ClassFileReader, classfile: ClassFile, allo
                     name_idx, access_flags,
                 }
             }
-            inner = InnerClasses { classes }
+            info = InnerClasses { classes }
         case "EnclosingMethod":
             class_idx := read_unsigned_short(reader) or_return
             method_idx := read_unsigned_short(reader) or_return
-            inner = EnclosingMethod { class_idx, method_idx }
-        case "Synthetic": inner = Synthetic {}
+            info = EnclosingMethod { class_idx, method_idx }
+        case "Synthetic": info = Synthetic {}
         case "Signature": 
             signature_idx := read_unsigned_short(reader) or_return
-            inner = Signature { signature_idx }
+            info = Signature { signature_idx }
         case "SourceFile": 
             sourcefile_idx := read_unsigned_short(reader) or_return
-            inner = SourceFile { sourcefile_idx }
+            info = SourceFile { sourcefile_idx }
         case "SourceDebugExtension":
             debug_extension := read_nbytes(reader, int(length)) or_return
-            inner = SourceDebugExtension { string(debug_extension) }
+            info = SourceDebugExtension { string(debug_extension) }
         case "LineNumberTable":
             // TODO: slice.reinterpret?
             table_length := read_unsigned_short(reader) or_return
@@ -311,30 +314,30 @@ read_attribute_info :: proc(reader: ^ClassFileReader, classfile: ClassFile, allo
                 line_number := read_unsigned_short(reader) or_return
                 table[i] = LineNumberTableEntry { start_pc, line_number }
             }
-            inner = LineNumberTable { table }
+            info = LineNumberTable { table }
         case "LocalVariableTable":
             table := read_local_variable_table(reader) or_return
-            inner = LocalVariableTable  { table }
+            info = LocalVariableTable  { table }
         case "LocalVariableTypeTable":
             table := read_local_variable_type_table(reader) or_return
             // SAFETY: this should keep working as long as both entry types have the same size
-            inner = LocalVariableTypeTable { transmute([]LocalVariableTypeTableEntry)table }
-        case "Deprecated": inner = Deprecated {}
+            info = LocalVariableTypeTable { transmute([]LocalVariableTypeTableEntry)table }
+        case "Deprecated": info = Deprecated {}
         case "RuntimeVisibleAnnotations":
             annotations := read_annotations(reader) or_return
-            inner = RuntimeVisibleAnnotations { annotations }
+            info = RuntimeVisibleAnnotations { annotations }
         case "RuntimeInvisibleAnnotations":
             annotations := read_annotations(reader) or_return
-            inner = RuntimeInvisibleAnnotations { annotations }
+            info = RuntimeInvisibleAnnotations { annotations }
         case "RuntimeVisibleParameterAnnotations":
             parameter_annotations := read_parameter_annotations(reader) or_return
-            inner = RuntimeVisibleParameterAnnotations { u8(len(parameter_annotations)), parameter_annotations }
+            info = RuntimeVisibleParameterAnnotations { u8(len(parameter_annotations)), parameter_annotations }
         case "RuntimeInvisibleParameterAnnotations":
             parameter_annotations := read_parameter_annotations(reader) or_return
-            inner = RuntimeInvisibleParameterAnnotations { u8(len(parameter_annotations)), parameter_annotations }
+            info = RuntimeInvisibleParameterAnnotations { u8(len(parameter_annotations)), parameter_annotations }
         case "AnnotationDefault":
             default_value := read_element_value(reader) or_return
-            inner := AnnotationDefault { default_value }
+            info := AnnotationDefault { default_value }
         case "BootstrapMethods":
             num_bootstrap_methods := read_unsigned_short(reader) or_return
             bootstrap_methods := make([]BootstrapMethod, num_bootstrap_methods, allocator)
@@ -350,20 +353,23 @@ read_attribute_info :: proc(reader: ^ClassFileReader, classfile: ClassFile, allo
                     bootstrap_arguments,
                 }
             }
-            inner = BootstrapMethods { bootstrap_methods }
+            info = BootstrapMethods { bootstrap_methods }
         case "NestHost":
             host_class_idx := read_unsigned_short(reader) or_return
-            inner = NestHost { host_class_idx }
+            info = NestHost { host_class_idx }
         case "NestMembers":
             number_of_classes := read_unsigned_short(reader) or_return
             classes_bytes := read_nbytes(reader, int(number_of_classes * 2)) or_return
             classes := slice.reinterpret([]u16, classes_bytes)
-            inner = NestMembers { classes }
+            info = NestMembers { classes }
         case:
             return attribute, .UnknownAttributeName
     }
-    return AttributeInfo { name_idx, inner }, .None
+    return attribute, .None
 }
+
+// required for transmuting
+#assert(size_of(LocalVariableTableEntry) == size_of(LocalVariableTypeTableEntry))
 
 read_local_variable_type_table :: read_local_variable_table
 

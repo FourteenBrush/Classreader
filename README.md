@@ -6,7 +6,7 @@ A Java class-file reader
 ## Usage
 
 ```
-classreader.exe /path/to/some/class/file
+classreader file.class
 ```
 
 ## Sample output:
@@ -103,9 +103,9 @@ InnerClasses
 ## Building yourself
 
 - Make sure you have the Odin compiler installed (instructions on how to do so can be found
-[here](https://odin-lang.org/docs/install/))
+[here](https://odin-lang.org/docs/install/)).
 
 - Run the following command:
 ```
-odin build src --out=classreader.exe
+odin build src -o:speed --out=classreader
 ```

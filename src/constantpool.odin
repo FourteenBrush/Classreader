@@ -110,7 +110,7 @@ ReferenceKind :: enum u8 {
     InvokeInterface = 9,
 }
 
-// Represents a method type
+// Represents a method type.
 ConstantMethodTypeInfo :: struct {
     // Points to a ConstantUtf8Info entry representing a method descriptor.
     descriptor_idx: u16,
