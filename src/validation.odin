@@ -13,6 +13,15 @@ get_binary_class_name_chars :: proc() -> strings.Ascii_Set {
     return set
 }
 
+/*
+Validates a field descriptor string.
+
+Inputs:
+- desc: the string
+- start_idx: the index of the first char
+- partial: whether or not the desc is part of a bigger string
+  (e.g. for parsing method descriptors), and thus is not a valid field descriptor on its own.
+*/
 validate_field_descriptor :: proc(desc: string, start_idx := 0, partial := false) -> bool {
     switch desc[start_idx] {
         case 'B', 'C', 'D', 'F', 'I', 'J', 'S', 'Z': return partial || len(desc) == 1
@@ -40,5 +49,9 @@ validate_field_descriptor :: proc(desc: string, start_idx := 0, partial := false
 
 validate_method_descriptor :: proc(desc: string) -> bool {
     if desc[0] != '(' do return false
+
+    for {
+        
+    }
     panic("todo") 
 }
