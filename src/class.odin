@@ -59,7 +59,7 @@ classfile_dump :: proc(using classfile: ClassFile) {
     fmt.println("minor version:", minor_version)
     fmt.println("major version:", major_version)
     fmt.printf("access flags: 0x%x ", access_flags)
-    dump_class_access_flags(access_flags)
+    class_access_flags_dump(access_flags)
 
     max_idx_width := count_digits(constant_pool_count)
     i := u16(1)
@@ -90,7 +90,7 @@ classfile_dump :: proc(using classfile: ClassFile) {
 }
 
 @private
-dump_class_access_flags :: proc(flags: u16) {
+class_access_flags_dump :: proc(flags: u16) {
     first := true
 
     for flag in ClassAccessFlag {
