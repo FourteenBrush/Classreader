@@ -72,7 +72,10 @@ Errno :: enum {
 }
 
 @private
-read_constant_pool :: proc(reader: ^ClassFileReader, count: u16) -> (constant_pool: []ConstantPoolEntry, err: Errno) {
+read_constant_pool :: proc(reader: ^ClassFileReader, count: u16) -> (
+    constant_pool: []ConstantPoolEntry, 
+    err: Errno
+) {
     constant_pool = make([]ConstantPoolEntry, count - 1) // omit first entry
 
     for i := 0; i < int(count) - 1; i += 1 {
@@ -165,7 +168,7 @@ read_methods :: proc(
         name_idx := read_unsigned_short(reader) or_return
         descriptor_idx := read_unsigned_short(reader) or_return
         attributes := read_attributes(reader, classfile) or_return
-
+        
         methods[i] = MethodInfo {
             access_flags,
             name_idx,
@@ -253,7 +256,7 @@ read_attribute_info :: proc(
                 end_pc := read_unsigned_short(reader) or_return
                 handler_pc := read_unsigned_short(reader) or_return
                 catch_type := read_unsigned_short(reader) or_return
-                exception_table[i] = { start_pc, end_pc, handler_pc, catch_type }
+                exception_table[i] = ExceptionHandler { start_pc, end_pc, handler_pc, catch_type }
             }
 
             attributes := read_attributes(reader, classfile) or_return

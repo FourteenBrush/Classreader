@@ -6,7 +6,7 @@
             "request": "launch",
             "preLaunchTask": "build",
             "name": "Debug Odin Executable",
-            "program": "${workspaceFolder}/out.exe",
+            "program": "${workspaceFolder}/classreaader",
             "args": [
                 "res/Test.class"
             ],

@@ -14,7 +14,7 @@
         {
             "label": "build",
             "type": "shell",
-            "command": "odin build src -out:out.exe -debug -define:ODIN_DEBUG=1",
+            "command": "odin build src -out:classreader -debug",
             "group": "build"
         }
     ]
