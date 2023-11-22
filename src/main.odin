@@ -5,6 +5,8 @@ import "core:fmt"
 import "core:mem"
 import win32 "core:sys/windows"
 
+import reader "common"
+
 main :: proc() {
     when ODIN_DEBUG {
         alloc: mem.Tracking_Allocator
@@ -42,16 +44,16 @@ main :: proc() {
         os.exit(2)
     }
 
-    reader := reader_new(data) 
-    classfile, err := reader_read_class_file(&reader)
-    defer classfile_destroy(classfile)
+    creader := reader.reader_new(data) 
+    classfile, err := reader.reader_read_classfile(&creader)
+    defer reader.classfile_destroy(classfile)
 
     if err != .None {
         fmt.println("Error parsing class file:", err)
         os.exit(3)
     }
 
-    classfile_dump(classfile)
+    reader.classfile_dump(classfile)
 }
 
 get_last_error :: proc() -> int {

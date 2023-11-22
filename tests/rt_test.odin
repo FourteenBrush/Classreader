@@ -8,7 +8,7 @@ import "core:testing"
 import "core:compress/zlib"
 import "core:path/filepath"
 
-import cr "../src"
+import cr "../src/common"
 
 // TODO: when we are able to extract zip files via the stdlib
 //@test
@@ -49,11 +49,9 @@ visit_file :: proc(file: os.File_Info, in_err: os.Errno, user_data: rawptr) -> (
     if !ok do return
 
     reader := cr.reader_new(data)
-    classfile, cerr := cr.reader_read_class_file(&reader)
+    classfile, cerr := cr.reader_read_classfile(&reader)
     defer cr.classfile_destroy(classfile)
-    class := cr.cp_get(cr.ConstantClassInfo, classfile, classfile.this_class)
-    classname := cr.cp_get_str(classfile, class.name_idx)
-
+    classname := cr.classfile_get_class_name(classfile) 
     if cerr != .None {
         fmt.eprintf("error reading file %v: %v\n", classname, cerr)
     } else {

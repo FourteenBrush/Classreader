@@ -1,4 +1,4 @@
-package classreader
+package common
 
 import "core:strings"
 

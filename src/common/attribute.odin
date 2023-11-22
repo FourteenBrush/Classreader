@@ -1,4 +1,4 @@
-package classreader
+package common
 
 AttributeInfo :: struct {
     name_idx: u16,
