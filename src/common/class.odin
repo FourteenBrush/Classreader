@@ -1,4 +1,4 @@
-package classreader
+package common
 
 import "core:fmt"
 import "core:reflect"
@@ -21,7 +21,7 @@ ClassFile :: struct {
     // Zero if there are no superclasses (use java.lang.Object instead)
     // or an index to a ConstantClassInfo entry, representing the super class.
     super_class: u16,
-    // List if indices, pointing to a ConstantClassInfo entry,
+    // List of indices, pointing to a ConstantClassInfo entry,
     // representing interfaces that are a direct superinterface.
     interfaces: []u16,
     fields: []FieldInfo,
@@ -50,10 +50,15 @@ classfile_destroy :: proc(using classfile: ClassFile) {
     delete(methods)
 }
 
+// Returns the name of the given class, as how it is found in the constantpool.
+classfile_get_class_name :: proc(using classfile: ClassFile) -> string {
+    class := cp_get(ConstantClassInfo, classfile, this_class)
+    return cp_get_str(classfile, class.name_idx)
+}
+
 // Dumps a ClassFile to the stdout.
 classfile_dump :: proc(using classfile: ClassFile) {
-    class := cp_get(ConstantClassInfo, classfile, this_class)
-    class_name := cp_get_str(classfile, class.name_idx)
+    class_name := classfile_get_class_name(classfile)
     fmt.println("class name:", class_name)
 
     fmt.println("minor version:", minor_version)
