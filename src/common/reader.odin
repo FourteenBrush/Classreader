@@ -98,7 +98,7 @@ read_constant_pool_entry :: proc(reader: ^ClassFileReader, tag: ConstantType) ->
     switch tag {
         case .Utf8:
             length := read_unsigned_short(reader) or_return
-            bytes := read_nbytes(reader, int(length)) or_return
+            bytes := read_nbytes(reader, length) or_return
             entry = ConstantUtf8Info { bytes }
         case .Integer:
             bytes := read_unsigned_int(reader) or_return
@@ -146,7 +146,7 @@ read_constant_pool_entry :: proc(reader: ^ClassFileReader, tag: ConstantType) ->
 @private
 read_interfaces :: proc(reader: ^ClassFileReader) -> (interfaces: []u16, err: Errno) {
     count := read_unsigned_short(reader) or_return
-    bytes := read_nbytes(reader, int(count * 2)) or_return
+    bytes := read_nbytes(reader, count * 2) or_return
     interfaces = slice.reinterpret([]u16, bytes)
     return interfaces, .None
 }
@@ -247,7 +247,7 @@ read_attribute_info :: proc(
             max_stack := read_unsigned_short(reader) or_return
             max_locals := read_unsigned_short(reader) or_return
             code_length := read_unsigned_int(reader) or_return
-            code := read_nbytes(reader, int(code_length)) or_return
+            code := read_nbytes(reader, code_length) or_return
             exception_table_length := read_unsigned_short(reader) or_return
             exception_table := make([]ExceptionHandler, exception_table_length, allocator)
 
@@ -309,7 +309,7 @@ read_attribute_info :: proc(
             info = StackMapTable { entries }
         case "Exceptions":
             number_of_exceptions := read_unsigned_short(reader) or_return
-            exception_idx_table_bytes := read_nbytes(reader, int(number_of_exceptions * 2)) or_return
+            exception_idx_table_bytes := read_nbytes(reader, number_of_exceptions * 2) or_return
             exception_idx_table := slice.reinterpret([]u16, exception_idx_table_bytes)
             info = Exceptions { exception_idx_table }
         case "InnerClasses":
@@ -383,7 +383,7 @@ read_attribute_info :: proc(
             for i in 0..<num_bootstrap_methods {
                 bootstrap_method_ref := read_unsigned_short(reader) or_return
                 num_bootstrap_arguments := read_unsigned_short(reader) or_return
-                bootstrap_arguments_bytes := read_nbytes(reader, int(num_bootstrap_arguments * 2)) or_return
+                bootstrap_arguments_bytes := read_nbytes(reader, num_bootstrap_arguments * 2) or_return
                 bootstrap_arguments := slice.reinterpret([]u16, bootstrap_arguments_bytes)
 
                 bootstrap_methods[i] = BootstrapMethod {
@@ -397,7 +397,7 @@ read_attribute_info :: proc(
             info = NestHost { host_class_idx }
         case "NestMembers":
             number_of_classes := read_unsigned_short(reader) or_return
-            classes_bytes := read_nbytes(reader, int(number_of_classes * 2)) or_return
+            classes_bytes := read_nbytes(reader, number_of_classes * 2) or_return
             classes := slice.reinterpret([]u16, classes_bytes)
             info = NestMembers { classes }
         case:
@@ -595,7 +595,7 @@ read_unsigned_int :: proc(using reader: ^ClassFileReader) -> (u32, Errno) #no_bo
 }
 
 @private
-read_nbytes :: proc(using reader: ^ClassFileReader, n: int) -> ([]u8, Errno) #no_bounds_check { 
+read_nbytes :: proc(using reader: ^ClassFileReader, #any_int n: int) -> ([]u8, Errno) #no_bounds_check { 
     if pos + n > len(bytes) {
         return nil, .UnexpectedEof
     }

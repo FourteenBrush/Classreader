@@ -9,7 +9,7 @@ BINARY_CLASS_NAME_CHARS := get_binary_class_name_chars()
 get_binary_class_name_chars :: proc() -> strings.Ascii_Set {
     VALID_CHARS :: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ/"
     set, ok := strings.ascii_set_make(VALID_CHARS)
-    assert(ok)
+    assert(ok, "sanity check")
     return set
 }
 
