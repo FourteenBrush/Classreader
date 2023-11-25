@@ -1,4 +1,4 @@
-package common
+package reader
 
 // A constantpool entry, consists of a one byte tag and the actual value.
 ConstantPoolEntry :: struct {

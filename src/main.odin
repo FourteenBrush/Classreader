@@ -5,7 +5,7 @@ import "core:fmt"
 import "core:mem"
 import win32 "core:sys/windows"
 
-import reader "common"
+import "reader"
 
 main :: proc() {
     when ODIN_DEBUG {
@@ -40,7 +40,7 @@ main :: proc() {
     defer delete(data)
 
     if !ok {
-        fmt.println("Error reading file, os error", get_last_error())
+        fmt.eprintln("Error reading file, os error", get_last_error())
         os.exit(2)
     }
 
@@ -49,7 +49,7 @@ main :: proc() {
     defer reader.classfile_destroy(classfile)
 
     if err != .None {
-        fmt.println("Error parsing class file:", err)
+        fmt.eprintln("Error parsing class file:", err)
         os.exit(3)
     }
 

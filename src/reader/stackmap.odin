@@ -1,4 +1,4 @@
-package common
+package reader
 
 // Each stack map frame specifies (either explicitly or implicitly) a bytecode offset,
 // the verification types for the local variables, and the verification types for the operand stack.

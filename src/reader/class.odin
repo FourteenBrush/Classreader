@@ -1,4 +1,4 @@
-package common
+package reader
 
 import "core:fmt"
 import "core:reflect"

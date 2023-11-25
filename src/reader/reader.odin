@@ -1,4 +1,4 @@
-package common
+package reader
 
 import "core:slice"
 import "core:encoding/endian"
@@ -23,7 +23,7 @@ reader_read_classfile :: proc(
     allocator := context.allocator
 ) -> (
     classfile: ClassFile,
-    err: Errno
+    err: Error
 ) {
     magic := read_unsigned_int(reader) or_return
     if magic != MAGIC do return classfile, .InvalidHeader
@@ -45,7 +45,7 @@ reader_read_classfile :: proc(
     return
 }
 
-Errno :: enum {
+Error :: enum {
     None,
     // Some generic IO error
     IO,
@@ -74,7 +74,7 @@ Errno :: enum {
 @private
 read_constant_pool :: proc(reader: ^ClassFileReader, count: u16) -> (
     constant_pool: []ConstantPoolEntry, 
-    err: Errno
+    err: Error
 ) {
     constant_pool = make([]ConstantPoolEntry, count - 1) // omit first entry
 
@@ -94,7 +94,7 @@ read_constant_pool :: proc(reader: ^ClassFileReader, count: u16) -> (
 }
 
 @private
-read_constant_pool_entry :: proc(reader: ^ClassFileReader, tag: ConstantType) -> (entry: CPInfo, err: Errno) {
+read_constant_pool_entry :: proc(reader: ^ClassFileReader, tag: ConstantType) -> (entry: CPInfo, err: Error) {
     switch tag {
         case .Utf8:
             length := read_unsigned_short(reader) or_return
@@ -144,7 +144,7 @@ read_constant_pool_entry :: proc(reader: ^ClassFileReader, tag: ConstantType) ->
 }
 
 @private
-read_interfaces :: proc(reader: ^ClassFileReader) -> (interfaces: []u16, err: Errno) {
+read_interfaces :: proc(reader: ^ClassFileReader) -> (interfaces: []u16, err: Error) {
     count := read_unsigned_short(reader) or_return
     bytes := read_nbytes(reader, count * 2) or_return
     interfaces = slice.reinterpret([]u16, bytes)
@@ -158,7 +158,7 @@ read_methods :: proc(
     allocator := context.allocator
 ) -> (
     methods: []MethodInfo,
-    err: Errno
+    err: Error
 ) {
     count := read_unsigned_short(reader) or_return
     methods = make([]MethodInfo, count, allocator)
@@ -186,7 +186,7 @@ read_fields :: proc(
     allocator := context.allocator
 ) -> (
     fields: []FieldInfo,
-    err: Errno
+    err: Error
 ) {
     count := read_unsigned_short(reader) or_return
     fields = make([]FieldInfo, count, allocator)
@@ -212,7 +212,7 @@ read_attributes :: proc(
     allocator := context.allocator
 ) -> (
     attributes: []AttributeInfo, 
-    err: Errno
+    err: Error
 ) {
     count := read_unsigned_short(reader) or_return
     attributes = make([]AttributeInfo, count, allocator)
@@ -230,7 +230,7 @@ read_attribute_info :: proc(
     allocator := context.allocator
 ) -> (
     attribute: AttributeInfo, 
-    err: Errno
+    err: Error
 ) {
     using attribute
 
@@ -417,7 +417,7 @@ read_local_variable_table :: proc(
     allocator := context.allocator
 ) -> (
     table: []LocalVariableTableEntry, 
-    err: Errno
+    err: Error
 ) {
     table_length := read_unsigned_short(reader) or_return
     table = make([]LocalVariableTableEntry, table_length, allocator)
@@ -444,7 +444,7 @@ read_parameter_annotations :: proc(
     allocator := context.allocator
 ) -> (
     param_annotations: []ParameterAnnotation, 
-    err: Errno
+    err: Error
 ) {
     num_parameters := read_unsigned_byte(reader) or_return
     param_annotations = make([]ParameterAnnotation, num_parameters, allocator)
@@ -462,7 +462,7 @@ read_annotations :: proc(
     allocator := context.allocator
 ) -> (
     annotations: []Annotation, 
-    err: Errno
+    err: Error
 ) {
     num_annotations := read_unsigned_short(reader) or_return
     annotations = make([]Annotation, num_annotations, allocator)
@@ -479,7 +479,7 @@ read_annotation :: proc(
     allocator := context.allocator
 ) -> (
     annotation: Annotation, 
-    err: Errno
+    err: Error
 ) {
     type_idx := read_unsigned_short(reader) or_return
     num_element_value_pairs := read_unsigned_short(reader) or_return
@@ -500,7 +500,7 @@ read_element_value :: proc(
     allocator := context.allocator
 ) -> (
     element_value: ElementValue, 
-    err: Errno
+    err: Error
 ) {
     element_value_tag := read_unsigned_byte(reader) or_return
     using element_value 
@@ -537,7 +537,7 @@ read_verification_type_infos :: proc(
     allocator := context.allocator
 ) -> (
     locals: []VerificationTypeInfo, 
-    err: Errno
+    err: Error
 ) {
     locals = make([]VerificationTypeInfo, count, allocator)
     for i in 0..<count {
@@ -547,7 +547,7 @@ read_verification_type_infos :: proc(
 }
 
 @private
-read_verification_type_info :: proc(reader: ^ClassFileReader) -> (info: VerificationTypeInfo, err: Errno) {
+read_verification_type_info :: proc(reader: ^ClassFileReader) -> (info: VerificationTypeInfo, err: Error) {
     tag := read_unsigned_byte(reader) or_return
     switch tag {
         case 0: info = TopVariableInfo {}
@@ -570,7 +570,7 @@ read_verification_type_info :: proc(reader: ^ClassFileReader) -> (info: Verifica
 }
 
 @private
-read_unsigned_byte :: proc(using reader: ^ClassFileReader) -> (u8, Errno) #no_bounds_check {
+read_unsigned_byte :: proc(using reader: ^ClassFileReader) -> (u8, Error) #no_bounds_check {
     if pos >= len(bytes) {
         return 0, .UnexpectedEof
     }
@@ -579,7 +579,7 @@ read_unsigned_byte :: proc(using reader: ^ClassFileReader) -> (u8, Errno) #no_bo
 }
 
 @private
-read_unsigned_short :: proc(using reader: ^ClassFileReader) -> (u16, Errno) #no_bounds_check {
+read_unsigned_short :: proc(using reader: ^ClassFileReader) -> (u16, Error) #no_bounds_check {
     ret, ok := endian.get_u16(bytes[pos:], .Big)
     if !ok do return ret, .UnexpectedEof
     pos += 2
@@ -587,7 +587,7 @@ read_unsigned_short :: proc(using reader: ^ClassFileReader) -> (u16, Errno) #no_
 }
 
 @private
-read_unsigned_int :: proc(using reader: ^ClassFileReader) -> (u32, Errno) #no_bounds_check {
+read_unsigned_int :: proc(using reader: ^ClassFileReader) -> (u32, Error) #no_bounds_check {
     ret, ok := endian.get_u32(bytes[pos:], .Big)
     if !ok do return ret, .UnexpectedEof
     pos += 4
@@ -595,11 +595,11 @@ read_unsigned_int :: proc(using reader: ^ClassFileReader) -> (u32, Errno) #no_bo
 }
 
 @private
-read_nbytes :: proc(using reader: ^ClassFileReader, #any_int n: int) -> ([]u8, Errno) #no_bounds_check { 
+read_nbytes :: proc(using reader: ^ClassFileReader, #any_int n: int) -> ([]u8, Error) #no_bounds_check { 
     if pos + n > len(bytes) {
         return nil, .UnexpectedEof
     }
-    res := bytes[pos:][:n]
+    ret := bytes[pos:][:n]
     pos += n
-    return res, .None
+    return ret, .None
 }
