@@ -386,7 +386,7 @@ BootstrapMethod :: struct {
     bootstrap_method_ref: u16,
     // Each entry must point to a ConstantStringInfo, Class, Integer, Long, 
     // Float, Double, MethodHandle or ConstantMethodTypeInfo.
-    bootstrap_arguments: []u16,
+    bootstrap_args: []u16,
 }
 
 // Records the nest host of the nest to which

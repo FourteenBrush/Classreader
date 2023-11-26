@@ -3,5 +3,6 @@
 /*.pdb
 /*.o
 /classreader*
+/*.bin
 # LLVM IR
 /*.ll
