@@ -20,10 +20,10 @@ MAGIC :: 0xCAFEBABE
 // Attempts to a read a classfile, returning the error if failed.
 reader_read_classfile :: proc(
     reader: ^ClassFileReader, 
-    allocator := context.allocator
+    allocator := context.allocator,
 ) -> (
     classfile: ClassFile,
-    err: Error
+    err: Error,
 ) {
     magic := read_u32(reader) or_return
     if magic != MAGIC do return classfile, .InvalidHeader
@@ -77,7 +77,7 @@ Error :: enum {
 @private
 read_constant_pool :: proc(reader: ^ClassFileReader, count: u16) -> (
     constant_pool: []ConstantPoolEntry, 
-    err: Error
+    err: Error,
 ) {
     constant_pool = make([]ConstantPoolEntry, count - 1) // omit first entry
 
@@ -157,10 +157,10 @@ read_interfaces :: proc(reader: ^ClassFileReader) -> (interfaces: []u16, err: Er
 read_methods :: proc(
     reader: ^ClassFileReader, 
     classfile: ClassFile,
-    allocator := context.allocator
+    allocator := context.allocator,
 ) -> (
     methods: []MethodInfo,
-    err: Error
+    err: Error,
 ) {
     count := read_u16(reader) or_return
     methods = make([]MethodInfo, count, allocator)
@@ -185,10 +185,10 @@ read_methods :: proc(
 read_fields :: proc(
     reader: ^ClassFileReader,
     classfile: ClassFile,
-    allocator := context.allocator
+    allocator := context.allocator,
 ) -> (
     fields: []FieldInfo,
-    err: Error
+    err: Error,
 ) {
     count := read_u16(reader) or_return
     fields = make([]FieldInfo, count, allocator)
@@ -211,10 +211,10 @@ read_fields :: proc(
 read_attributes :: proc(
     reader: ^ClassFileReader, 
     classfile: ClassFile, 
-    allocator := context.allocator
+    allocator := context.allocator,
 ) -> (
     attributes: []AttributeInfo, 
-    err: Error
+    err: Error,
 ) {
     count := read_u16(reader) or_return
     attributes = make([]AttributeInfo, count, allocator)
@@ -229,10 +229,10 @@ read_attributes :: proc(
 read_attribute_info :: proc(
     reader: ^ClassFileReader, 
     classfile: ClassFile, 
-    allocator := context.allocator
+    allocator := context.allocator,
 ) -> (
     attribute: AttributeInfo, 
-    err: Error
+    err: Error,
 ) {
     using attribute
 
@@ -413,10 +413,10 @@ read_local_variable_type_table :: read_local_variable_table
 @private
 read_local_variable_table :: proc(
     reader: ^ClassFileReader, 
-    allocator := context.allocator
+    allocator := context.allocator,
 ) -> (
     table: []LocalVariableTableEntry, 
-    err: Error
+    err: Error,
 ) {
     table_length := read_u16(reader) or_return
     table = make([]LocalVariableTableEntry, table_length, allocator)
@@ -440,10 +440,10 @@ read_local_variable_table :: proc(
 @private
 read_parameter_annotations :: proc(
     reader: ^ClassFileReader, 
-    allocator := context.allocator
+    allocator := context.allocator,
 ) -> (
     param_annotations: []ParameterAnnotation, 
-    err: Error
+    err: Error,
 ) {
     num_parameters := read_u8(reader) or_return
     param_annotations = make([]ParameterAnnotation, num_parameters, allocator)
@@ -458,10 +458,10 @@ read_parameter_annotations :: proc(
 @private
 read_annotations :: proc(
     reader: ^ClassFileReader, 
-    allocator := context.allocator
+    allocator := context.allocator,
 ) -> (
     annotations: []Annotation, 
-    err: Error
+    err: Error,
 ) {
     num_annotations := read_u16(reader) or_return
     annotations = make([]Annotation, num_annotations, allocator)
@@ -475,10 +475,10 @@ read_annotations :: proc(
 @private
 read_annotation :: proc(
     reader: ^ClassFileReader, 
-    allocator := context.allocator
+    allocator := context.allocator,
 ) -> (
     annotation: Annotation, 
-    err: Error
+    err: Error,
 ) {
     type_idx := read_u16(reader) or_return
     num_element_value_pairs := read_u16(reader) or_return
@@ -496,10 +496,10 @@ read_annotation :: proc(
 @private
 read_element_value :: proc(
     reader: ^ClassFileReader, 
-    allocator := context.allocator
+    allocator := context.allocator,
 ) -> (
     element_value: ElementValue, 
-    err: Error
+    err: Error,
 ) {
     element_value_tag := read_u8(reader) or_return
     using element_value 
@@ -533,10 +533,10 @@ read_element_value :: proc(
 read_verification_type_infos :: proc(
     reader: ^ClassFileReader, 
     count: u16, 
-    allocator := context.allocator
+    allocator := context.allocator,
 ) -> (
     locals: []VerificationTypeInfo, 
-    err: Error
+    err: Error,
 ) {
     locals = make([]VerificationTypeInfo, count, allocator)
     for i in 0..<count {

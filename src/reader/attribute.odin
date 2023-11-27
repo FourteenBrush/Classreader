@@ -62,15 +62,9 @@ attribute_destroy :: proc(using attrib: AttributeInfo) {
         case RuntimeInvisibleAnnotations:
             annotations_destroy(attrib.annotations)
         case RuntimeVisibleParameterAnnotations:
-            for param in attrib.parameter_annotations {
-                annotations_destroy(param.annotations)
-            }
-            delete(attrib.parameter_annotations)
+            parameter_annotations_destroy(attrib.parameter_annotations)
         case RuntimeInvisibleParameterAnnotations:
-            for param in attrib.parameter_annotations {
-                annotations_destroy(param.annotations)
-            }
-            delete(attrib.parameter_annotations)
+            parameter_annotations_destroy(attrib.parameter_annotations)
         case AnnotationDefault:
             element_value_destroy(attrib.default_value.value)
         case BootstrapMethods:
@@ -101,6 +95,13 @@ annotation_destroy :: proc(annotation: Annotation) {
     for pair in annotation.element_value_pairs {
         element_value_destroy(pair.value.value)
     }
+}
+
+parameter_annotations_destroy :: proc(annotations: []ParameterAnnotation) {
+    for annotation in annotations {
+        annotations_destroy(annotation.annotations)
+    }
+    delete(annotations)
 }
 
 // Represents the value of a constant field
@@ -300,6 +301,7 @@ RuntimeInvisibleAnnotations :: struct {
 RuntimeVisibleParameterAnnotations :: struct {
     // The number of parameters of the method represented by 
     // the method_info structure on which the annotation occurs.
+    // TODO: is this always len(parameter_annotations)?
     num_parameters: u8,
     // Each value of the parameter_annotations table represents all of 
     // the run-time-visible annotations on a single parameter.

@@ -56,6 +56,15 @@ classfile_get_class_name :: proc(using classfile: ClassFile) -> string {
     return cp_get_str(classfile, class.name_idx)
 }
 
+// TODO: also apply on other attribute containers
+classfile_find_attribute :: proc(using classfile: ClassFile, $T: typeid) -> Maybe(T)
+where intrinsics.type_is_variant_of(CPInfo, T) {
+    idx, found := slice.linear_search_proc(attributes, proc(attrib: AttributeInfo) -> bool {
+        return type_of(attribute) == T
+    }) 
+    return attributes[idx] if found else nil
+}
+
 // Dumps a ClassFile to the stdout.
 classfile_dump :: proc(using classfile: ClassFile) {
     class_name := classfile_get_class_name(classfile)

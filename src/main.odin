@@ -2,7 +2,7 @@ package classreader
 
 import "core:os"
 import "core:fmt"
-import "core:mem"
+@require // suppress unused package error on non windows targets
 import win32 "core:sys/windows"
 
 import "reader"
@@ -33,7 +33,7 @@ main :: proc() {
     args := os.args
     if len(args) < 2 {
         fmt.printf("Usage: %s <input file>\n", args[0])
-        os.exit(1);
+        os.exit(1)
     }
 
     data, ok := os.read_entire_file(args[1])
