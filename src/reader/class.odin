@@ -58,7 +58,7 @@ classfile_get_class_name :: proc(using classfile: ClassFile) -> string {
 
 // TODO: also apply on other attribute containers
 classfile_find_attribute :: proc(using classfile: ClassFile, $T: typeid) -> Maybe(T)
-where intrinsics.type_is_variant_of(CPInfo, T) {
+where intrinsics.type_is_variant_of(AttributeInfo, T) {
     idx, found := slice.linear_search_proc(attributes, proc(attrib: AttributeInfo) -> bool {
         return type_of(attribute) == T
     }) 
