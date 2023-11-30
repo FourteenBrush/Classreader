@@ -1,6 +1,7 @@
 package reader
 
 import "core:fmt"
+import "core:slice"
 import "core:reflect"
 import "core:intrinsics"
 
