@@ -65,6 +65,10 @@ where intrinsics.type_is_variant_of(AttributeInfo, T) {
     return attributes[idx] if found else nil
 }
 
+find_attribute :: proc(container: $C, $T: typeid) -> Maybe(T) {
+    return container.attributes[0]
+}
+
 // Dumps a ClassFile to the stdout.
 classfile_dump :: proc(using classfile: ClassFile) {
     class_name := classfile_get_class_name(classfile)
@@ -98,7 +102,7 @@ classfile_dump :: proc(using classfile: ClassFile) {
     fmt.println("Attributes:")
 
     for attrib in attributes {
-        name := cp_get_str(classfile, attrib.name_idx)
+        name := attribute_to_str(attrib)
         fmt.println(" ", name)
     }
 }

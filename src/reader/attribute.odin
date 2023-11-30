@@ -1,11 +1,8 @@
 package reader
 
-AttributeInfo :: struct {
-    name_idx: u16,
-    info: AttributeInfoInner,
-}
+import "core:reflect"
 
-AttributeInfoInner :: union {
+AttributeInfo :: union {
     ConstantValue,
     Code,
     StackMapTable,
@@ -30,6 +27,13 @@ AttributeInfoInner :: union {
     NestMembers,
 }
 
+attribute_to_str :: proc(attrib: AttributeInfo) -> string {
+    type := reflect.union_variant_typeid(attrib)
+    typeinfo := type_info_of(type)
+    named, _ := typeinfo.variant.(reflect.Type_Info_Named)
+    return named.name
+}
+
 attributes_destroy :: proc(attributes: []AttributeInfo) {
     for attrib in attributes {
         attribute_destroy(attrib)
@@ -38,8 +42,8 @@ attributes_destroy :: proc(attributes: []AttributeInfo) {
 }
 
 // AttributeInfo destructor
-attribute_destroy :: proc(using attrib: AttributeInfo) {
-    #partial switch &attrib in info {
+attribute_destroy :: proc(attrib: AttributeInfo) {
+    #partial switch &attrib in attrib {
         case Code:
             delete(attrib.exception_table)
             attributes_destroy(attrib.attributes)

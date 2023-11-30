@@ -234,16 +234,14 @@ read_attribute_info :: proc(
     attribute: AttributeInfo, 
     err: Error,
 ) {
-    using attribute
-
-    name_idx = read_u16(reader) or_return
+    name_idx := read_u16(reader) or_return
     length := read_u32(reader) or_return
     attrib_name := cp_get_str(classfile, name_idx)
 
     switch attrib_name {
         case "ConstantValue":
             constantvalue_idx := read_u16(reader) or_return
-            info = ConstantValue { constantvalue_idx }
+            attribute = ConstantValue { constantvalue_idx }
         case "Code":
             // TODO: read bytecode
             max_stack := read_u16(reader) or_return
@@ -262,7 +260,7 @@ read_attribute_info :: proc(
             }
 
             attributes := read_attributes(reader, classfile) or_return
-            info = Code {
+            attribute = Code {
                 max_stack, max_locals, 
                 code,
                 exception_table,
@@ -308,11 +306,11 @@ read_attribute_info :: proc(
                         return attribute, .UnknownFrameType
                 }
             }
-            info = StackMapTable { entries }
+            attribute = StackMapTable { entries }
         case "Exceptions":
             number_of_exceptions := read_u16(reader) or_return
             exception_idx_table := read_u16_array(reader, number_of_exceptions) or_return
-            info = Exceptions { exception_idx_table }
+            attribute = Exceptions { exception_idx_table }
         case "InnerClasses":
             number_of_classes := read_u16(reader) or_return
             classes := make([]InnerClassEntry, number_of_classes, allocator)
@@ -328,21 +326,21 @@ read_attribute_info :: proc(
                     name_idx, access_flags,
                 }
             }
-            info = InnerClasses { classes }
+            attribute = InnerClasses { classes }
         case "EnclosingMethod":
             class_idx := read_u16(reader) or_return
             method_idx := read_u16(reader) or_return
-            info = EnclosingMethod { class_idx, method_idx }
-        case "Synthetic": info = Synthetic {}
+            attribute = EnclosingMethod { class_idx, method_idx }
+        case "Synthetic": attribute = Synthetic {}
         case "Signature": 
             signature_idx := read_u16(reader) or_return
-            info = Signature { signature_idx }
+            attribute = Signature { signature_idx }
         case "SourceFile": 
             sourcefile_idx := read_u16(reader) or_return
-            info = SourceFile { sourcefile_idx }
+            attribute = SourceFile { sourcefile_idx }
         case "SourceDebugExtension":
             debug_extension := read_nbytes(reader, int(length)) or_return
-            info = SourceDebugExtension { string(debug_extension) }
+            attribute = SourceDebugExtension { string(debug_extension) }
         case "LineNumberTable":
             // TODO: slice.reinterpret?
             table_length := read_u16(reader) or_return
@@ -353,27 +351,27 @@ read_attribute_info :: proc(
                 line_number := read_u16(reader) or_return
                 table[i] = LineNumberTableEntry { start_pc, line_number }
             }
-            info = LineNumberTable { table }
+            attribute = LineNumberTable { table }
         case "LocalVariableTable":
             table := read_local_variable_table(reader) or_return
-            info = LocalVariableTable  { table }
+            attribute = LocalVariableTable  { table }
         case "LocalVariableTypeTable":
             table := read_local_variable_type_table(reader) or_return
             // SAFETY: this should keep working as long as both entry types have the same size
-            info = LocalVariableTypeTable { transmute([]LocalVariableTypeTableEntry)table }
-        case "Deprecated": info = Deprecated {}
+            attribute = LocalVariableTypeTable { transmute([]LocalVariableTypeTableEntry)table }
+        case "Deprecated": attribute = Deprecated {}
         case "RuntimeVisibleAnnotations":
             annotations := read_annotations(reader) or_return
-            info = RuntimeVisibleAnnotations { annotations }
+            attribute = RuntimeVisibleAnnotations { annotations }
         case "RuntimeInvisibleAnnotations":
             annotations := read_annotations(reader) or_return
-            info = RuntimeInvisibleAnnotations { annotations }
+            attribute = RuntimeInvisibleAnnotations { annotations }
         case "RuntimeVisibleParameterAnnotations":
             parameter_annotations := read_parameter_annotations(reader) or_return
-            info = RuntimeVisibleParameterAnnotations { u8(len(parameter_annotations)), parameter_annotations }
+            attribute = RuntimeVisibleParameterAnnotations { u8(len(parameter_annotations)), parameter_annotations }
         case "RuntimeInvisibleParameterAnnotations":
             parameter_annotations := read_parameter_annotations(reader) or_return
-            info = RuntimeInvisibleParameterAnnotations { u8(len(parameter_annotations)), parameter_annotations }
+            attribute = RuntimeInvisibleParameterAnnotations { u8(len(parameter_annotations)), parameter_annotations }
         case "AnnotationDefault":
             default_value := read_element_value(reader) or_return
             info := AnnotationDefault { default_value }
@@ -391,14 +389,14 @@ read_attribute_info :: proc(
                     bootstrap_args,
                 }
             }
-            info = BootstrapMethods { bootstrap_methods }
+            attribute = BootstrapMethods { bootstrap_methods }
         case "NestHost":
             host_class_idx := read_u16(reader) or_return
-            info = NestHost { host_class_idx }
+            attribute = NestHost { host_class_idx }
         case "NestMembers":
             number_of_classes := read_u16(reader) or_return
             classes := read_u16_array(reader, number_of_classes) or_return
-            info = NestMembers { classes }
+            attribute = NestMembers { classes }
         case:
             return attribute, .UnknownAttributeName
     }
