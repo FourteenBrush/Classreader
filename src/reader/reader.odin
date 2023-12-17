@@ -75,11 +75,15 @@ Error :: enum {
 }
 
 @private
-read_constant_pool :: proc(reader: ^ClassFileReader, count: u16) -> (
+read_constant_pool :: proc(
+    reader: ^ClassFileReader, 
+    count: u16, 
+    allocator := context.allocator,
+) -> (
     constant_pool: []ConstantPoolEntry, 
     err: Error,
 ) {
-    constant_pool = make([]ConstantPoolEntry, count - 1) // omit first entry
+    constant_pool = make([]ConstantPoolEntry, count - 1, allocator) // omit first entry
 
     for i := 0; i < int(count) - 1; i += 1 {
         tag := ConstantType(read_u8(reader) or_return)
