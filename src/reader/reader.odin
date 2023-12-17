@@ -32,7 +32,7 @@ reader_read_classfile :: proc(
     minor_version = read_u16(reader) or_return
     major_version = read_u16(reader) or_return
     constant_pool_count = read_u16(reader) or_return
-    constant_pool = read_constant_pool(reader, constant_pool_count) or_return
+    constant_pool = read_constant_pool(reader, constant_pool_count, allocator) or_return
 
     access_flags = read_u16(reader) or_return
     this_class = read_u16(reader) or_return
@@ -224,7 +224,7 @@ read_attributes :: proc(
     attributes = make([]AttributeInfo, count, allocator)
     
     for i in 0..<count {
-        attributes[i] = read_attribute_info(reader, classfile) or_return
+        attributes[i] = read_attribute_info(reader, classfile, allocator) or_return
     }
     return attributes, .None
 }
@@ -365,10 +365,10 @@ read_attribute_info :: proc(
             attribute = LocalVariableTypeTable { transmute([]LocalVariableTypeTableEntry)table }
         case "Deprecated": attribute = Deprecated {}
         case "RuntimeVisibleAnnotations":
-            annotations := read_annotations(reader) or_return
+            annotations := read_annotations(reader, allocator) or_return
             attribute = RuntimeVisibleAnnotations { annotations }
         case "RuntimeInvisibleAnnotations":
-            annotations := read_annotations(reader) or_return
+            annotations := read_annotations(reader, allocator) or_return
             attribute = RuntimeInvisibleAnnotations { annotations }
         case "RuntimeVisibleParameterAnnotations":
             parameter_annotations := read_parameter_annotations(reader) or_return
@@ -377,7 +377,7 @@ read_attribute_info :: proc(
             parameter_annotations := read_parameter_annotations(reader) or_return
             attribute = RuntimeInvisibleParameterAnnotations { u8(len(parameter_annotations)), parameter_annotations }
         case "AnnotationDefault":
-            default_value := read_element_value(reader) or_return
+            default_value := read_element_value(reader, allocator) or_return
             info := AnnotationDefault { default_value }
         case "BootstrapMethods":
             num_bootstrap_methods := read_u16(reader) or_return
@@ -451,7 +451,7 @@ read_parameter_annotations :: proc(
     param_annotations = make([]ParameterAnnotation, num_parameters, allocator)
 
     for i in 0..<num_parameters {
-        annotations := read_annotations(reader) or_return
+        annotations := read_annotations(reader, allocator) or_return
         param_annotations[i] = ParameterAnnotation { annotations }
     }
     return param_annotations, .None
@@ -469,7 +469,7 @@ read_annotations :: proc(
     annotations = make([]Annotation, num_annotations, allocator)
 
     for i in 0..<num_annotations {
-        annotations[i] = read_annotation(reader) or_return
+        annotations[i] = read_annotation(reader, allocator) or_return
     }
     return annotations, .None
 }
@@ -488,7 +488,7 @@ read_annotation :: proc(
 
     for i in 0..<num_element_value_pairs {
         element_value_idx := read_u16(reader) or_return
-        element_value := read_element_value(reader) or_return
+        element_value := read_element_value(reader, allocator) or_return
         element_value_pairs[i] = ElementValuePair { element_value_idx, element_value }
     }
 
@@ -522,7 +522,7 @@ read_element_value :: proc(
             num_values := read_u16(reader) or_return
             values := make([]ElementValue, num_values, allocator)
             for i in 0..<num_values {
-                values[i] = read_element_value(reader) or_return
+                values[i] = read_element_value(reader, allocator) or_return
             }
             value = ArrayValue { values }
         case:
