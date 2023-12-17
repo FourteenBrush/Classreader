@@ -201,7 +201,7 @@ read_fields :: proc(
         fields[i] = FieldInfo {
             access_flags, name_idx,
             descriptor_idx,
-            read_attributes(reader, classfile) or_return,
+            read_attributes(reader, classfile, allocator) or_return,
         }
     }
     return fields, .None
