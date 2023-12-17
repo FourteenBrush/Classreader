@@ -41,7 +41,9 @@ ClassFile :: struct {
 }
 
 // ClassFile destructor.
-classfile_destroy :: proc(using classfile: ClassFile) {
+classfile_destroy :: proc(using classfile: ClassFile, allocator := context.allocator) {
+    // recursively apply provided allocator
+    context.allocator = allocator
     for &field in fields do attributes_destroy(field.attributes)
     for &method in methods do attributes_destroy(method.attributes)
     attributes_destroy(attributes) 
