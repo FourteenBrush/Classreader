@@ -169,7 +169,7 @@ read_methods :: proc(
         access_flags := read_u16(reader) or_return
         name_idx := read_u16(reader) or_return
         descriptor_idx := read_u16(reader) or_return
-        attributes := read_attributes(reader, classfile) or_return
+        attributes := read_attributes(reader, classfile, allocator) or_return
         
         methods[i] = MethodInfo {
             access_flags,
