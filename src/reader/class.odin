@@ -59,7 +59,15 @@ classfile_get_class_name :: proc(using classfile: ClassFile) -> string {
     return cp_get_str(classfile, class.name_idx)
 }
 
+// Returns the name of the super class, or "Object" if there was no explicit superclass
+classile_get_super_class_name :: proc(using classfile: ClassFile) -> string {
+    if super_class == 0 do return "Object" // java.lang.Object
+    class := cp_get(ConstantClassInfo, classfile, super_class)
+    return cp_get_str(classfile, class.name_idx)
+}
+
 // TODO: also apply on other attribute containers
+// Finds the first occurence of the given attribute type.
 classfile_find_attribute :: proc(using classfile: ClassFile, $T: typeid) -> Maybe(T)
 where intrinsics.type_is_variant_of(AttributeInfo, T) {
     idx, found := slice.linear_search_proc(attributes, proc(attrib: AttributeInfo) -> bool {
@@ -70,6 +78,18 @@ where intrinsics.type_is_variant_of(AttributeInfo, T) {
 
 find_attribute :: proc(container: $C, $T: typeid) -> Maybe(T) {
     return container.attributes[0]
+}
+
+// Returns a string stored within the constantpool.
+// Assuming that the entry at that index is a ConstantUtf8Info.
+cp_get_str :: proc(using classfile: ClassFile, idx: u16) -> string {
+    return string(cp_get(ConstantUtf8Info, classfile, idx).bytes)
+}
+
+// Returns the constantpool entry stored at the given index.
+cp_get :: proc($T: typeid, using classfile: ClassFile, idx: u16) -> T
+where intrinsics.type_is_variant_of(CPInfo, T) {
+    return constant_pool[idx - 1].info.(T)
 }
 
 // Dumps a ClassFile to the stdout.
@@ -204,18 +224,6 @@ count_digits :: proc(x: u16) -> (count: u8) {
         count += 1
     }
     return count
-}
-
-// Returns a string stored within the constantpool.
-// Assuming that the entry at that index is a ConstantUtf8Info.
-cp_get_str :: proc(using classfile: ClassFile, idx: u16) -> string {
-    return string(cp_get(ConstantUtf8Info, classfile, idx).bytes)
-}
-
-// Returns the constantpool entry stored at the given index.
-cp_get :: proc($T: typeid, using classfile: ClassFile, idx: u16) -> T
-where intrinsics.type_is_variant_of(CPInfo, T) {
-    return constant_pool[idx - 1].info.(T)
 }
 
 // Access flags for a ClassFile structure.
