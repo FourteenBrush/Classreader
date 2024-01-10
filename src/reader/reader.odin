@@ -372,10 +372,10 @@ read_attribute_info :: proc(
             attribute = RuntimeInvisibleAnnotations { annotations }
         case "RuntimeVisibleParameterAnnotations":
             parameter_annotations := read_parameter_annotations(reader) or_return
-            attribute = RuntimeVisibleParameterAnnotations { u8(len(parameter_annotations)), parameter_annotations }
+            attribute = RuntimeVisibleParameterAnnotations { parameter_annotations }
         case "RuntimeInvisibleParameterAnnotations":
             parameter_annotations := read_parameter_annotations(reader) or_return
-            attribute = RuntimeInvisibleParameterAnnotations { u8(len(parameter_annotations)), parameter_annotations }
+            attribute = RuntimeInvisibleParameterAnnotations { parameter_annotations }
         case "AnnotationDefault":
             default_value := read_element_value(reader, allocator) or_return
             info := AnnotationDefault { default_value }

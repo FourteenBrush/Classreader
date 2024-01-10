@@ -45,7 +45,7 @@ main :: proc() {
     }
 
     creader := reader.reader_new(data) 
-    classfile, err := reader.reader_read_classfile(&creader)
+    classfile, err := reader.read_classfile(&creader)
     defer reader.classfile_destroy(classfile)
 
     if err != .None {

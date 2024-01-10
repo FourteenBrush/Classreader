@@ -303,10 +303,6 @@ RuntimeInvisibleAnnotations :: struct {
 
 // Records run-time-visible annotations on the parameters of the corresponding method.
 RuntimeVisibleParameterAnnotations :: struct {
-    // The number of parameters of the method represented by 
-    // the method_info structure on which the annotation occurs.
-    // TODO: is this always len(parameter_annotations)?
-    num_parameters: u8,
     // Each value of the parameter_annotations table represents all of 
     // the run-time-visible annotations on a single parameter.
     parameter_annotations: []ParameterAnnotation,
@@ -315,7 +311,6 @@ RuntimeVisibleParameterAnnotations :: struct {
 // Similar to RuntimeVisibleParameterAnnotations, but these annotations must not be made available for
 // return by reflective apis.
 RuntimeInvisibleParameterAnnotations :: struct {
-    num_parameters: u8,
     parameter_annotations: []ParameterAnnotation,
 }
 
