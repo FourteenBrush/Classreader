@@ -18,7 +18,7 @@ reader_new :: proc(bytes: []u8) -> ClassFileReader {
 MAGIC :: 0xCAFEBABE
 
 // Attempts to a read a classfile, returning the error if failed.
-reader_read_classfile :: proc(
+read_classfile :: proc(
     reader: ^ClassFileReader, 
     allocator := context.allocator,
 ) -> (
