@@ -40,33 +40,43 @@ ConstantType :: enum u8 {
     InvokeDynamic = 18,
 }
 
+// Represents a constant string value.
 ConstantUtf8Info :: struct {
+    // The bytes of the string, no byte may be 0 or be within the range 0xf0 - 0xff.
+    // String content is encoded in modified UTF8.
     bytes: []u8 `fmt:"s"`,
 }
 
+// Represents a 32 bit int.
 ConstantIntegerInfo :: struct {
     bytes: u32,
 }
 
+// Represents a 32 bit float.
 ConstantFloatInfo :: distinct ConstantIntegerInfo
 
+// Represents a 64 bit long.
 ConstantLongInfo :: struct {
     high_bytes: u32,
     low_bytes: u32,
 }
 
+// Represents a 64 bit double.
 ConstantDoubleInfo :: distinct ConstantLongInfo
 
+// Represents a class or interface.
 ConstantClassInfo :: struct {
     // Points to a ConstantNameAndTypeInfo entry representing a class or interface name.
     name_idx: u16,
 }
 
+// Represents constant objects of type String.
 ConstantStringInfo :: struct {
     // Points to a ConstantUtf8Info entry representing the unicode code points.
     string_idx: u16,
 }
 
+// Represents a field from a class.
 ConstantFieldRefInfo :: struct {
     // Points to a ConstantClassInfo entry representing a class or interface
     // that has this field or method as member.
@@ -75,8 +85,11 @@ ConstantFieldRefInfo :: struct {
     name_and_type_idx: u16,
 }
 
-ConstantMethodRefInfo :: ConstantFieldRefInfo
-ConstantInterfaceMethodRefInfo :: ConstantFieldRefInfo
+// Represents a method.
+ConstantMethodRefInfo :: distinct ConstantFieldRefInfo
+
+// Represents an interface method.
+ConstantInterfaceMethodRefInfo :: distinct ConstantFieldRefInfo
 
 // Represents a field or method, without indicating which class or interface it belongs to.
 ConstantNameAndTypeInfo :: struct {
@@ -88,12 +101,13 @@ ConstantNameAndTypeInfo :: struct {
     descriptor_idx: u16,
 }
 
-// Represents a method handle
+// Represents a method handle.
 ConstantMethodHandleInfo :: struct {
+    // Denotes the kind of method handle, which characterizes its bytecode behaviour.
     reference_kind: ReferenceKind,
     // If reference_kind is InvokeVirtual, InvokeStatic, InvokeSpecial or NewInvokeSpecial,
-    // then this must point to a ConstantMethodRefInfo representing a class method or constructor for which
-    // a method handle is to be created. 
+    // then this must point to a ConstantMethodRefInfo representing a class method 
+    // or constructor for which a method handle is to be created. 
     // When reference_kind is InvokeInterface, this points to a ConstantInterfaceMethodRefInfo.
     reference_idx: u16,
 }

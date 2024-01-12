@@ -26,7 +26,7 @@ stack_map_frame_destroy :: proc(frame: StackMapFrame) {
 // The frame has exactly the same locals as the previous stack map frame 
 // and the number of stack items is zero.
 // Represented by tags in the range [0, 63].
-SameFrame :: struct {}
+SameFrame :: distinct struct {}
 
 // The frame has exactly the same locals as the previous stack map frame
 // and the number of stack items is 1.
@@ -44,8 +44,8 @@ SameLocals1StackItemFrameExtended :: struct {
 }
 
 
-// The operand stack is empty and the current locals are the same as the locals in the previous frame,
-// except that the k last locals are absent.
+// The operand stack is empty and the current locals are the same as the locals 
+// in the previous frame, except that the k last locals are absent.
 // The value of k is given by the formula 251 (FRAME_LOCALS_OFFSET) - frame_type.
 // Represented by tags in the range [248-250].
 ChopFrame :: struct {
@@ -61,7 +61,8 @@ SameFrameExtended :: struct {
 
 FRAME_LOCALS_OFFSET :: 251
 
-// the operand stack is empty and the current locals are the same as the locals in the previous frame, except that k additional locals are defined.
+// the operand stack is empty and the current locals are the same as the locals 
+// in the previous frame, except that k additional locals are defined.
 // The value of k is given by the formula frame_type - 251.
 // Represented by tags in the range [252-254].
 AppendFrame :: struct {

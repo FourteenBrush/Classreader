@@ -6,3 +6,5 @@
 /*.bin
 # LLVM IR
 /*.ll
+# Taskfile checksums
+.task

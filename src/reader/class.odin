@@ -1,12 +1,11 @@
 package reader
 
 import "core:fmt"
-import "core:slice"
 import "core:reflect"
 import "core:intrinsics"
 
 // A code representation of an in-memory classfile.
-// To obtain an instance, call reader_read_classfile().
+// To obtain an instance, call reader.read_classfile().
 ClassFile :: struct {
     minor_version: u16,
     major_version: u16,
@@ -59,7 +58,7 @@ classfile_get_class_name :: proc(using classfile: ClassFile) -> string {
     return cp_get_str(classfile, class.name_idx)
 }
 
-// Returns the name of the super class, or "Object" if there was no explicit superclass
+// Returns the name of the super class, or "Object" if there was no explicit superclass.
 classile_get_super_class_name :: proc(using classfile: ClassFile) -> string {
     if super_class == 0 do return "Object" // java.lang.Object
     class := cp_get(ConstantClassInfo, classfile, super_class)
@@ -237,6 +236,20 @@ ClassAccessFlag :: enum u16 {
     AccAnnotation = 0x2000,
     AccEnum       = 0x4000,
 }
+
+// Log 2's of ClassAccessFlag, for use within a bit_set.
+ClassAccessFlagBit :: enum u16 {
+    AccPublic     = 0,
+    AccFinal      = 4,
+    AccSuper      = 5,
+    AccInterface  = 9,
+    AccAbstract   = 10,
+    AccSynthetic  = 12,
+    AccAnnotation = 13,
+    AccEnum       = 14,
+}
+
+ClassAccessFlags :: bit_set[ClassAccessFlagBit; u16]
 
 access_flag_to_str :: proc(flag: ClassAccessFlag) -> string {
     switch (flag) {

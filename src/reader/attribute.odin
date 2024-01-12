@@ -27,6 +27,7 @@ AttributeInfo :: union {
     NestMembers,
 }
 
+// Returns the concrete name of an AttributeInfo variant.
 attribute_to_str :: proc(attrib: AttributeInfo) -> string {
     type := reflect.union_variant_typeid(attrib)
     typeinfo := type_info_of(type)
@@ -41,7 +42,7 @@ attributes_destroy :: proc(attributes: []AttributeInfo) {
     delete(attributes)
 }
 
-// AttributeInfo destructor
+// AttributeInfo destructor.
 attribute_destroy :: proc(attrib: AttributeInfo) {
     #partial switch &attrib in attrib {
         case Code:
@@ -108,22 +109,23 @@ parameter_annotations_destroy :: proc(annotations: []ParameterAnnotation) {
     delete(annotations)
 }
 
-// Represents the value of a constant field
+// Represents the value of a constant field.
 ConstantValue :: struct {
-    // The constant_pool entry at this index gives the constant value represented by this attribute
-    // Field Type 	                    Entry Type
-    // long 	                        CONSTANT_Long
-    // float 	                        CONSTANT_Float
-    // double 	                        CONSTANT_Double
-    // int, short, char, byte, boolean 	CONSTANT_Integer
-    // String 	                        CONSTANT_String
+    // The constant pool entry at this index gives the constant value represented by this attribute
+    // | Field Type 	                 |  Entry Type         |
+    // |---------------------------------|---------------------|
+    // | long 	                         | ConstantLongInfo    |
+    // | float 	                         | ConstantFloatInfo   |
+    // | double 	                     | ConstantDoubleInfo  | 
+    // | int, short, char, byte, boolean | ConstantIntegerInfo |
+    // | String 	                     | ConstantStringInfo  |
     constantvalue_idx: u16,
 }
 
 // Contains the Java Virtual Machine instructions and auxiliary information for 
-// a single method, instance initialization method, or class or interface initialization method.
-// If the method is either native or abstract, its method_info structure must not have a Code attribute.
-// Otherwise, its method_info structure must have exactly one Code attribute.
+// a single method, instance initialization method, or class or interface 
+// initialization method. If the method is either native or abstract, its MethodInfo
+// structure must not have a Code attribute, otherwise it must have exactly one.
 Code :: struct {
     // Max depth of the operand stack of the corresponding method.
     max_stack: u16,
@@ -148,14 +150,14 @@ Code :: struct {
 ExceptionHandler :: struct {
     // Indicates the start in the code array at which the handler is active.
     start_pc: u16,
-    // Same but for the end of the handler, this value is an exclusive index in the code array.
+    // Same but for the end of the handler, this is an exclusive index.
     end_pc: u16,
     // An index into the code array, indicating the start of the exception handler.
     // (Points to an instruction).
     handler_pc: u16,
-    // If zero, this exception handler is called for all exceptions, to implement *finally*.
-    // When nonzero, this points to a ConstantClassInfo structure representing
-    // a class of exceptions that this handler is designated to catch.
+    // If zero, this exception handler is called for all exceptions, to 
+    // implement *finally*. Otherwise this points to a ConstantClassInfo
+    // representing a class of exceptions that this handler is designated to catch.
     catch_type: u16,
 }
 
@@ -168,33 +170,35 @@ StackMapTable :: struct {
 // Indicates which checked exceptions a method may throw.
 // There may be at most one Exceptions attribute in each MethodInfo structure.
 Exceptions :: struct {
-    // Each entry points to a ConstantClassInfo structure, representing
-    // a class that this method is declared to throw.
+    // Each entry points to a ConstantClassInfo, representing a class 
+    // that this method is declared to throw.
     exception_idx_table: []u16,
 }
 
-// If the constant pool of a class or interface C contains a ConstantClassInfo entry which represents a class or interface 
-// that is not a member of a package, then C's ClassFile structure must have exactly one InnerClasses attribute. 
+// If the constant pool of a class or interface C contains a ConstantClassInfo
+// which represents a class or interface that is not a member of a package. 
+// Then C's ClassFile structure must have exactly one InnerClasses attribute. 
 InnerClasses :: struct {
     classes: []InnerClassEntry,
 }
 
 // Represents a class or interface that's not a package member.
 InnerClassEntry :: struct {
-    // Points to a ConstantClassInfo representing the class this entry represents (let's call it C).
+    // Points to a ConstantClassInfo representing this entry's class (call it C). 
     inner_class_info_idx: u16,
     // If C is not a member of a class or interface, this must be zero.
-    // Otherwise points to the ConstantClassInfo representing the class or interface of which C is a member.
+    // Otherwise it points to a ConstantClassInfo representing the 
+    // class or interface of which C is a member.
     outer_class_info_idx: u16,
-    // If C is anonymous, this must be zero. 
-    // Otherwise this points to a ConstantUtf8Info, representing the simple name of C, in its sourcecode.
+    // If C is anonymous, this must be zero. Otherwise this points to a 
+    // ConstantUtf8Info, representing the simple name of C, in its sourcecode.
     name_idx: u16,
-    // A mask of flags used to denote access permissions to and properties of class or interface C.
+    // A mask of flags used to denote access permissions to and properties of C.
     access_flags: u16,
 }
 
-// don't confuse this with ClassAccessFlag
-// Used in an InnerClassEntry
+// Don't confuse this with ClassAccessFlag
+// Access flags used in an InnerClassEntry (as a mask).
 InnerClassAccessFlag :: enum {
     AccPublic     = 0x0001, // 0b0000 0000 0000 0001
     AccPrivate    = 0x0002, // 0b0000 0000 0000 0010
@@ -211,16 +215,18 @@ InnerClassAccessFlag :: enum {
 // A class must have an EnclosingMethod attribute if and only if
 // it is a local or anonymous class.
 EnclosingMethod :: struct {
-    // Points to a ConstantClassInfo structure, representing the innermost class 
+    // Points to a ConstantClassInfo, representing the innermost class 
     // that encloses the declaration of the current class.
     class_idx: u16,
-    // If the current class is not immediately enclosed by a method or constructur, this must be zero.
-    // Otherwise points to a ConstantNameAndTypeInfo representing the method referenced by the class_idx above.
+    // If the current class is not immediately enclosed by a method or constructor,
+    // Then this must be zero. Otherwise points to a ConstantNameAndTypeInfo 
+    // representing the method referenced by the class_idx above.
     method_idx: u16,
 }
 
 // A class member that doesn't appear in the source code must have this attribute,
-// or else have the AccSynthetic flag set, the only exceptions are compiler generated methods, like Enum::valueOf().
+// or else have the AccSynthetic flag set, the only exceptions are compiler 
+// generated methods, like Enum::valueOf().
 Synthetic :: struct {}
 
 // Records generic signature info for any class, interface constructor or class member.
@@ -232,7 +238,7 @@ Signature :: struct {
 // An optional classfile attribute, acting as a filename marker.
 SourceFile :: struct {
     // points to a ConstantUtf8Info representing the name of the source file
-    // from which this class file was compiled.
+    // from which this class was compiled.
     sourcefile_idx: u16,
 }
 
@@ -246,6 +252,7 @@ LineNumberTable :: struct {
     line_number_table: []LineNumberTableEntry,
 }
 
+// A mapping between a line number and a code offset.
 LineNumberTableEntry :: struct {
     // The index in the code array where the code for a new line begins.
     start_pc: u16,
@@ -263,9 +270,9 @@ LocalVariableTableEntry :: struct {
     // variable located at code[start_pc][:length]
     start_pc: u16,
     length: u16,
-    // Points to a ConstantUtf8Info entry representing a valid unqualified name.
+    // Points to a ConstantUtf8Info representing a valid unqualified name.
     name_idx: u16,
-    // Points to a ConstantUtf8Info entry representing a field descriptor.
+    // Points to a ConstantUtf8Info representing a field descriptor.
     descriptor_idx: u16,
     // Index into the local variable array of the current frame.
     idx: u16,
@@ -277,14 +284,17 @@ LocalVariableTypeTable :: struct {
     local_variable_type_table: []LocalVariableTypeTableEntry,
 }
 
-// See LocalVariableTypeTable
+// See LocalVariableTypeTable.
+// TODO: this could be an alias for LocalVariableTableEntry
 LocalVariableTypeTableEntry :: struct {
     start_pc: u16,
     length: u16,
+    // Points to a ConstantUtf8Info representing a valid unqualified name.
     name_idx: u16,
     // Points to a ConstantUtf8Info structure, representing
     // a field type signature encoding the type of the local variable.
     signature_idx: u16,
+    // Index into the local variable array of the current frame.
     idx: u16,
 }
 
@@ -301,19 +311,20 @@ RuntimeInvisibleAnnotations :: struct {
     annotations: []Annotation,
 }
 
-// Records run-time-visible annotations on the parameters of the corresponding method.
+// Records run-time-visible parameter annotations of the corresponding MethodInfo.
 RuntimeVisibleParameterAnnotations :: struct {
-    // Each value of the parameter_annotations table represents all of 
+    // Each value of the this table represents all of 
     // the run-time-visible annotations on a single parameter.
     parameter_annotations: []ParameterAnnotation,
 }
 
-// Similar to RuntimeVisibleParameterAnnotations, but these annotations must not be made available for
-// return by reflective apis.
+// Similar to RuntimeVisibleParameterAnnotations, but these annotations must not
+// be made available for return by reflective apis.
 RuntimeInvisibleParameterAnnotations :: struct {
     parameter_annotations: []ParameterAnnotation,
 }
 
+// An annotation as specified by the language.
 Annotation :: struct {
     // Points to a ConstantUtf8Info, representing a field descriptor for the annotation type.
     type_idx: u16,
@@ -321,6 +332,7 @@ Annotation :: struct {
 }
 
 // Represents a single element-value pair in an annotation.
+// E.g. x = "y" in @Annotation(x = "y").
 ElementValuePair :: struct {
     // Points to a ConstantUtf8Info representing a field descriptor that denotes 
     // the name of the annotation type element value.
@@ -329,11 +341,22 @@ ElementValuePair :: struct {
     value: ElementValue,
 }
 
-// discriminated union representing the value of an element-value pair.
+// Discriminated union representing the value of an element-value pair.
 // It is used to represent element values in all attributes that describe annotations
-// (RuntimeVisibleAnnotations, RuntimeInvisibleAnnotations, RuntimeVisibleParameterAnnotations,
-// and RuntimeInvisibleParameterAnnotations.
+// (Runtime(In)VisibleAnnotations and, Runtime(In)VisibleParameterAnnotations.
 ElementValue :: struct {
+    // The type of the element-value pair.
+    // The letters B, C, D, F, I, J, S and Z indicate a primitive type
+    // to be interpreted as if they were field descriptors.
+    // Other legal values can be found below:
+
+    // | tag | type            |
+    // |-----|-----------------|
+    // | s   | String          |
+    // | e   | enum constant   |
+    // | c   | class           |
+    // | @   | annotation type |
+    // | [   | array           |
     tag: u8,
     value: ElementValueInner,
 }
@@ -346,30 +369,35 @@ ElementValueInner :: union {
     ArrayValue,
 }
 
-// Needed because we can't alias a u16 in ElementValueInner twice.
+// Used when the ElementValue.tag is one of the primitive types.
+// This then points to an entry of the type designated by the table explaning the tag.
 ConstValueIdx :: distinct u16
+// Used when the tag is 'c', this points to a ConstantUtf8Info representing the
+// return descriptor of the type that is reified by the class.
 ClassInfoIdx :: distinct u16
 
+// Used when the tag is 'e'.
 EnumConstValue :: struct {
-    // Points to a ConstantUtf8Info entry representing a field descriptor that denotes the internal
-    // form of the binary name of enum type represented by this ElementValue.
+    // Points to a ConstantUtf8Info representing a field descriptor that 
+    // denotes the internal form of the binary name of the enum type.
     type_name_idx: u16,
-    // Points to a ConstantUtf8Info entry representing the simple name of the enum constant.
+    // Points to a ConstantUtf8Info representing the simple name of the enum constant.
     const_name_idx: u16,
 }
 
+// Used when the tag is '['.
 ArrayValue :: struct {
     // The elements in the array typed ElementValue.
     values: []ElementValue,
 }
 
-// Annotation container.
+// Annotation container for one MethodInfo.
 ParameterAnnotation :: struct {
     annotations: []Annotation,
 }
 
-// Contained within the attributes of MethodInfo structures, the AnnotationDefault records the default value
-// for the value represented by the MethodInfo structure.
+// Contained within the attributes of MethodInfo structures, this records 
+// the default value for the element represented by the MethodInfo structure.
 AnnotationDefault :: struct {
     // The actual default value.
     default_value: ElementValue,
@@ -383,7 +411,9 @@ BootstrapMethods :: struct {
 
 // Each bootstrap method represents a MethodHandle.
 BootstrapMethod :: struct {
-    // Points to a ConstantMethodHandleInfo.
+    // Points to a ConstantMethodHandleInfo, which reference_kind should be
+    // InvokeStatic or NewInvokeSpecial or else invocation of the method handle
+    // during call site specifier resolution will complete abruptly.
     bootstrap_method_ref: u16,
     // Each entry must point to a ConstantStringInfo, Class, Integer, Long, 
     // Float, Double, MethodHandle or ConstantMethodTypeInfo.
@@ -400,7 +430,8 @@ NestHost :: struct {
 // Records the classes and interfaces that are authorized to claim membership 
 // in the nest hosted by the current class or interface.
 NestMembers :: struct {
-    // A number of indices pointing to a ConstantClassInfo structure
-    // representing a class or interface which is a member of the nest hosted by the current class or interface.
+    // A number of indices pointing to a ConstantClassInfo which represents 
+    // a class or interface which is a member of the nest,
+    // hosted by the current class or interface.
     classes: []u16,
 }
