@@ -1,10 +1,11 @@
 package reader
 
 import "core:fmt"
+import "core:slice"
 import "core:reflect"
 import "core:intrinsics"
 
-// A code representation of an in-memory classfile.
+// A code representation of a Java class or interface.
 // To obtain an instance, call reader.read_classfile().
 ClassFile :: struct {
     minor_version: u16,
@@ -13,9 +14,10 @@ ClassFile :: struct {
     // The constant pool reserves the first entry as absent, we don't
     // So any accesses of the constant pool should offset the index by -1 (see cp_get())
     // Indices valid from 0 to constant_pool_count - 2
+    // see cp_get()
     constant_pool: []ConstantPoolEntry,
-    // A mask of ClassAccessFlag flags.
-    access_flags: u16,
+    // Denotes access permissions to and properties of this class or interface.
+    access_flags: ClassAccessFlags,
     // Points to a ConstantClassInfo entry, representing this class.
     this_class: u16,
     // Zero if there are no superclasses (use java.lang.Object instead)
@@ -58,9 +60,10 @@ classfile_get_class_name :: proc(using classfile: ClassFile) -> string {
     return cp_get_str(classfile, class.name_idx)
 }
 
-// Returns the name of the super class, or "Object" if there was no explicit superclass.
-classile_get_super_class_name :: proc(using classfile: ClassFile) -> string {
-    if super_class == 0 do return "Object" // java.lang.Object
+// Returns the name of the super class, or "java/lang/Object" 
+// if there was no explicit superclass.
+classfile_get_super_class_name :: proc(using classfile: ClassFile) -> string {
+    if super_class == 0 do return "java/lang/Object"
     class := cp_get(ConstantClassInfo, classfile, super_class)
     return cp_get_str(classfile, class.name_idx)
 }
@@ -75,18 +78,27 @@ where intrinsics.type_is_variant_of(AttributeInfo, T) {
     return attributes[idx].(T) if found else nil
 }
 
-find_attribute :: proc(container: $C, $T: typeid) -> Maybe(T) {
+find_attribute :: proc(container: $C, $T: typeid) -> Maybe(T)
+where intrinsics.type_is_variant_of(AttributeInfo, T) {
+    // TODO
     return container.attributes[0]
 }
 
 // Returns a string stored within the constantpool.
-// Assuming that the entry at that index is a ConstantUtf8Info.
+// Panics if the entry at that index is not a ConstantUtf8Info.
 cp_get_str :: proc(using classfile: ClassFile, idx: u16) -> string {
     return string(cp_get(ConstantUtf8Info, classfile, idx).bytes)
 }
 
 // Returns the constantpool entry stored at the given index.
+// Panics if the expected and actual type differ.
 cp_get :: proc($T: typeid, using classfile: ClassFile, idx: u16) -> T
+where intrinsics.type_is_variant_of(CPInfo, T) {
+    return constant_pool[idx - 1].info.(T)
+}
+
+// An alternative to cp_get(), with safe semantics.
+cp_get_safe :: proc($T: typeid, using classfile: ClassFile, idx: u16) -> (T, bool)
 where intrinsics.type_is_variant_of(CPInfo, T) {
     return constant_pool[idx - 1].info.(T)
 }
@@ -96,9 +108,9 @@ classfile_dump :: proc(using classfile: ClassFile) {
     class_name := classfile_get_class_name(classfile)
     fmt.println("class name:", class_name)
 
-    fmt.println("minor version:", minor_version)
-    fmt.println("major version:", major_version)
-    fmt.printf("access flags: 0x%x ", access_flags)
+    version_str := major_version_to_str(major_version)
+    fmt.printf("Version: minor=%v, major=%v (%v)\n", minor_version, major_version, version_str)
+    fmt.printf("access flags: 0x%4x ", access_flags)
     class_access_flags_dump(access_flags)
 
     max_idx_width := count_digits(constant_pool_count)
@@ -129,12 +141,42 @@ classfile_dump :: proc(using classfile: ClassFile) {
     }
 }
 
+// Returns an understandable representation of the major version. E.g. 65 -> Java SE 21.
+major_version_to_str :: proc(major: u16) -> string {
+    // http://en.wikipedia.org/wiki/Java_class_file#General_layout
+    switch major {
+        case 65: return "Java SE 21"
+        case 64: return "Java SE 20"
+        case 63: return "Java SE 19"
+        case 62: return "Java SE 18"
+        case 61: return "Java SE 17"
+        case 60: return "Java SE 16"
+        case 59: return "Java SE 15"
+        case 58: return "Java SE 14"
+        case 57: return "Java SE 13"
+        case 56: return "Java SE 12"
+        case 55: return "Java SE 11"
+        case 54: return "Java SE 10"
+        case 53: return "Java SE 9"
+        case 52: return "Java SE 8"
+        case 51: return "Java SE 7"
+        case 50: return "Java SE 6.0"
+        case 49: return "Java SE 5.0"
+        case 48: return "JDK 1.4"
+        case 47: return "JDK 1.3"
+        case 46: return "JDK 1.2"
+        case 45: return "JDK 1.1"
+        // FIXME: probably want to apply verification before this gets reached
+        case: return "<unknown Version>"
+    }
+}
+
 @private
-class_access_flags_dump :: proc(flags: u16) {
+class_access_flags_dump :: proc(flags: ClassAccessFlags) {
     first := true
 
-    for flag in ClassAccessFlag {
-        if flags & u16(flag) == 0 do continue
+    for flag in ClassAccessFlagBit {
+        if flag not_in flags do continue
         str := access_flag_to_str(flag)
 
         if first {
@@ -227,15 +269,17 @@ count_digits :: proc(x: u16) -> (count: u8) {
 
 // Access flags for a ClassFile structure.
 ClassAccessFlag :: enum u16 {
-    AccPublic     = 0x0001,
-    AccFinal      = 0x0010,
-    AccSuper      = 0x0020,
-    AccInterface  = 0x0200,
-    AccAbstract   = 0x0400,
-    AccSynthetic  = 0x1000,
-    AccAnnotation = 0x2000,
-    AccEnum       = 0x4000,
+    Public     = 0x0001,
+    Final      = 0x0010,
+    Super      = 0x0020,
+    Interface  = 0x0200,
+    Abstract   = 0x0400,
+    Synthetic  = 0x1000,
+    Annotation = 0x2000,
+    Enum       = 0x4000,
 }
+
+ClassAccessFlags :: bit_set[ClassAccessFlagBit; u16]
 
 // Log 2's of ClassAccessFlag, for use within a bit_set.
 ClassAccessFlagBit :: enum u16 {
@@ -249,9 +293,8 @@ ClassAccessFlagBit :: enum u16 {
     AccEnum       = 14,
 }
 
-ClassAccessFlags :: bit_set[ClassAccessFlagBit; u16]
-
-access_flag_to_str :: proc(flag: ClassAccessFlag) -> string {
+// Returns the uppercase string representation of a ClassAccessFlagBit.
+access_flag_to_str :: proc(flag: ClassAccessFlagBit) -> string {
     switch (flag) {
         case .AccPublic:     return "ACC_PUBLIC"
         case .AccFinal:      return "ACC_FINAL"
@@ -268,9 +311,8 @@ access_flag_to_str :: proc(flag: ClassAccessFlag) -> string {
 
 // A method descriptor.
 FieldInfo :: struct {
-    // A mask of FieldAccessFlag flags, denoting
-    // access permissions to and properties of this field.
-    access_flags: u16,
+    // Denotes access permissions to and properties of this field.
+    access_flags: FieldAccessFlags,
     // Points to a ConstantUtf8Info representing the unqualified field name.
     name_idx: u16,
     // Points to a ConstantUtf8Info representing a field descriptor.
@@ -297,11 +339,25 @@ FieldAccessFlag :: enum u16 {
     Enum      = 0x4000,
 }
 
+FieldAccessFlags :: bit_set[FieldAccessFlagBit; u16]
+
+// Log 2's of FieldAccessFlag, for use within a bit_set.
+FieldAccessFlagBit :: enum u16 {
+    Public    = 0,
+    Private   = 1,
+    Protected = 2,
+    Static    = 3,
+    Final     = 4,
+    Volatile  = 6,
+    Transient = 7,
+    Synthetic = 12,
+    Enum      = 14,
+}
+
 // A method descriptor.
 MethodInfo :: struct {
-    // A mask of MethodAccessFlag flags, denoting
-    // access permissions to and properties of this method.
-    access_flags: u16,
+    // Denotes access permissions to and properties of this method.
+    access_flags: MethodAccessFlags,
     // Points to a ConstantUtf8Info, representing either the unqualified method name
     // or one of the special method names <init> or <clinit>.
     name_idx: u16,
@@ -332,7 +388,25 @@ MethodAccessFlag :: enum u16 {
     Varargs      = 0x0080,
     Native       = 0x0100,
     Abstract     = 0x0400,
-    // stricfp
+    // Stricfp
     Strict       = 0x0800,
     Synthetic    = 0x1000,
+}
+
+MethodAccessFlags :: bit_set[MethodAccessFlagBit; u16]
+
+// Log 2's of MethodAccessFlag, for use within a bit_set.
+MethodAccessFlagBit :: enum u16 {
+    Public       = 1,
+    Private      = 2,
+    Protected    = 3,
+    Static       = 4,
+    Final        = 5,
+    Synchronized = 6,
+    Bridge       = 7,
+    Varargs      = 8,
+    Native       = 9,
+    Abstract     = 11,
+    Strict       = 12,
+    Synthetic    = 13,
 }
