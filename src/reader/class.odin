@@ -5,7 +5,7 @@ import "core:slice"
 import "core:reflect"
 import "core:intrinsics"
 
-// A code representation of a Java class or interface.
+// A code representation of a compiled Java class or interface.
 // To obtain an instance, call reader.read_classfile().
 ClassFile :: struct {
     minor_version: u16,
@@ -23,7 +23,7 @@ ClassFile :: struct {
     // Zero if there are no superclasses (use java.lang.Object instead)
     // or an index to a ConstantClassInfo entry, representing the super class.
     super_class: u16,
-    // List of indices, pointing to a ConstantClassInfo entry,
+    // List of indices, pointing to ConstantClassInfo entries,
     // representing interfaces that are a direct superinterface.
     interfaces: []u16,
     fields: []FieldInfo,
@@ -68,6 +68,26 @@ classfile_get_super_class_name :: proc(using classfile: ClassFile) -> string {
     return cp_get_str(classfile, class.name_idx)
 }
 
+// Attempts to find a FieldInfo with the given field name.
+classfile_find_field :: proc(using classfile: ClassFile, name: string) -> Maybe(FieldInfo) {
+    for &field in fields {
+        field_name := cp_get_str(classfile, field.name_idx)
+        if field_name == name do return field
+    }
+    return nil
+}
+
+// Attempts to find a MethodInfo with the given method name.
+classfile_find_method :: proc(using classfile: ClassFile, name: string) -> Maybe(MethodInfo) {
+    for &method in methods {
+        method_name := cp_get_str(classfile, method.name_idx)
+        desc := cp_get_str(classfile, method.descriptor_idx)
+        fmt.println("encountered method", method_name, desc)
+        if method_name == name do return method
+    } 
+    return nil
+}
+
 // TODO: also apply on other attribute containers
 // Finds the first occurence of the given attribute type.
 classfile_find_attribute :: proc(using classfile: ClassFile, $T: typeid) -> Maybe(T)
@@ -82,6 +102,20 @@ find_attribute :: proc(container: $C, $T: typeid) -> Maybe(T)
 where intrinsics.type_is_variant_of(AttributeInfo, T) {
     // TODO
     return container.attributes[0]
+}
+
+cp_find :: proc(
+    using classfile: ClassFile,
+    $E: typeid,
+    predicate: proc(ClassFile, E) -> bool,
+) -> Maybe(E) where intrinsics.type_is_variant_of(CPInfo, E) {
+    for &entry in constant_pool {
+        entry, ok := entry.info.(E)
+        if ok && predicate(classfile, entry) {
+            return entry
+        }
+    }
+    return nil
 }
 
 // Returns a string stored within the constantpool.
@@ -105,12 +139,11 @@ where intrinsics.type_is_variant_of(CPInfo, T) {
 
 // Dumps a ClassFile to the stdout.
 classfile_dump :: proc(using classfile: ClassFile) {
-    class_name := classfile_get_class_name(classfile)
-    fmt.println("class name:", class_name)
+    fmt.println("Class name:", classfile_get_class_name(classfile))
 
     version_str := major_version_to_str(major_version)
     fmt.printf("Version: minor=%v, major=%v (%v)\n", minor_version, major_version, version_str)
-    fmt.printf("access flags: 0x%4x ", access_flags)
+    fmt.printf("Access flags: 0x%4x ", access_flags)
     class_access_flags_dump(access_flags)
 
     max_idx_width := count_digits(constant_pool_count)
@@ -247,9 +280,9 @@ cp_entry_dump :: proc(classfile: ClassFile, cp_info: ConstantPoolEntry) {
 @private
 ref_dump :: proc(using classfile: ClassFile, using field_ref: ConstantFieldRefInfo) {
     class_name_idx := cp_get(ConstantClassInfo, classfile, class_idx).name_idx
+    class_name := cp_get_str(classfile, class_name_idx)
     name_and_type := cp_get(ConstantNameAndTypeInfo, classfile, name_and_type_idx)
     field_or_method_name := cp_get_str(classfile, name_and_type.name_idx)
-    class_name := cp_get_str(classfile, class_name_idx)
     
     fmt.println(class_name, field_or_method_name, sep=".")
 }
@@ -283,33 +316,33 @@ ClassAccessFlags :: bit_set[ClassAccessFlagBit; u16]
 
 // Log 2's of ClassAccessFlag, for use within a bit_set.
 ClassAccessFlagBit :: enum u16 {
-    AccPublic     = 0,
-    AccFinal      = 4,
-    AccSuper      = 5,
-    AccInterface  = 9,
-    AccAbstract   = 10,
-    AccSynthetic  = 12,
-    AccAnnotation = 13,
-    AccEnum       = 14,
+    Public     = 0,
+    Final      = 4,
+    Super      = 5,
+    Interface  = 9,
+    Abstract   = 10,
+    Synthetic  = 12,
+    Annotation = 13,
+    Enum       = 14,
 }
 
 // Returns the uppercase string representation of a ClassAccessFlagBit.
 access_flag_to_str :: proc(flag: ClassAccessFlagBit) -> string {
     switch (flag) {
-        case .AccPublic:     return "ACC_PUBLIC"
-        case .AccFinal:      return "ACC_FINAL"
-        case .AccSuper:      return "ACC_SUPER"
-        case .AccInterface:  return "ACC_INTERFACE"
-        case .AccAbstract:   return "ACC_ABSTRACT"
-        case .AccSynthetic:  return "ACC_SYNTHETIC"
-        case .AccAnnotation: return "ACC_ANNOTATION"
-        case .AccEnum:       return "ACC_ENUM"
-        // in case someone would pass ClassAccessFlags(9999) or something
+        case .Public:     return "ACC_PUBLIC"
+        case .Final:      return "ACC_FINAL"
+        case .Super:      return "ACC_SUPER"
+        case .Interface:  return "ACC_INTERFACE"
+        case .Abstract:   return "ACC_ABSTRACT"
+        case .Synthetic:  return "ACC_SYNTHETIC"
+        case .Annotation: return "ACC_ANNOTATION"
+        case .Enum:       return "ACC_ENUM"
+        // in case someone would pass ClassessFlags(9999) or something
         case: panic("invalid args passed to access_flag_to_str")
     }
 }
 
-// A method descriptor.
+// A field descriptor.
 FieldInfo :: struct {
     // Denotes access permissions to and properties of this field.
     access_flags: FieldAccessFlags,

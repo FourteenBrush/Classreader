@@ -18,6 +18,8 @@ reader_new :: proc(bytes: []u8) -> ClassFileReader {
 MAGIC :: 0xCAFEBABE
 
 // Attempts to a read a classfile, returning the error if failed.
+// NOTE: the resulting ClassFile's lifetime is bound to the bytes it got from the reader.
+// This might become subject to change, to only clone necessary byte slices instead.
 read_classfile :: proc(
     reader: ^ClassFileReader, 
     allocator := context.allocator,
@@ -34,7 +36,8 @@ read_classfile :: proc(
     constant_pool_count = read_u16(reader) or_return
     constant_pool = read_constant_pool(reader, constant_pool_count, allocator) or_return
 
-    access_flags = read_u16(reader) or_return
+    // TODO: ensure valid
+    access_flags = transmute(ClassAccessFlags) read_u16(reader) or_return
     this_class = read_u16(reader) or_return
     super_class = read_u16(reader) or_return
 
@@ -101,7 +104,13 @@ read_constant_pool :: proc(
 }
 
 @private
-read_constant_pool_entry :: proc(reader: ^ClassFileReader, tag: ConstantType) -> (entry: CPInfo, err: Error) {
+read_constant_pool_entry :: proc(
+    reader: ^ClassFileReader,
+    tag: ConstantType,
+) -> (
+    entry: CPInfo, 
+    err: Error,
+) {
     switch tag {
         case .Utf8:
             length := read_u16(reader) or_return
@@ -170,7 +179,8 @@ read_methods :: proc(
     methods = make([]MethodInfo, count, allocator)
 
     for i in 0..<count {
-        access_flags := read_u16(reader) or_return
+        // TODO: validate
+        access_flags := transmute(MethodAccessFlags) read_u16(reader) or_return
         name_idx := read_u16(reader) or_return
         descriptor_idx := read_u16(reader) or_return
         attributes := read_attributes(reader, classfile, allocator) or_return
@@ -198,7 +208,8 @@ read_fields :: proc(
     fields = make([]FieldInfo, count, allocator)
 
     for i in 0..<count {
-        access_flags := read_u16(reader) or_return
+        // TODO: validate
+        access_flags := transmute(FieldAccessFlags)read_u16(reader) or_return
         name_idx := read_u16(reader) or_return
         descriptor_idx := read_u16(reader) or_return
 
@@ -323,7 +334,7 @@ read_attribute_info :: proc(
                 inner_class_info_idx := read_u16(reader) or_return
                 outer_class_info_idx := read_u16(reader) or_return
                 name_idx := read_u16(reader) or_return
-                access_flags := read_u16(reader) or_return
+                access_flags := transmute(InnerClassAccessFlags) read_u16(reader) or_return
                 classes[i] = InnerClassEntry {
                     inner_class_info_idx,
                     outer_class_info_idx,

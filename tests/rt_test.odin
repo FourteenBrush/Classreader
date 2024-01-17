@@ -37,7 +37,7 @@ test_rt_jar_files :: proc(t: ^testing.T) {
 test_arbitrary_classes :: proc(t: ^testing.T) {
     files_read := 0
     filepath.walk("res/java", visit_file, &files_read)
-    testing.log(t, "successfully read", files_read, "files")
+    testing.expect_value(t, files_read, 1313)
 }
 
 @private

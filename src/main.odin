@@ -2,6 +2,7 @@ package classreader
 
 import "core:os"
 import "core:fmt"
+import "core:mem"
 @require // suppress unused package error on non windows targets
 import win32 "core:sys/windows"
 

@@ -66,7 +66,7 @@ ConstantDoubleInfo :: distinct ConstantLongInfo
 
 // Represents a class or interface.
 ConstantClassInfo :: struct {
-    // Points to a ConstantNameAndTypeInfo entry representing a class or interface name.
+    // Points to a ConstantUtf8Info entry representing a class or interface name.
     name_idx: u16,
 }
 
@@ -86,10 +86,10 @@ ConstantFieldRefInfo :: struct {
 }
 
 // Represents a method.
-ConstantMethodRefInfo :: distinct ConstantFieldRefInfo
+ConstantMethodRefInfo :: ConstantFieldRefInfo
 
 // Represents an interface method.
-ConstantInterfaceMethodRefInfo :: distinct ConstantFieldRefInfo
+ConstantInterfaceMethodRefInfo :: ConstantFieldRefInfo
 
 // Represents a field or method, without indicating which class or interface it belongs to.
 ConstantNameAndTypeInfo :: struct {
@@ -97,7 +97,7 @@ ConstantNameAndTypeInfo :: struct {
     // or the fully unqualified name, denoting a field or method.
     name_idx: u16,
     // Points to a ConstantUtf8Info entry
-    // representing a field or method descriptor
+    // representing a field or method descriptor.
     descriptor_idx: u16,
 }
 

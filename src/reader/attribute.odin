@@ -95,7 +95,7 @@ annotations_destroy :: proc(annotations: []Annotation) {
     delete(annotations)
 }
 
-// Annotation destructor
+// Annotation destructor.
 annotation_destroy :: proc(annotation: Annotation) {
     for pair in annotation.element_value_pairs {
         element_value_destroy(pair.value.value)
@@ -134,7 +134,7 @@ Code :: struct {
     // parameters to the method on its invocation.
     max_locals: u16,
     // The actual bytecode.
-    code: []u8,
+    code: []u8 `fmt:"-"`,
     // A list of exception handlers, the order is significant.
     // When an exception is thrown, this table will be searched from the beginning.
     exception_table: []ExceptionHandler,
@@ -193,8 +193,8 @@ InnerClassEntry :: struct {
     // If C is anonymous, this must be zero. Otherwise this points to a 
     // ConstantUtf8Info, representing the simple name of C, in its sourcecode.
     name_idx: u16,
-    // A mask of flags used to denote access permissions to and properties of C.
-    access_flags: u16,
+    // Denotes access permissions to and properties of C.
+    access_flags: InnerClassAccessFlags,
 }
 
 // Don't confuse this with ClassAccessFlag
@@ -210,6 +210,22 @@ InnerClassAccessFlag :: enum {
     AccSynthetic  = 0x1000, // 0b0001 0000 0000 0000 
     AccAnnotation = 0x2000, // 0b0010 0000 0000 0000 
     AccEnum       = 0x4000, // 0b0100 0000 0000 0000 
+}
+
+InnerClassAccessFlags :: bit_set[InnerClassAccessFlagBit; u16]
+
+// Log 2's of InnerClassAccessFlag, for use within a bit_set.
+InnerClassAccessFlagBit :: enum u16 {
+    Public     = 0,
+    Private    = 1,
+    Protected  = 2,
+    Static     = 3,
+    Final      = 4,
+    Interface  = 9,
+    Abstract   = 10,
+    Synthetic  = 12,
+    Annotation = 13,
+    Enum       = 14,
 }
 
 // A class must have an EnclosingMethod attribute if and only if
