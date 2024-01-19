@@ -36,8 +36,16 @@ ClassFile :: struct {
     // - SourceFile
     // - SourceDebugExtension
     // - Deprecated
-    // - Runtime(In)VisibleAttributes
+    // - Runtime(In)VisibleAnnotations
+    // - Runtime(In)VisibleTypeAnnotations
     // - BootstrapMethods
+    // - Module
+    // - ModulePackages
+    // - ModuleMainClass
+    // - NestHost
+    // - NestMembers
+    // - Record
+    // - PermittedSubclasses
     attributes: []AttributeInfo,
 }
 
@@ -274,6 +282,9 @@ cp_entry_dump :: proc(classfile: ClassFile, cp_info: ConstantPoolEntry) {
             method_name := cp_get_str(classfile, name_idx)
             method_descriptor := cp_get_str(classfile, descriptor_idx)
             fmt.printf("#%v:%v:%v\n", cp_info.bootstrap_method_attr_idx, method_name, method_descriptor)
+        case ConstantModuleInfo:
+        case ConstantPackageInfo: 
+            // TODO
     }
 }
 
@@ -310,6 +321,7 @@ ClassAccessFlag :: enum u16 {
     Synthetic  = 0x1000,
     Annotation = 0x2000,
     Enum       = 0x4000,
+    Module     = 0x8000,
 }
 
 ClassAccessFlags :: bit_set[ClassAccessFlagBit; u16]
@@ -324,6 +336,7 @@ ClassAccessFlagBit :: enum u16 {
     Synthetic  = 12,
     Annotation = 13,
     Enum       = 14,
+    Module     = 15,
 }
 
 // Returns the uppercase string representation of a ClassAccessFlagBit.
@@ -337,7 +350,8 @@ access_flag_to_str :: proc(flag: ClassAccessFlagBit) -> string {
         case .Synthetic:  return "ACC_SYNTHETIC"
         case .Annotation: return "ACC_ANNOTATION"
         case .Enum:       return "ACC_ENUM"
-        // in case someone would pass ClassessFlags(9999) or something
+        case .Module:     return "ACC_MODULE"
+        // in case someone would pass ClassAccessFlags(9999) or something
         case: panic("invalid args passed to access_flag_to_str")
     }
 }
@@ -356,6 +370,7 @@ FieldInfo :: struct {
     // - Signature
     // - Deprecated
     // - Runtime(In)VisibleAnnotations
+    // - Runtime(In)VisibleTypeAnnotations
     attributes: []AttributeInfo,
 }
 
@@ -403,8 +418,10 @@ MethodInfo :: struct {
     // - Signature
     // - Deprecated
     // - Runtime(In)VisibleAnnotations
+    // - Runtime(In)VisibleTypeAnnotations
     // - Runtime(In)VisibleParameterAnnotations
     // - AnnotationDefault
+    // - MethodParameters
     attributes: []AttributeInfo,
 }
 

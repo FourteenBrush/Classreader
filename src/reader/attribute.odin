@@ -19,6 +19,8 @@ AttributeInfo :: union {
     Deprecated,
     RuntimeVisibleAnnotations,
     RuntimeInvisibleAnnotations,
+    RuntimeVisibleTypeAnnotations,
+    RuntimeInvisibleTypeAnnotations,
     RuntimeVisibleParameterAnnotations,
     RuntimeInvisibleParameterAnnotations,
     AnnotationDefault,
@@ -327,6 +329,20 @@ RuntimeInvisibleAnnotations :: struct {
     annotations: []Annotation,
 }
 
+// Records runtime visible annotations on types used in the declaration of the 
+// corresponding class, field or method, or in an expression in the 
+// corresponding method body. This may also be used on generic type parameters 
+// of generic classes, interfaces, methods and constructor.
+RuntimeVisibleTypeAnnotations :: struct {
+    annotations: []TypeAnnotation,
+}
+
+RuntimeInvisibleTypeAnnotations :: struct {
+    
+}
+
+// TODO: aliases?
+
 // Records run-time-visible parameter annotations of the corresponding MethodInfo.
 RuntimeVisibleParameterAnnotations :: struct {
     // Each value of the this table represents all of 
@@ -342,9 +358,204 @@ RuntimeInvisibleParameterAnnotations :: struct {
 
 // An annotation as specified by the language.
 Annotation :: struct {
-    // Points to a ConstantUtf8Info, representing a field descriptor for the annotation type.
+    // Points to a ConstantUtf8Info, representing a field descriptor 
+    // for the annotation type.
     type_idx: u16,
     element_value_pairs: []ElementValuePair,
+}
+
+// Represents a single runtime visible annotation on a type used in a declaration or
+// expression.
+TypeAnnotation :: struct {
+    // Denotes the kind of target on which the annotation appears.
+    target_type: TargetType,
+    target_info: TargetInfo,
+    target_path: TypePath,
+    type_idx: u16,
+    element_value_pairs: []ElementValuePair,
+}
+
+// https://docs.oracle.com/javase/specs/jvms/se21/html/jvms-4.html#jvms-4.7.20-400
+// TODO: some values sound ambiguous
+TargetType :: enum u8 {
+    ClassOrInterface = 0x00,
+    MethodTypeParam = 0x01,
+    ExtendsOrImplementsClause = 0x10,
+    ClassOrInterfaceBound = 0x11,
+    MethodBound = 0x12,
+    Field = 0x13,
+    ReturnOrNew = 0x14,
+    Receiver = 0x15,
+    FormalParameter = 0x16,
+    ThrowsClause = 0x17,
+    LocalVariable = 0x40,
+    ResourceVariable = 0x41,
+    ExceptionParameter = 0x42,
+    Instanceof = 0x43,
+    New = 0x44,
+    NewMethodRef = 0x45,
+    IdentifierMethodRef = 0x46,
+    Cast = 0x47,
+    Constructor = 0x48,
+    Method = 0x94,
+    ConstructorRef = 0x4A,
+    MethodRefTypeArg = 0x4B,
+}
+
+TargetInfo :: union {
+    TypeParameterTarget,
+    SuperTypeTarget,
+    TypeParameterBoundTarget,
+    EmptyTarget,
+    FormalParameterTarget,
+    ThrowsTarget,
+    LocalVarTarget,
+    CatchTarget,
+    OffsetTarget,
+    TypeArgumentTarget,
+}
+
+// Indicates that an annotation appears on the declaration of the i'th parameter
+// of a generic class, interface, method or constructor.
+TypeParameterTarget :: struct {
+    // Specifies which parameter declaration is annotated. A value of 0 means
+    // the first parameter declaration.
+    type_parameter_idx: u16,
+}
+
+// Indicates that an annotation appears on a type in an extends or implements
+// clause of a class or interface declaration.
+SuperTypeTarget :: struct {
+    // A value of 65535 means that the annotation appears on the superclass in an
+    // extends or implements clause. Any other value is an index into the interfaces
+    // array of the enclosing ClassFile structure, and specifies that the annnotation
+    // appears on that superinterface in either the implements clause of a 
+    // class or interface declaration.
+    super_type_idx: u16,
+}
+
+// Indicates that an annotation appears on the i'th bound of the j'th type parameter
+// declaration of a generic class, interface, method or constructor.
+// Note that this does not record the type which constitutes the bound.
+// The type may be found by inspecting the class or method signature stored in the
+// appropriate Signature attribute.
+TypeParameterBoundTarget :: struct {
+    // Specifies which type parameter declaration has an annotated bound.
+    // A value of 0 would specify the first type parameter declaration.
+    type_parameter_idx: u16,
+    // Specifies which bound of the type parameter declaration indicated by
+    // type_parameter_idx is annotated. A value of 0 would specify the first bound.
+    bound_idx: u16,
+}
+
+// Indicates that an annotation appears on either the type in a field or record
+// component declaration, the return type of a method, the type of a newly constructed
+// object, or the receiver of a method or constructor.
+EmptyTarget :: distinct struct {}
+
+// Indicates that an annotation appears on the type of a formal parameter declaration
+// of a method, constructor or lambda expression.
+FormalParameterTarget :: struct {
+    // Specifies which formal parameter declaration has an annotated type. A value of i
+    // may, but is not required to, correspond to the i'th parameter descriptor in 
+    // the method descriptor.
+    formal_parameter_idx: u16,
+}
+
+// Indicates that an annotation appears on the i'th type in the throws clause of a
+// method or constructor declaration.
+ThrowsTarget :: struct {
+    // An index into the exception_index_table array of the Exceptions attribute
+    // of the MethodInfo structure enclosing the RuntimeVisibleTypeAnnotations attribute.
+    throws_type_idx: u16,
+}
+
+// Indicates that an annotation appears on the type in a local variable declaration,
+// including a variable declared as resource in a try-with-resources statement.
+LocalVarTarget :: struct {
+    // Each entry indicates a range of code array offsets within which
+    // a local variable has a value. It also indicates the index into the local
+    // variable array of the current frame at which that local variable can be found.
+    table: []LocalVarTargetEntry,
+}
+
+// Used within a LocalValTarget.
+// FIXME: probably rename
+LocalVarTargetEntry :: struct {
+    // An index into the code array in the interval [start_pc:][:length]
+    start_pc: u16,
+    length: u16,
+    // The given local variable must be at idx in the local variable array of
+    // the current frame.
+    idx: u16,
+}
+
+// Indicates that an annotation appears on the i'th type in an exception parameter declaration.
+CatchTarget :: struct {
+    // An index into the exception_table array of the Code attribute enclosing the 
+    // RuntimeVisibleTypeAnnotations.
+    exception_table_idx: u16, 
+}
+
+// Indicates that an annotation appears on either the type in an instanceof expression
+// Or a new expression, or the type before the :: in a method reference expression.
+OffsetTarget :: struct {
+    // Specifies the code array offset of either the bytecode instruction
+    // corresponding to the instanceof expression, the new bytecode instruction,
+    // or the bytecode instruction corresponding to the method reference expression.
+    offset: u16,
+}
+
+// Indicates that an annotation appears on the i'th type in a cast expression, or the i'th
+// type argument in the explicit type argument list for any of the following:
+// - A new expression
+// - An explicit constructor invocation statement
+// - A method invocation expression
+// - A method reference expression
+TypeArgumentTarget :: struct {
+    // Specifies the code array offset, depending on the context of this target.
+    offset: u16,
+    // For a cast expression, this specifies which type in the cast operator
+    // is annotated. A value of 0 specifies the first (or only) type in the cast operator.
+    // For any explicit type argument list, this specifies which type argument is
+    // annotated, a value of zero specifies the first type argument.
+    type_argument_idx: u16,
+}
+
+// Whenever a type is used in a declaration or expression, this identifies which part
+// of the type is annotated.
+//
+// If an array type T[] is used in a declaration or expression, then an annotation 
+// may appear on any component type, including the element type.
+//
+// If a nested type T1.T2 is used, then an annotation may appear on the innermost 
+// member type and the enclosing type for which a type annotation is admissible.
+// 
+// If a parameterized type T<A> or T<? super A> is used, then an annotation may
+// appear on any type argument or on the bound of any wildcard type argument.
+TypePath :: struct {
+     path: []PathEntry,
+}
+
+// Used within a TypePath.
+PathEntry :: struct {
+    type_path_kind: PathKind,
+    // When type_path_kind is .ArrayType, .NestedType or .Wildcard, then this is 0.
+    // When type_path_kind is .Parameterized, then this specifies which type argument
+    // of a parameterized type is annotated. Where 0 indicates the first type argument.
+    type_argument_idx: u8,
+}
+
+// Used within a PathEntry.
+PathKind :: enum u8 {
+    // Annotation is deeper in an array type.
+    ArrayType     = 0,
+    // Annotation is deeper in a nested type.
+    NestedType    = 1,
+    // Annotation is on the bound of a wildcard type argument of a parameterized type.
+    Wildcard      = 2,
+    // Annotation is on a type argument of a parameterized type.
+    Parameterized = 3,
 }
 
 // Represents a single element-value pair in an annotation.

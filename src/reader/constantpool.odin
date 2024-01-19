@@ -20,6 +20,8 @@ CPInfo :: union {
     ConstantMethodHandleInfo,
     ConstantMethodTypeInfo,
     ConstantInvokeDynamicInfo,
+    ConstantModuleInfo,
+    ConstantPackageInfo,
 }
 
 // A ConstantPoolEntry tag.
@@ -38,6 +40,8 @@ ConstantType :: enum u8 {
     MethodHandle = 15,
     MethodType = 16,
     InvokeDynamic = 18,
+    Module = 19,
+    Package = 20,
 }
 
 // Represents a constant string value.
@@ -138,4 +142,18 @@ ConstantInvokeDynamicInfo :: struct {
     bootstrap_method_attr_idx: u16,
     // Points to a ConstantNameAndType structure representing a method name and descriptor.
     name_and_type_idx: u16,
+}
+
+// Used to represent a package exported or opened by a module.
+ConstantModuleInfo :: struct {
+    // Points to a ConstantUtf8Info representing a valid package name, encoded
+    // in its internal form.
+    name_idx: u16,
+}
+
+// Represents a package exported or opened by a module
+ConstantPackageInfo :: struct {
+    // Points to a ConstantUtf8Info representing a valid package name, encoded
+    // in its internal form.
+    name_idx: u16,
 }

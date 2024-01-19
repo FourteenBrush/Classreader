@@ -155,6 +155,9 @@ read_constant_pool_entry :: proc(
             bootstrap_method_attr_idx := read_u16(reader) or_return
             name_and_type_idx := read_u16(reader) or_return
             entry = ConstantInvokeDynamicInfo { bootstrap_method_attr_idx, name_and_type_idx }
+        case .Module:
+        case .Package:
+            // TODO
     }
     return entry, .None
 }

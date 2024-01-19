@@ -21,7 +21,7 @@ Remember that javac doesn't optimize much and the JIT compiler will do the heavy
 
 ## Important Attributes
 
-Six attributes are critical to correct implementation of a class file by the JVM:
+Seven attributes are critical to correct implementation of a class file by the JVM:
 
 - ConstantValue
 - Code
@@ -29,14 +29,16 @@ Six attributes are critical to correct implementation of a class file by the JVM
 - BootstrapMethods
 - NestHost
 - NestMembers
+- PermittedSubclasses
 
-Nine attributes are not critical to correct interpretation of the class file by the Java Virtual Machine, but are either critical to correct interpretation of the class file by the class libraries of the Java SE Platform, or are useful for tools (in which case the section that specifies an attribute describes it as "optional"):
+Ten attributes are not critical to correct interpretation of the class file by the Java Virtual Machine, but are either critical to correct interpretation of the class file by the class libraries of the Java SE Platform, or are useful for tools (in which case the section that specifies an attribute describes it as "optional"):
 
 - Exceptions
 - InnerClasses
 - EnclosingMethod
 - Synthetic
 - Signature
+- Record
 - SourceFile
 - LineNumberTable
 - LocalVariableTable
@@ -59,7 +61,3 @@ Thirteen attributes are not critical to correct interpretation of the class file
 - ModuleMainClass
 
 `~ source: https://cr.openjdk.org/~dlsmith/jep181/nestmates.html`
-
-## Legal Notice
-
-*This document includes text and content originally authored by contributors to the OpenJDK project and is used under the terms of the GNU General Public License*
