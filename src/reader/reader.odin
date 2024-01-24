@@ -497,6 +497,20 @@ read_attribute_info :: proc(
         case "ModuleMainClass":
             main_class_idx := read_u16(reader) or_return
             attribute = ModuleMainClass { main_class_idx }
+        case "Record":
+            components_count := read_u16(reader) or_return
+            components := make([]RecordComponentInfo, components_count, allocator)
+
+            for i in 0..<components_count {
+                name_idx := read_u16(reader) or_return
+                descriptor_idx := read_u16(reader) or_return
+                attributes := read_attributes(reader, classfile, allocator) or_return
+
+                components[i] = RecordComponentInfo {
+                    name_idx, descriptor_idx, attributes,
+                }
+            }
+            attribute = Record { components }
         case:
             return attribute, .UnknownAttributeName
     }

@@ -30,6 +30,7 @@ AttributeInfo :: union {
     Module,
     ModulePackages,
     ModuleMainClass,
+    Record,
 }
 
 // Returns the concrete name of an AttributeInfo variant.
@@ -850,4 +851,25 @@ ModulePackages :: struct {
 ModuleMainClass :: struct {
     // Points to a ConstantClassInfo.
     main_class_idx: u16,
+}
+
+// Indicates that the current class is a record, and stores information about
+// the record components.
+Record :: struct {
+    components: []RecordComponentInfo,
+}
+
+// Specifies a record component, as in Class::getRecordComponents().
+RecordComponentInfo :: struct {
+    // Points to a ConstantUtf8Info representing an unqualified name
+    // denoting the record component.
+    name_idx: u16,
+    // Points to a ConstantUtf8Info, representing a field descriptor, which
+    // encodes the type of the record component.
+    descriptor_idx: u16,
+    // Valid attributes for a Record attribute are:
+    // - Signature
+    // - Runtime(In)VisibleAnnotations
+    // - Runtime(In)VisibleTypeAnnotations
+    attributes: []AttributeInfo,
 }
