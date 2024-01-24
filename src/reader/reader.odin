@@ -511,6 +511,10 @@ read_attribute_info :: proc(
                 }
             }
             attribute = Record { components }
+        case "PermittedSubclasses":
+            number_of_classes := read_u16(reader) or_return
+            classes := read_u16_array(reader, number_of_classes) or_return
+            attribute = PermittedSubclasses { classes }
         case:
             return attribute, .UnknownAttributeName
     }

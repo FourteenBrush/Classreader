@@ -31,6 +31,7 @@ AttributeInfo :: union {
     ModulePackages,
     ModuleMainClass,
     Record,
+    PermittedSubclasses,
 }
 
 // Returns the concrete name of an AttributeInfo variant.
@@ -872,4 +873,12 @@ RecordComponentInfo :: struct {
     // - Runtime(In)VisibleAnnotations
     // - Runtime(In)VisibleTypeAnnotations
     attributes: []AttributeInfo,
+}
+
+// Records classes or interfaces that can inherit from the current class or interface.
+PermittedSubclasses :: struct {
+    // Each entry points to a ConstantClassInfo, representing a class or
+    // interface which is authorized to directly extend or implement the
+    // current class or interface.
+    classes: []u16,
 }
