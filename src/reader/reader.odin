@@ -415,6 +415,10 @@ read_attribute_info :: proc(
             number_of_classes := read_u16(reader) or_return
             classes := read_u16_array(reader, number_of_classes) or_return
             attribute = NestMembers { classes }
+        case "Module":
+            // TODO: read these attributes
+        case "ModulePackages":
+        case "ModuleMainClass":
         case:
             return attribute, .UnknownAttributeName
     }

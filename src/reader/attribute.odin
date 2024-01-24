@@ -27,6 +27,9 @@ AttributeInfo :: union {
     BootstrapMethods,
     NestHost,
     NestMembers,
+    Module,
+    ModulePackages,
+    ModuleMainClass,
 }
 
 // Returns the concrete name of an AttributeInfo variant.
@@ -37,6 +40,7 @@ attribute_to_str :: proc(attrib: AttributeInfo) -> string {
     return named.name
 }
 
+// Recursively frees the given slice of AttributeInfos.
 attributes_destroy :: proc(attributes: []AttributeInfo) {
     for attrib in attributes {
         attribute_destroy(attrib)
@@ -200,18 +204,18 @@ InnerClassEntry :: struct {
 }
 
 // Don't confuse this with ClassAccessFlag
-// Access flags used in an InnerClassEntry (as a mask).
+// Access flags used in an InnerClassEntry.
 InnerClassAccessFlag :: enum {
-    AccPublic     = 0x0001, // 0b0000 0000 0000 0001
-    AccPrivate    = 0x0002, // 0b0000 0000 0000 0010
-    AccProteced   = 0x0004, // 0b0000 0000 0000 0100
-    AccStatic     = 0x0008, // 0b0000 0000 0000 1000
-    AccFinal      = 0x0010, // 0b0000 0000 0001 0000 
-    AccInterface  = 0x0200, // 0b0000 0010 0000 0000 
-    AccAbstract   = 0x0400, // 0b0000 0100 0000 0000 
-    AccSynthetic  = 0x1000, // 0b0001 0000 0000 0000 
-    AccAnnotation = 0x2000, // 0b0010 0000 0000 0000 
-    AccEnum       = 0x4000, // 0b0100 0000 0000 0000 
+    Public     = 0x0001, // 0b0000 0000 0000 0001
+    Private    = 0x0002, // 0b0000 0000 0000 0010
+    Proteced   = 0x0004, // 0b0000 0000 0000 0100
+    Static     = 0x0008, // 0b0000 0000 0000 1000
+    Final      = 0x0010, // 0b0000 0000 0001 0000 
+    Interface  = 0x0200, // 0b0000 0010 0000 0000 
+    Abstract   = 0x0400, // 0b0000 0100 0000 0000 
+    Synthetic  = 0x1000, // 0b0001 0000 0000 0000 
+    Annotation = 0x2000, // 0b0010 0000 0000 0000 
+    Enum       = 0x4000, // 0b0100 0000 0000 0000 
 }
 
 InnerClassAccessFlags :: bit_set[InnerClassAccessFlagBit; u16]
@@ -338,7 +342,7 @@ RuntimeVisibleTypeAnnotations :: struct {
 }
 
 RuntimeInvisibleTypeAnnotations :: struct {
-    
+    annotations: []TypeAnnotation, 
 }
 
 // TODO: aliases?
@@ -661,4 +665,189 @@ NestMembers :: struct {
     // a class or interface which is a member of the nest,
     // hosted by the current class or interface.
     classes: []u16,
+}
+
+// Records information about formal parameters of a method, such as their names.
+MethodParameters :: struct {
+    parameter: []MethodParameter,
+}
+
+// A parameter of a method.
+MethodParameter :: struct {
+    // When zero, this MethodParameter indicates a parameter with no name.
+    // Otherwise points to a ConstantUtf8Info representing a unqualified name.
+    name_idx: u16,
+    access_flags: MethodParameterAccessFlags,
+}
+
+MethodParameterAccessFlag :: enum u16 {
+    // The parameter was declared final.
+    Final     = 0x0010,
+    // The parameter was not explicitly or implicitly declared in source code.
+    // (An implementation artifact of the compiler).
+    Synthetic = 0x1000,
+    // The parameter was implicitly declared in the source code.
+    Mandated  = 0x8000,
+}
+
+MethodParameterAccessFlags :: bit_set[MethodParameterAccessFlagBit; u16]
+
+// Log 2's of MethodParameterAccessFlag, for use within a bit_set.
+MethodParameterAccessFlagBit :: enum {
+    Final     = 5,
+    Synthetic = 12,
+    Mandated  = 15,
+}
+
+// Indicates the modules required by a module, the packages exported and opened,
+// and the services used and provided by a module.
+Module :: struct {
+    // Points to a ConstantModuleInfo denoting the current module.
+    module_name_idx: u16,
+    module_flags: ModuleFlags,
+    // When zero, then no version information about the current module is present.
+    // Otherwise points to a ConstantUtf8Info representing the version.
+    module_version_idx: u16,
+    // Each entry specifies a dependence on the current module.
+    // Unless the current module is java.base, exactly one entry must have all of the following:
+    // - A requires_idx that indicates java.base
+    // - A requires_flags that has the .Synthetic flag not set (.Mandated may be set)
+    // - If the class file version is 54 or above, a requires_flags that has both the 
+    // .Transitive and .StaticPhase not set.
+    requires: []ModuleRequire,
+    exports: []ModuleExport,
+    opens: []ModuleOpens,
+    // Each entry points to a ConstantClassInfo representing a service interface which the
+    // current module may discover via java.util.ServiceLoader.
+    uses_idx: []u16,
+    provices: []ModuleProvides,
+}
+
+// Flags for a Module.
+ModuleFlag :: enum u16 {
+    // Indicates that the module is open.
+    Open      = 0x0020,
+    // Indicates that the module was not explicitly or implicitly declared.
+    Synthetic = 0x1000,
+    // Indicates that the module was implicitly declared.
+    Mandated  = 0x8000,
+}
+
+ModuleFlags :: bit_set[ModuleFlagBit; u16]
+
+// Log 2's of a ModuleFlag, for use within a bit_set.
+ModuleFlagBit :: enum u16 {
+    Open      = 5,
+    Synthetic = 12,
+    Mandated  = 15,
+}
+
+// Specifies a dependence of the current module.
+ModuleRequire :: struct {
+    // Points to a ConstantModuleInfo denoting a module on which the current module depends.
+    requires_idx: u16,
+    requires_flags: ModuleRequireFlags,
+    // When zero then no version information about the dependence is present.
+    // Otherwise, points to a ConstantUtf8Info representing the version of the module
+    // specified by the requires_idx.
+    requires_version_idx: u16,
+}
+
+ModuleRequireFlag :: enum u16 {
+    // Indicates that any module which depends on this module, implicitly declares
+    // a dependence on this module.
+    Transitive  = 0x0020,
+    // Indicates that this dependence is mandatory in the static phase, i.e. at compile time,
+    // but is optional in the dynamic phase, i.e. at runtime.
+    StaticPhase = 0x0040,
+    // Indicates that this dependence was not explicitly or implicitly declared in the source
+    // of the module declaration.
+    Synthetic   = 0x1000,
+    // Indicates that the this dependence was implicitly declared in the source of the module.
+    Mandated    = 0x8000,
+}
+
+ModuleRequireFlags :: bit_set[ModuleRequireFlagBit; u16]
+
+ModuleRequireFlagBit :: enum u16 {
+    Transitive  = 5,
+    StaticPhase = 6,
+    Synthetic   = 12,
+    Mandated    = 15,
+}
+
+// Represents a package exported by the current module.
+ModuleExport :: struct {
+    // Points to a ConstantPackageInfo representing an exported package.
+    exports_idx: u16,
+    exports_flags: ModuleExportFlags,
+    // When len(exports_to_idx) is zero, then this package is exported by the current module
+    // in an unqualified fashion; code in any other module may access the types and members
+    // in the package.
+    // If non-zero, then only code in the modules listed in this table may access the types
+    // and members in this package.
+    // Each entry points to a ConstantModuleInfo denoting a module which can access the types
+    // and members in this exported package.
+    exports_to_idx: []u16,
+}
+
+ModuleExportFlag :: enum u16 {
+    Synthetic = 0x1000,
+    Mandated  = 0x8000,
+}
+
+ModuleExportFlags :: bit_set[ModuleExportFlagBit; u16]
+
+// Log 2's of ModuleExportFlag, for use within a bit_set.
+ModuleExportFlagBit :: enum u16 {
+    Synthetic = 12,
+    Mandated  = 15,
+}
+
+// A package opened by the current module.
+ModuleOpens :: struct {
+    // Points to a ConstantPackageInfo representing a package opened.
+    opens_idx: u16,
+    opens_flags: ModuleOpensFlags,
+    // When len(opens_to_idx) is zero, then code in any other module may reflectively access
+    // the types and members in the package.
+    // Otherwise only code in this table may reflectively access them.
+    opens_to_idx: []u16, 
+}
+
+ModuleOpensFlag :: enum u16 {
+    Synthetic = 0x1000,
+    Mandated  = 0x8000,
+}
+
+ModuleOpensFlags :: bit_set[ModuleOpensFlagBit; u16]
+
+// Log 2's of ModuleOpensFlag, for use within a bit_set.
+ModuleOpensFlagBit :: enum u16 {
+    Synthetic = 12,
+    Mandated  = 15,
+}
+
+// Represents a service implementation for a given service name.
+ModuleProvides :: struct {
+    // Points to a ConstantClassInfo representing a service interface for which
+    // the current module provides an interface.
+    provides_idx: u16,
+    // Each entry must point to a ConstantClassInfo representing a service implementation for
+    // the service specified by provides_idx.
+    provides_with_idx: []u16,
+}
+
+// Indicates all the packages that are exported or opened by the Module attribute. As well as
+// the packages of the service implementations.
+ModulePackages :: struct {
+    // Each entry points to a ConstantPackageInfo representing a package
+    // in the current module.
+    package_idx: []u16,
+}
+
+// Indicates the main class of a module.
+ModuleMainClass :: struct {
+    // Points to a ConstantClassInfo.
+    main_class_idx: u16,
 }

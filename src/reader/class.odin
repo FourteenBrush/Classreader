@@ -447,16 +447,16 @@ MethodAccessFlags :: bit_set[MethodAccessFlagBit; u16]
 
 // Log 2's of MethodAccessFlag, for use within a bit_set.
 MethodAccessFlagBit :: enum u16 {
-    Public       = 1,
-    Private      = 2,
-    Protected    = 3,
-    Static       = 4,
-    Final        = 5,
-    Synchronized = 6,
-    Bridge       = 7,
-    Varargs      = 8,
-    Native       = 9,
-    Abstract     = 11,
-    Strict       = 12,
-    Synthetic    = 13,
+    Public       = 0,
+    Private      = 1,
+    Protected    = 2,
+    Static       = 3,
+    Final        = 4,
+    Synchronized = 5,
+    Bridge       = 6,
+    Varargs      = 7,
+    Native       = 8,
+    Abstract     = 10,
+    Strict       = 11,
+    Synthetic    = 12,
 }
