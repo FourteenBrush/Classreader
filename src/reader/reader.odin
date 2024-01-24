@@ -416,9 +416,87 @@ read_attribute_info :: proc(
             classes := read_u16_array(reader, number_of_classes) or_return
             attribute = NestMembers { classes }
         case "Module":
-            // TODO: read these attributes
+            module_name_idx := read_u16(reader) or_return
+            module_flags := transmute(ModuleFlags) read_u16(reader) or_return
+            module_version_idx := read_u16(reader) or_return
+
+            // read requires table
+            requires_count := read_u16(reader) or_return
+            requires := make([]ModuleRequire, requires_count, allocator)
+
+            for i in 0..<requires_count {
+                requires_idx := read_u16(reader) or_return
+                requires_flags := transmute(ModuleRequireFlags) read_u16(reader) or_return
+                requires_version_idx := read_u16(reader) or_return
+
+                requires[i] = ModuleRequire {
+                    requires_idx, requires_flags, requires_version_idx,
+                }
+            }
+
+            // read exports table
+            exports_count := read_u16(reader) or_return
+            exports := make([]ModuleExport, exports_count, allocator)
+
+            for i in 0..<exports_count {
+                exports_idx := read_u16(reader) or_return
+                exports_flags := transmute(ModuleExportFlags) read_u16(reader) or_return
+                exports_to_count := read_u16(reader) or_return
+                exports_to_idx := read_u16_array(reader, exports_to_count) or_return
+
+                exports[i] = ModuleExport {
+                    exports_idx, exports_flags, exports_to_idx,
+                }
+            }
+
+            // read opens table
+            opens_count := read_u16(reader) or_return
+            opens := make([]ModuleOpens, opens_count, allocator)
+
+            for i in 0..<opens_count {
+                opens_idx := read_u16(reader) or_return
+                opens_flags := transmute(ModuleOpensFlags) read_u16(reader) or_return
+                opens_to_count := read_u16(reader) or_return
+                opens_to_idx := read_u16_array(reader, opens_to_count) or_return
+
+                opens[i] = ModuleOpens {
+                    opens_idx, opens_flags, opens_to_idx,
+                }
+            }
+
+            uses_count := read_u16(reader) or_return
+            uses_idx := read_u16_array(reader, uses_count) or_return
+
+            // read provides table
+            provides_count := read_u16(reader) or_return
+            provides := make([]ModuleProvides, provides_count, allocator)
+
+            for i in 0..<provides_count {
+                provides_idx := read_u16(reader) or_return
+                provides_with_count := read_u16(reader) or_return
+                provides_with_idx := read_u16_array(reader, provides_with_count) or_return
+
+                provides[i] = ModuleProvides {
+                    provides_idx, provides_with_idx,
+                }
+            }
+            attribute = Module {
+                module_name_idx,
+                module_flags,
+                module_version_idx,
+                requires,
+                exports,
+                opens,
+                uses_idx,
+                provides,
+            }
         case "ModulePackages":
+            package_count := read_u16(reader) or_return
+            package_idx := read_u16_array(reader, package_count) or_return
+            attribute = ModulePackages { package_idx }
         case "ModuleMainClass":
+            main_class_idx := read_u16(reader) or_return
+            attribute = ModuleMainClass { main_class_idx }
         case:
             return attribute, .UnknownAttributeName
     }
