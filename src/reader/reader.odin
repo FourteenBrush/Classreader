@@ -1,6 +1,7 @@
 package reader
 
 import "core:slice"
+import "core:runtime"
 import "core:encoding/endian"
 
 ClassFileReader :: struct {
@@ -53,6 +54,8 @@ Error :: enum {
     None,
     // Some generic IO error
     IO,
+    // Provided allocator returned a runtime.Allocator_Error
+    AllocatorError,
     // Magic number was not present in the file header
     InvalidHeader,
     // Expected more bytes
@@ -86,7 +89,7 @@ read_constant_pool :: proc(
     constant_pool: []ConstantPoolEntry, 
     err: Error,
 ) {
-    constant_pool = make([]ConstantPoolEntry, count - 1, allocator) // omit first entry
+    constant_pool = make_safe([]ConstantPoolEntry, count - 1, allocator) or_return // omit first entry
 
     for i := 0; i < int(count) - 1; i += 1 {
         tag := ConstantType(read_u8(reader) or_return)
@@ -179,7 +182,7 @@ read_methods :: proc(
     err: Error,
 ) {
     count := read_u16(reader) or_return
-    methods = make([]MethodInfo, count, allocator)
+    methods = make_safe([]MethodInfo, count, allocator) or_return
 
     for i in 0..<count {
         // TODO: validate
@@ -208,7 +211,7 @@ read_fields :: proc(
     err: Error,
 ) {
     count := read_u16(reader) or_return
-    fields = make([]FieldInfo, count, allocator)
+    fields = make_safe([]FieldInfo, count, allocator) or_return
 
     for i in 0..<count {
         // TODO: validate
@@ -235,7 +238,7 @@ read_attributes :: proc(
     err: Error,
 ) {
     count := read_u16(reader) or_return
-    attributes = make([]AttributeInfo, count, allocator)
+    attributes = make_safe([]AttributeInfo, count, allocator) or_return
     
     for i in 0..<count {
         attributes[i] = read_attribute_info(reader, classfile, allocator) or_return
@@ -267,7 +270,7 @@ read_attribute_info :: proc(
             code_length := read_u32(reader) or_return
             code := read_nbytes(reader, code_length) or_return
             exception_table_length := read_u16(reader) or_return
-            exception_table := make([]ExceptionHandler, exception_table_length, allocator)
+            exception_table := make_safe([]ExceptionHandler, exception_table_length, allocator) or_return
 
             for i in 0..<exception_table_length {
                 start_pc := read_u16(reader) or_return
@@ -286,7 +289,7 @@ read_attribute_info :: proc(
             }
         case "StackMapTable":
             number_of_entries := read_u16(reader) or_return
-            entries := make([]StackMapFrame, number_of_entries, allocator)
+            entries := make_safe([]StackMapFrame, number_of_entries, allocator) or_return
 
             for i in 0..<number_of_entries {
                 frame_type := read_u8(reader) or_return
@@ -331,7 +334,7 @@ read_attribute_info :: proc(
             attribute = Exceptions { exception_idx_table }
         case "InnerClasses":
             number_of_classes := read_u16(reader) or_return
-            classes := make([]InnerClassEntry, number_of_classes, allocator)
+            classes := make_safe([]InnerClassEntry, number_of_classes, allocator) or_return
 
             for i in 0..<number_of_classes {
                 inner_class_info_idx := read_u16(reader) or_return
@@ -362,7 +365,7 @@ read_attribute_info :: proc(
         case "LineNumberTable":
             // TODO: slice.reinterpret?
             table_length := read_u16(reader) or_return
-            table := make([]LineNumberTableEntry, table_length, allocator)
+            table := make_safe([]LineNumberTableEntry, table_length, allocator) or_return
 
             for i in 0..<table_length {
                 start_pc := read_u16(reader) or_return
@@ -395,7 +398,7 @@ read_attribute_info :: proc(
             info := AnnotationDefault { default_value }
         case "BootstrapMethods":
             num_bootstrap_methods := read_u16(reader) or_return
-            bootstrap_methods := make([]BootstrapMethod, num_bootstrap_methods, allocator)
+            bootstrap_methods := make_safe([]BootstrapMethod, num_bootstrap_methods, allocator) or_return
 
             for i in 0..<num_bootstrap_methods {
                 bootstrap_method_ref := read_u16(reader) or_return
@@ -422,7 +425,7 @@ read_attribute_info :: proc(
 
             // read requires table
             requires_count := read_u16(reader) or_return
-            requires := make([]ModuleRequire, requires_count, allocator)
+            requires := make_safe([]ModuleRequire, requires_count, allocator) or_return
 
             for i in 0..<requires_count {
                 requires_idx := read_u16(reader) or_return
@@ -436,7 +439,7 @@ read_attribute_info :: proc(
 
             // read exports table
             exports_count := read_u16(reader) or_return
-            exports := make([]ModuleExport, exports_count, allocator)
+            exports := make_safe([]ModuleExport, exports_count, allocator) or_return
 
             for i in 0..<exports_count {
                 exports_idx := read_u16(reader) or_return
@@ -451,7 +454,7 @@ read_attribute_info :: proc(
 
             // read opens table
             opens_count := read_u16(reader) or_return
-            opens := make([]ModuleOpens, opens_count, allocator)
+            opens := make_safe([]ModuleOpens, opens_count, allocator) or_return
 
             for i in 0..<opens_count {
                 opens_idx := read_u16(reader) or_return
@@ -469,7 +472,7 @@ read_attribute_info :: proc(
 
             // read provides table
             provides_count := read_u16(reader) or_return
-            provides := make([]ModuleProvides, provides_count, allocator)
+            provides := make_safe([]ModuleProvides, provides_count, allocator) or_return
 
             for i in 0..<provides_count {
                 provides_idx := read_u16(reader) or_return
@@ -499,7 +502,7 @@ read_attribute_info :: proc(
             attribute = ModuleMainClass { main_class_idx }
         case "Record":
             components_count := read_u16(reader) or_return
-            components := make([]RecordComponentInfo, components_count, allocator)
+            components := make_safe([]RecordComponentInfo, components_count, allocator) or_return
 
             for i in 0..<components_count {
                 name_idx := read_u16(reader) or_return
@@ -535,7 +538,7 @@ read_local_variable_table :: proc(
     err: Error,
 ) {
     table_length := read_u16(reader) or_return
-    table = make([]LocalVariableTableEntry, table_length, allocator)
+    table = make_safe([]LocalVariableTableEntry, table_length, allocator) or_return
 
     for i in 0..<table_length {
         start_pc := read_u16(reader) or_return
@@ -562,7 +565,7 @@ read_parameter_annotations :: proc(
     err: Error,
 ) {
     num_parameters := read_u8(reader) or_return
-    param_annotations = make([]ParameterAnnotation, num_parameters, allocator)
+    param_annotations = make_safe([]ParameterAnnotation, num_parameters, allocator) or_return
 
     for i in 0..<num_parameters {
         annotations := read_annotations(reader, allocator) or_return
@@ -580,7 +583,7 @@ read_annotations :: proc(
     err: Error,
 ) {
     num_annotations := read_u16(reader) or_return
-    annotations = make([]Annotation, num_annotations, allocator)
+    annotations = make_safe([]Annotation, num_annotations, allocator) or_return
 
     for i in 0..<num_annotations {
         annotations[i] = read_annotation(reader, allocator) or_return
@@ -598,7 +601,7 @@ read_annotation :: proc(
 ) {
     type_idx := read_u16(reader) or_return
     num_element_value_pairs := read_u16(reader) or_return
-    element_value_pairs := make([]ElementValuePair, num_element_value_pairs, allocator)
+    element_value_pairs := make_safe([]ElementValuePair, num_element_value_pairs, allocator) or_return
 
     for i in 0..<num_element_value_pairs {
         element_value_idx := read_u16(reader) or_return
@@ -634,7 +637,7 @@ read_element_value :: proc(
             value = read_annotation(reader) or_return
         case '[':
             num_values := read_u16(reader) or_return
-            values := make([]ElementValue, num_values, allocator)
+            values := make_safe([]ElementValue, num_values, allocator) or_return
             for i in 0..<num_values {
                 values[i] = read_element_value(reader, allocator) or_return
             }
@@ -654,7 +657,7 @@ read_verification_type_infos :: proc(
     locals: []VerificationTypeInfo, 
     err: Error,
 ) {
-    locals = make([]VerificationTypeInfo, count, allocator)
+    locals = make_safe([]VerificationTypeInfo, count, allocator) or_return
     for i in 0..<count {
         locals[i] = read_verification_type_info(reader) or_return
     }
@@ -682,6 +685,21 @@ read_verification_type_info :: proc(reader: ^ClassFileReader) -> (info: Verifica
             return info, .UnknownVerificationTypeInfoTag
     }
     return info, .None
+}
+
+// An alternative for builtin.make, which returns an optional Error, to use or_return on.
+@private
+make_safe :: proc(
+    $T: typeid/[]$E, 
+    #any_int len: int, 
+    allocator := context.allocator, 
+    loc := #caller_location,
+) -> (
+    T, Error,
+) {
+    t, err := make(T, len, allocator, loc)
+    if err != .None do return t, .AllocatorError
+    return t, .None
 }
 
 @private
@@ -718,6 +736,8 @@ read_nbytes :: proc(using reader: ^ClassFileReader, #any_int n: int) -> ([]u8, E
     pos += n
     return ret, .None
 }
+
+// TODO: method that reads a slice with prepended length
 
 // Reads a number of bytes and reinterprets that as a slice of u16s.
 // Params:
