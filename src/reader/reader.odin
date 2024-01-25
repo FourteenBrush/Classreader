@@ -185,14 +185,14 @@ read_methods :: proc(
     count := read_u16(reader) or_return
     methods = make_safe([]MethodInfo, count, allocator) or_return
 
-    for i in 0..<count {
+    for &method in methods {
         // TODO: validate
         access_flags := transmute(MethodAccessFlags) read_u16(reader) or_return
         name_idx := read_u16(reader) or_return
         descriptor_idx := read_u16(reader) or_return
         attributes := read_attributes(reader, classfile, allocator) or_return
         
-        methods[i] = MethodInfo {
+        method = MethodInfo {
             access_flags,
             name_idx,
             descriptor_idx,
@@ -214,13 +214,13 @@ read_fields :: proc(
     count := read_u16(reader) or_return
     fields = make_safe([]FieldInfo, count, allocator) or_return
 
-    for i in 0..<count {
+    for &field in fields{
         // TODO: validate
         access_flags := transmute(FieldAccessFlags)read_u16(reader) or_return
         name_idx := read_u16(reader) or_return
         descriptor_idx := read_u16(reader) or_return
 
-        fields[i] = FieldInfo {
+        field = FieldInfo {
             access_flags, name_idx,
             descriptor_idx,
             read_attributes(reader, classfile, allocator) or_return,
@@ -241,8 +241,8 @@ read_attributes :: proc(
     count := read_u16(reader) or_return
     attributes = make_safe([]AttributeInfo, count, allocator) or_return
     
-    for i in 0..<count {
-        attributes[i] = read_attribute_info(reader, classfile, allocator) or_return
+    for &attribute in attributes {
+        attribute = read_attribute_info(reader, classfile, allocator) or_return
     }
     return attributes, .None
 }
@@ -273,12 +273,12 @@ read_attribute_info :: proc(
             exception_table_length := read_u16(reader) or_return
             exception_table := make_safe([]ExceptionHandler, exception_table_length, allocator) or_return
 
-            for i in 0..<exception_table_length {
+            for &exception in exception_table {
                 start_pc := read_u16(reader) or_return
                 end_pc := read_u16(reader) or_return
                 handler_pc := read_u16(reader) or_return
                 catch_type := read_u16(reader) or_return
-                exception_table[i] = ExceptionHandler { start_pc, end_pc, handler_pc, catch_type }
+                exception = ExceptionHandler { start_pc, end_pc, handler_pc, catch_type }
             }
 
             attributes := read_attributes(reader, classfile) or_return
@@ -292,38 +292,38 @@ read_attribute_info :: proc(
             number_of_entries := read_u16(reader) or_return
             entries := make_safe([]StackMapFrame, number_of_entries, allocator) or_return
 
-            for i in 0..<number_of_entries {
+            for &entry in entries {
                 frame_type := read_u8(reader) or_return
                 switch frame_type {
                     case 0..=63:
-                        entries[i] = SameFrame {}
+                        entry = SameFrame {}
                     case 64..=127:
                         stack := read_verification_type_info(reader) or_return
-                        entries[i] = SameLocals1StackItemFrame { stack }
+                        entry = SameLocals1StackItemFrame { stack }
                     case 128..=246:
                         return attribute, .ReservedFrameType
                     case 247:
                         offset_delta := read_u16(reader) or_return
                         stack := read_verification_type_info(reader) or_return
-                        entries[i] = SameLocals1StackItemFrameExtended { offset_delta, stack }
+                        entry = SameLocals1StackItemFrameExtended { offset_delta, stack }
                     case 248..=250:
                         offset_delta := read_u16(reader) or_return
-                        entries[i] = ChopFrame { offset_delta }
+                        entry = ChopFrame { offset_delta }
                     case 251:
                         offset_delta := read_u16(reader) or_return
-                        entries[i] = SameFrameExtended { offset_delta }
+                        entry = SameFrameExtended { offset_delta }
                     case 252..=254:
                         offset_delta := read_u16(reader) or_return
                         count := u16(frame_type) - FRAME_LOCALS_OFFSET  
                         locals := read_verification_type_infos(reader, count) or_return
-                        entries[i] = AppendFrame { offset_delta, locals }
+                        entry = AppendFrame { offset_delta, locals }
                     case 255:
                         offset_delta := read_u16(reader) or_return
                         number_of_locals := read_u16(reader) or_return
                         locals := read_verification_type_infos(reader, number_of_locals) or_return
                         number_of_stack_items := read_u16(reader) or_return
                         stack := read_verification_type_infos(reader, number_of_stack_items) or_return
-                        entries[i] = FullFrame { offset_delta, locals, stack }
+                        entry = FullFrame { offset_delta, locals, stack }
                     case:
                         return attribute, .UnknownFrameType
                 }
@@ -337,12 +337,12 @@ read_attribute_info :: proc(
             number_of_classes := read_u16(reader) or_return
             classes := make_safe([]InnerClassEntry, number_of_classes, allocator) or_return
 
-            for i in 0..<number_of_classes {
+            for &class in classes {
                 inner_class_info_idx := read_u16(reader) or_return
                 outer_class_info_idx := read_u16(reader) or_return
                 name_idx := read_u16(reader) or_return
                 access_flags := transmute(InnerClassAccessFlags) read_u16(reader) or_return
-                classes[i] = InnerClassEntry {
+                class = InnerClassEntry {
                     inner_class_info_idx,
                     outer_class_info_idx,
                     name_idx, access_flags,
@@ -361,17 +361,17 @@ read_attribute_info :: proc(
             sourcefile_idx := read_u16(reader) or_return
             attribute = SourceFile { sourcefile_idx }
         case "SourceDebugExtension":
-            debug_extension := read_nbytes(reader, int(length)) or_return
+            debug_extension := read_nbytes(reader, length) or_return
             attribute = SourceDebugExtension { string(debug_extension) }
         case "LineNumberTable":
             // TODO: slice.reinterpret?
             table_length := read_u16(reader) or_return
             table := make_safe([]LineNumberTableEntry, table_length, allocator) or_return
 
-            for i in 0..<table_length {
+            for &entry in table {
                 start_pc := read_u16(reader) or_return
                 line_number := read_u16(reader) or_return
-                table[i] = LineNumberTableEntry { start_pc, line_number }
+                entry = LineNumberTableEntry { start_pc, line_number }
             }
             attribute = LineNumberTable { table }
         case "LocalVariableTable":
@@ -401,12 +401,12 @@ read_attribute_info :: proc(
             num_bootstrap_methods := read_u16(reader) or_return
             bootstrap_methods := make_safe([]BootstrapMethod, num_bootstrap_methods, allocator) or_return
 
-            for i in 0..<num_bootstrap_methods {
+            for &method in bootstrap_methods {
                 bootstrap_method_ref := read_u16(reader) or_return
                 num_bootstrap_args := read_u16(reader) or_return
                 bootstrap_args := read_u16_array(reader, num_bootstrap_args) or_return
 
-                bootstrap_methods[i] = BootstrapMethod {
+                method = BootstrapMethod {
                     bootstrap_method_ref,
                     bootstrap_args,
                 }
@@ -428,12 +428,12 @@ read_attribute_info :: proc(
             requires_count := read_u16(reader) or_return
             requires := make_safe([]ModuleRequire, requires_count, allocator) or_return
 
-            for i in 0..<requires_count {
+            for &require in requires {
                 requires_idx := read_u16(reader) or_return
                 requires_flags := transmute(ModuleRequireFlags) read_u16(reader) or_return
                 requires_version_idx := read_u16(reader) or_return
 
-                requires[i] = ModuleRequire {
+                require = ModuleRequire {
                     requires_idx, requires_flags, requires_version_idx,
                 }
             }
@@ -442,13 +442,13 @@ read_attribute_info :: proc(
             exports_count := read_u16(reader) or_return
             exports := make_safe([]ModuleExport, exports_count, allocator) or_return
 
-            for i in 0..<exports_count {
+            for &export in exports {
                 exports_idx := read_u16(reader) or_return
                 exports_flags := transmute(ModuleExportFlags) read_u16(reader) or_return
                 exports_to_count := read_u16(reader) or_return
                 exports_to_idx := read_u16_array(reader, exports_to_count) or_return
 
-                exports[i] = ModuleExport {
+                export = ModuleExport {
                     exports_idx, exports_flags, exports_to_idx,
                 }
             }
@@ -457,13 +457,13 @@ read_attribute_info :: proc(
             opens_count := read_u16(reader) or_return
             opens := make_safe([]ModuleOpens, opens_count, allocator) or_return
 
-            for i in 0..<opens_count {
+            for &open in opens {
                 opens_idx := read_u16(reader) or_return
                 opens_flags := transmute(ModuleOpensFlags) read_u16(reader) or_return
                 opens_to_count := read_u16(reader) or_return
                 opens_to_idx := read_u16_array(reader, opens_to_count) or_return
 
-                opens[i] = ModuleOpens {
+                open = ModuleOpens {
                     opens_idx, opens_flags, opens_to_idx,
                 }
             }
@@ -475,12 +475,12 @@ read_attribute_info :: proc(
             provides_count := read_u16(reader) or_return
             provides := make_safe([]ModuleProvides, provides_count, allocator) or_return
 
-            for i in 0..<provides_count {
+            for &provide in provides {
                 provides_idx := read_u16(reader) or_return
                 provides_with_count := read_u16(reader) or_return
                 provides_with_idx := read_u16_array(reader, provides_with_count) or_return
 
-                provides[i] = ModuleProvides {
+                provide = ModuleProvides {
                     provides_idx, provides_with_idx,
                 }
             }
@@ -505,12 +505,12 @@ read_attribute_info :: proc(
             components_count := read_u16(reader) or_return
             components := make_safe([]RecordComponentInfo, components_count, allocator) or_return
 
-            for i in 0..<components_count {
+            for &component in components {
                 name_idx := read_u16(reader) or_return
                 descriptor_idx := read_u16(reader) or_return
                 attributes := read_attributes(reader, classfile, allocator) or_return
 
-                components[i] = RecordComponentInfo {
+                component = RecordComponentInfo {
                     name_idx, descriptor_idx, attributes,
                 }
             }
@@ -541,14 +541,14 @@ read_local_variable_table :: proc(
     table_length := read_u16(reader) or_return
     table = make_safe([]LocalVariableTableEntry, table_length, allocator) or_return
 
-    for i in 0..<table_length {
+    for &local_var in table {
         start_pc := read_u16(reader) or_return
         length := read_u16(reader) or_return
         name_idx := read_u16(reader) or_return
         signature_idx := read_u16(reader) or_return
         idx := read_u16(reader) or_return
 
-        table[i] = LocalVariableTableEntry {
+        local_var = LocalVariableTableEntry {
             start_pc, length,
             name_idx, signature_idx,
             idx,
@@ -568,9 +568,9 @@ read_parameter_annotations :: proc(
     num_parameters := read_u8(reader) or_return
     param_annotations = make_safe([]ParameterAnnotation, num_parameters, allocator) or_return
 
-    for i in 0..<num_parameters {
+    for &annotation in param_annotations {
         annotations := read_annotations(reader, allocator) or_return
-        param_annotations[i] = ParameterAnnotation { annotations }
+        annotation = ParameterAnnotation { annotations }
     }
     return param_annotations, .None
 }
@@ -586,8 +586,8 @@ read_annotations :: proc(
     num_annotations := read_u16(reader) or_return
     annotations = make_safe([]Annotation, num_annotations, allocator) or_return
 
-    for i in 0..<num_annotations {
-        annotations[i] = read_annotation(reader, allocator) or_return
+    for &annotation in annotations {
+        annotation = read_annotation(reader, allocator) or_return
     }
     return annotations, .None
 }
@@ -604,10 +604,10 @@ read_annotation :: proc(
     num_element_value_pairs := read_u16(reader) or_return
     element_value_pairs := make_safe([]ElementValuePair, num_element_value_pairs, allocator) or_return
 
-    for i in 0..<num_element_value_pairs {
+    for &pair in element_value_pairs {
         element_value_idx := read_u16(reader) or_return
         element_value := read_element_value(reader, allocator) or_return
-        element_value_pairs[i] = ElementValuePair { element_value_idx, element_value }
+        pair = ElementValuePair { element_value_idx, element_value }
     }
 
     return Annotation { type_idx, element_value_pairs }, .None
@@ -639,8 +639,8 @@ read_element_value :: proc(
         case '[':
             num_values := read_u16(reader) or_return
             values := make_safe([]ElementValue, num_values, allocator) or_return
-            for i in 0..<num_values {
-                values[i] = read_element_value(reader, allocator) or_return
+            for &value in values {
+                value = read_element_value(reader, allocator) or_return
             }
             value = ArrayValue { values }
         case:
@@ -659,8 +659,9 @@ read_verification_type_infos :: proc(
     err: Error,
 ) {
     locals = make_safe([]VerificationTypeInfo, count, allocator) or_return
-    for i in 0..<count {
-        locals[i] = read_verification_type_info(reader) or_return
+
+    for &local in locals {
+        local = read_verification_type_info(reader) or_return
     }
     return locals, .None
 }

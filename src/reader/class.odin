@@ -20,8 +20,8 @@ ClassFile :: struct {
     access_flags: ClassAccessFlags,
     // Points to a ConstantClassInfo entry, representing this class.
     this_class: u16,
-    // Zero if there are no superclasses (use java.lang.Object instead)
-    // or an index to a ConstantClassInfo entry, representing the super class.
+    // Zero if there are no superclasses (java.lang.Object instead)
+    // or an index to a ConstantClassInfo, representing the super class.
     super_class: u16,
     // List of indices, pointing to ConstantClassInfo entries,
     // representing interfaces that are a direct superinterface.
