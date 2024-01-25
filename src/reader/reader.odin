@@ -1,8 +1,9 @@
 package reader
 
 import "core:slice"
-import "core:runtime"
 import "core:encoding/endian"
+
+MAGIC :: 0xCAFEBABE
 
 ClassFileReader :: struct {
     bytes: []u8,
@@ -15,11 +16,8 @@ reader_new :: proc(bytes: []u8) -> ClassFileReader {
     return ClassFileReader { bytes, 0 }
 }
 
-@private
-MAGIC :: 0xCAFEBABE
-
 // Attempts to a read a classfile, returning the error if failed.
-// NOTE: the resulting ClassFile's lifetime is bound to the bytes it got from the reader.
+// IMPORTANT NOTE: the resulting ClassFile's lifetime is bound to the bytes it got from the reader.
 // This might become subject to change, to only clone necessary byte slices instead.
 read_classfile :: proc(
     reader: ^ClassFileReader, 
@@ -159,8 +157,11 @@ read_constant_pool_entry :: proc(
             name_and_type_idx := read_u16(reader) or_return
             entry = ConstantInvokeDynamicInfo { bootstrap_method_attr_idx, name_and_type_idx }
         case .Module:
+            name_idx := read_u16(reader) or_return
+            entry = ConstantModuleInfo { name_idx }
         case .Package:
-            // TODO
+            name_idx := read_u16(reader) or_return
+            entry = ConstantPackageInfo { name_idx }
     }
     return entry, .None
 }
