@@ -19,6 +19,7 @@ CPInfo :: union {
     ConstantNameAndTypeInfo,
     ConstantMethodHandleInfo,
     ConstantMethodTypeInfo,
+    ConstantDynamicInfo,
     ConstantInvokeDynamicInfo,
     ConstantModuleInfo,
     ConstantPackageInfo,
@@ -39,6 +40,7 @@ ConstantType :: enum u8 {
     NameAndType = 12,
     MethodHandle = 15,
     MethodType = 16,
+    Dynamic = 17,
     InvokeDynamic = 18,
     Module = 19,
     Package = 20,
@@ -132,6 +134,16 @@ ReferenceKind :: enum u8 {
 ConstantMethodTypeInfo :: struct {
     // Points to a ConstantUtf8Info entry representing a method descriptor.
     descriptor_idx: u16,
+}
+
+// Represents a dynamically-computed constant, an arbitrary value that is
+// produced by invocation of a bootstrap method in the course of an ldc instruction,
+// among others.
+ConstantDynamicInfo :: struct {
+    // Points to an entry in the BootstrapMethods table of the class file.
+    bootstrap_method_attr_idx: u16,
+    // Points to a ConstantNameAndType structure representing a method name and descriptor.
+    name_and_type_idx: u16,
 }
 
 // Used by an invokedynamic instruction to specify a bootstrap method,

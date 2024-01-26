@@ -18,8 +18,9 @@ reader_new :: proc(bytes: []u8) -> ClassFileReader {
 }
 
 // Attempts to a read a classfile, returning the error if failed.
-// IMPORTANT NOTE: the resulting ClassFile's lifetime is bound to the bytes it got from the reader.
-// This might become subject to change, to only clone necessary byte slices instead.
+// IMPORTANT NOTE: the resulting ClassFile's lifetime is bound to the bytes 
+// it got from the reader. This might become subject to change, 
+// to only clone necessary byte slices instead.
 read_classfile :: proc(
     reader: ^ClassFileReader, 
     allocator := context.allocator,
@@ -82,7 +83,7 @@ Error :: enum {
 @private
 read_constant_pool :: proc(
     reader: ^ClassFileReader, 
-    count: u16, 
+    #any_int count: int, 
     allocator := context.allocator,
 ) -> (
     constant_pool: []ConstantPoolEntry, 
@@ -90,7 +91,7 @@ read_constant_pool :: proc(
 ) {
     constant_pool = make_safe([]ConstantPoolEntry, count - 1, allocator) or_return // omit first entry
 
-    for i := 0; i < int(count) - 1; i += 1 {
+    for i := 0; i < count - 1; i += 1 {
         tag := ConstantType(read_u8(reader) or_return)
         entry := read_constant_pool_entry(reader, tag) or_return
 
@@ -395,7 +396,13 @@ read_attribute_info :: proc(
 }
 
 @private
-read_stack_map_table :: proc(reader: ^ClassFileReader) -> (table: StackMapTable, err: Error) {
+read_stack_map_table :: proc(
+    reader: ^ClassFileReader, 
+    allocator := context.allocator,
+) -> (
+    table: StackMapTable, 
+    err: Error,
+) {
     frames := alloc_slice(reader, []StackMapFrame, allocator) or_return
 
     for &frame in frames {
@@ -430,13 +437,19 @@ read_stack_map_table :: proc(reader: ^ClassFileReader) -> (table: StackMapTable,
             stack := read_verification_type_infos(reader, number_of_stack_items) or_return
             frame = FullFrame { offset_delta, locals, stack }
         case: return {}, .UnknownFrameType
+        }
     }
-
     return StackMapTable { frames }, .None
 }
 
 @private
-read_module :: proc(reader: ^ClassFileReader) -> (module: Module, err: Error) {
+read_module :: proc(
+    reader: ^ClassFileReader, 
+    allocator := context.allocator,
+) -> (
+    module: Module, 
+    err: Error,
+) {
     module_name_idx := read_u16(reader) or_return
     module_flags := transmute(ModuleFlags) read_u16(reader) or_return
     module_version_idx := read_u16(reader) or_return
@@ -687,15 +700,15 @@ alloc_slice :: proc(
     allocator: mem.Allocator, // make the allocator explicit
     loc := #caller_location,
 ) -> (
-    res: T, 
+    ret: T, 
     err: Error,
 ) {
     length := read_u16(reader) or_return
     alloc_err: mem.Allocator_Error
-    res, alloc_err = make(T, length, allocator, loc)
+    ret, alloc_err = make(T, length, allocator, loc)
 
-    if alloc_err != .None do return res, .AllocatorError
-    return res, .None
+    if alloc_err != .None do return ret, .AllocatorError
+    return ret, .None
 }
 
 @private
@@ -733,9 +746,7 @@ read_nbytes :: proc(using reader: ^ClassFileReader, #any_int n: int) -> ([]u8, E
     return ret, .None
 }
 
-// TODO: method that reads a slice with prepended length
-
-// Reads a slice of u16s, the length is prepended as a u16 before the actual data.
+// Reads a slice of u16s, the length is prefixed as a u16 before the actual data.
 // | length: u16 | data: ...u16 (length items) |
 @private
 read_u16_slice :: proc(reader: ^ClassFileReader) -> (ret: []u16, err: Error) {

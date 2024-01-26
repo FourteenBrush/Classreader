@@ -82,6 +82,13 @@ attribute_destroy :: proc(attrib: AttributeInfo) {
             element_value_destroy(attrib.default_value.value)
         case BootstrapMethods:
             delete(attrib.bootstrap_methods)
+        case Module:
+            delete(attrib.requires)
+            delete(attrib.exports)
+            delete(attrib.opens)
+            delete(attrib.provides)
+        case Record:
+            delete(attrib.components)
     }
 }
 
@@ -711,7 +718,8 @@ Module :: struct {
     // Otherwise points to a ConstantUtf8Info representing the version.
     module_version_idx: u16,
     // Each entry specifies a dependence on the current module.
-    // Unless the current module is java.base, exactly one entry must have all of the following:
+    // Unless the current module is java.base, exactly one entry must have 
+    // all of the following:
     // - A requires_idx that indicates java.base
     // - A requires_flags that has the .Synthetic flag not set (.Mandated may be set)
     // - If the class file version is 54 or above, a requires_flags that has both the 
@@ -719,10 +727,10 @@ Module :: struct {
     requires: []ModuleRequire,
     exports: []ModuleExport,
     opens: []ModuleOpens,
-    // Each entry points to a ConstantClassInfo representing a service interface which the
-    // current module may discover via java.util.ServiceLoader.
+    // Each entry points to a ConstantClassInfo representing a service interface 
+    // which the current module may discover via java.util.ServiceLoader.
     uses_idx: []u16,
-    provices: []ModuleProvides,
+    provides: []ModuleProvides,
 }
 
 // Flags for a Module.
@@ -746,7 +754,8 @@ ModuleFlagBit :: enum u16 {
 
 // Specifies a dependence of the current module.
 ModuleRequire :: struct {
-    // Points to a ConstantModuleInfo denoting a module on which the current module depends.
+    // Points to a ConstantModuleInfo denoting a module 
+    // on which the current module depends.
     requires_idx: u16,
     requires_flags: ModuleRequireFlags,
     // When zero then no version information about the dependence is present.
@@ -759,13 +768,14 @@ ModuleRequireFlag :: enum u16 {
     // Indicates that any module which depends on this module, implicitly declares
     // a dependence on this module.
     Transitive  = 0x0020,
-    // Indicates that this dependence is mandatory in the static phase, i.e. at compile time,
-    // but is optional in the dynamic phase, i.e. at runtime.
+    // Indicates that this dependence is mandatory in the static phase, 
+    // i.e. at compile time, but is optional in the dynamic phase, i.e. at runtime.
     StaticPhase = 0x0040,
-    // Indicates that this dependence was not explicitly or implicitly declared in the source
-    // of the module declaration.
+    // Indicates that this dependence was not explicitly or implicitly 
+    // declared in the source of the module declaration.
     Synthetic   = 0x1000,
-    // Indicates that the this dependence was implicitly declared in the source of the module.
+    // Indicates that the this dependence was implicitly declared 
+    // in the source of the module.
     Mandated    = 0x8000,
 }
 
@@ -783,13 +793,13 @@ ModuleExport :: struct {
     // Points to a ConstantPackageInfo representing an exported package.
     exports_idx: u16,
     exports_flags: ModuleExportFlags,
-    // When len(exports_to_idx) is zero, then this package is exported by the current module
-    // in an unqualified fashion; code in any other module may access the types and members
-    // in the package.
-    // If non-zero, then only code in the modules listed in this table may access the types
-    // and members in this package.
-    // Each entry points to a ConstantModuleInfo denoting a module which can access the types
-    // and members in this exported package.
+    // When len(exports_to_idx) is zero, then this package is exported 
+    // by the current module in an unqualified fashion; 
+    // code in any other module may access the types and members in the package.
+    // If non-zero, then only code in the modules listed in this table may 
+    // access the types and members in this package.
+    // Each entry points to a ConstantModuleInfo denoting a module 
+    // which can access the types and members in this exported package.
     exports_to_idx: []u16,
 }
 
@@ -811,8 +821,8 @@ ModuleOpens :: struct {
     // Points to a ConstantPackageInfo representing a package opened.
     opens_idx: u16,
     opens_flags: ModuleOpensFlags,
-    // When len(opens_to_idx) is zero, then code in any other module may reflectively access
-    // the types and members in the package.
+    // When len(opens_to_idx) is zero, then code in any other module 
+    // may reflectively access the types and members in the package.
     // Otherwise only code in this table may reflectively access them.
     opens_to_idx: []u16, 
 }
@@ -835,13 +845,13 @@ ModuleProvides :: struct {
     // Points to a ConstantClassInfo representing a service interface for which
     // the current module provides an interface.
     provides_idx: u16,
-    // Each entry must point to a ConstantClassInfo representing a service implementation for
-    // the service specified by provides_idx.
+    // Each entry must point to a ConstantClassInfo representing a 
+    // service implementation for the service specified by provides_idx.
     provides_with_idx: []u16,
 }
 
-// Indicates all the packages that are exported or opened by the Module attribute. As well as
-// the packages of the service implementations.
+// Indicates all the packages that are exported or opened by 
+// the Module attribute. As well as the packages of the service implementations.
 ModulePackages :: struct {
     // Each entry points to a ConstantPackageInfo representing a package
     // in the current module.

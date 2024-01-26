@@ -1,7 +1,6 @@
 package reader
 
 import "core:fmt"
-import "core:slice"
 import "core:reflect"
 import "core:intrinsics"
 
@@ -24,7 +23,7 @@ ClassFile :: struct {
     // or an index to a ConstantClassInfo, representing the super class.
     super_class: u16,
     // List of indices, pointing to ConstantClassInfo entries,
-    // representing interfaces that are a direct superinterface.
+    // representing direct superinterfaces.
     interfaces: []u16,
     fields: []FieldInfo,
     methods: []MethodInfo,
@@ -89,8 +88,6 @@ classfile_find_field :: proc(using classfile: ClassFile, name: string) -> Maybe(
 classfile_find_method :: proc(using classfile: ClassFile, name: string) -> Maybe(MethodInfo) {
     for &method in methods {
         method_name := cp_get_str(classfile, method.name_idx)
-        desc := cp_get_str(classfile, method.descriptor_idx)
-        fmt.println("encountered method", method_name, desc)
         if method_name == name do return method
     } 
     return nil
@@ -100,16 +97,18 @@ classfile_find_method :: proc(using classfile: ClassFile, name: string) -> Maybe
 // Finds the first occurence of the given attribute type.
 classfile_find_attribute :: proc(using classfile: ClassFile, $T: typeid) -> Maybe(T)
 where intrinsics.type_is_variant_of(AttributeInfo, T) {
-    idx, found := slice.linear_search_proc(attributes, proc(attrib: AttributeInfo) -> bool {
-        return type_of(attrib) == T
-    }) 
-    return attributes[idx].(T) if found else nil
+    for &attribute in attributes {
+        if type_of(attribute) == T do return attribute
+    }
+    return nil
 }
 
 find_attribute :: proc(container: $C, $T: typeid) -> Maybe(T)
 where intrinsics.type_is_variant_of(AttributeInfo, T) {
-    // TODO
-    return container.attributes[0]
+    for &attribute in container.attributes {
+        if type_of(attribute) == T do return attribute
+    }
+    return nil
 }
 
 cp_find :: proc(
@@ -118,8 +117,8 @@ cp_find :: proc(
     predicate: proc(ClassFile, E) -> bool,
 ) -> Maybe(E) where intrinsics.type_is_variant_of(CPInfo, E) {
     for &entry in constant_pool {
-        entry, ok := entry.info.(E)
-        if ok && predicate(classfile, entry) {
+        entry := entry.info.(E) or_continue
+        if predicate(classfile, entry) {
             return entry
         }
     }
@@ -134,7 +133,7 @@ cp_get_str :: proc(using classfile: ClassFile, idx: u16) -> string {
 
 // Returns the constantpool entry stored at the given index.
 // Panics if idx is invalid or the expected and actual type differ.
-cp_get :: proc($E: typeid, using classfile: ClassFile, idx: u16, loc := #caller_location) -> E
+cp_get :: proc($E: typeid, using classfile: ClassFile, idx: u16) -> E
 where intrinsics.type_is_variant_of(CPInfo, E) {
     return constant_pool[idx - 1].info.(E)
 }
@@ -286,10 +285,16 @@ cp_entry_dump :: proc(classfile: ClassFile, cp_info: ConstantPoolEntry) {
             using name_and_type := cp_get(ConstantNameAndTypeInfo, classfile, cp_info.name_and_type_idx)
             method_name := cp_get_str(classfile, name_idx)
             method_descriptor := cp_get_str(classfile, descriptor_idx)
-            fmt.printf("#%v:%v:%v\n", cp_info.bootstrap_method_attr_idx, method_name, method_descriptor)
+            fmt.printf(
+                "#%v:%v:%v\n", 
+                cp_info.bootstrap_method_attr_idx, method_name, method_descriptor,
+            )
         case ConstantModuleInfo:
+            module_name := cp_get_str(classfile, cp_info.name_idx)
+            fmt.println(module_name)
         case ConstantPackageInfo: 
-            // TODO
+            package_name := cp_get_str(classfile, cp_info.name_idx)
+            fmt.println(package_name)
     }
 }
 
