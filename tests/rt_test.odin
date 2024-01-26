@@ -2,13 +2,36 @@ package test
 
 import "core:os"
 import "core:fmt"
+import "core:c/libc"
 import "core:bytes"
 import "core:strings"
+import "core:runtime"
 import "core:testing"
 import "core:compress/zlib"
 import "core:path/filepath"
 
 import cr "../src/reader"
+import "../dependencies/back"
+
+register_sigill_handler :: proc() {
+    libc.signal(libc.SIGILL, proc "c" (code: i32) {
+        context = runtime.default_context()
+        context.allocator = context.temp_allocator
+
+        backtrace: {
+            t := back.trace()
+            lines, err := back.lines(t.trace[:t.len])
+            if err != nil {
+                fmt.eprintf("Exception (Code %i)\nCould not get backtrace: %v\n", code, err)
+                break backtrace
+            }
+
+            fmt.eprintf("Exception (Code %i)\n[back trace]\n", code)
+            back.print(lines)
+        }
+        os.exit(int(code))
+    }) 
+}
 
 // TODO: when we are able to extract zip files via the stdlib
 //@test
@@ -35,6 +58,7 @@ test_rt_jar_files :: proc(t: ^testing.T) {
 
 @test
 test_arbitrary_classes :: proc(t: ^testing.T) {
+    register_sigill_handler()
     files_read := 0
     filepath.walk("res/java", visit_file, &files_read)
     testing.expect_value(t, files_read, 1313)
@@ -48,11 +72,12 @@ visit_file :: proc(file: os.File_Info, in_err: os.Errno, user_data: rawptr) -> (
     defer delete(data)
     if !ok do return
 
+    fmt.eprintln(file.name)
     reader := cr.reader_new(data)
     classfile, cerr := cr.read_classfile(&reader)
     defer cr.classfile_destroy(classfile)
-    classname := cr.classfile_get_class_name(classfile) 
     if cerr != .None {
+        classname := cr.classfile_get_class_name(classfile) 
         fmt.eprintf("error reading file %v: %v\n", classname, cerr)
     } else {
         files_read := cast(^int)user_data

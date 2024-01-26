@@ -1,0 +1,3 @@
+[submodule "dependencies/back"]
+	path = dependencies/back
+	url = https://github.com/laytan/back.git

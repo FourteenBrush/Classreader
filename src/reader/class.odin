@@ -134,7 +134,7 @@ cp_get_str :: proc(using classfile: ClassFile, idx: u16) -> string {
 
 // Returns the constantpool entry stored at the given index.
 // Panics if the expected and actual type differ.
-cp_get :: proc($T: typeid, using classfile: ClassFile, idx: u16) -> T
+cp_get :: proc($T: typeid, using classfile: ClassFile, idx: u16, loc := #caller_location) -> T
 where intrinsics.type_is_variant_of(CPInfo, T) {
     return constant_pool[idx - 1].info.(T)
 }

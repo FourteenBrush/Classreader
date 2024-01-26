@@ -1,5 +1,6 @@
 package reader
 
+import "core:mem"
 import "core:slice"
 import "core:encoding/endian"
 
@@ -40,7 +41,7 @@ read_classfile :: proc(
     this_class = read_u16(reader) or_return
     super_class = read_u16(reader) or_return
 
-    interfaces = read_interfaces(reader) or_return
+    interfaces = read_u16_slice(reader) or_return
     fields = read_fields(reader, classfile, allocator) or_return
     methods = read_methods(reader, classfile, allocator) or_return
     attributes = read_attributes(reader, classfile, allocator) or_return
@@ -74,7 +75,7 @@ Error :: enum {
     UnknownFrameType,
     // Missing attribute in some attribute holder
     MissingAttribute,
-    // Unknown bytecode opcode in a Code attribute,
+    // Unknown opcode in the bytecode of a Code attribute
     UnknownOpcode,
 }
 
@@ -167,13 +168,6 @@ read_constant_pool_entry :: proc(
 }
 
 @private
-read_interfaces :: proc(reader: ^ClassFileReader) -> (interfaces: []u16, err: Error) {
-    count := read_u16(reader) or_return
-    interfaces = read_u16_array(reader, count) or_return
-    return interfaces, .None
-}
-
-@private
 read_methods :: proc(
     reader: ^ClassFileReader, 
     classfile: ClassFile,
@@ -182,8 +176,7 @@ read_methods :: proc(
     methods: []MethodInfo,
     err: Error,
 ) {
-    count := read_u16(reader) or_return
-    methods = make_safe([]MethodInfo, count, allocator) or_return
+    methods = alloc_slice(reader, []MethodInfo, allocator) or_return
 
     for &method in methods {
         // TODO: validate
@@ -211,8 +204,7 @@ read_fields :: proc(
     fields: []FieldInfo,
     err: Error,
 ) {
-    count := read_u16(reader) or_return
-    fields = make_safe([]FieldInfo, count, allocator) or_return
+    fields = alloc_slice(reader, []FieldInfo, allocator) or_return
 
     for &field in fields{
         // TODO: validate
@@ -238,8 +230,7 @@ read_attributes :: proc(
     attributes: []AttributeInfo, 
     err: Error,
 ) {
-    count := read_u16(reader) or_return
-    attributes = make_safe([]AttributeInfo, count, allocator) or_return
+    attributes = alloc_slice(reader, []AttributeInfo, allocator) or_return
     
     for &attribute in attributes {
         attribute = read_attribute_info(reader, classfile, allocator) or_return
@@ -270,8 +261,7 @@ read_attribute_info :: proc(
             max_locals := read_u16(reader) or_return
             code_length := read_u32(reader) or_return
             code := read_nbytes(reader, code_length) or_return
-            exception_table_length := read_u16(reader) or_return
-            exception_table := make_safe([]ExceptionHandler, exception_table_length, allocator) or_return
+            exception_table := alloc_slice(reader, []ExceptionHandler, allocator) or_return
 
             for &exception in exception_table {
                 start_pc := read_u16(reader) or_return
@@ -289,8 +279,7 @@ read_attribute_info :: proc(
                 attributes,
             }
         case "StackMapTable":
-            number_of_entries := read_u16(reader) or_return
-            entries := make_safe([]StackMapFrame, number_of_entries, allocator) or_return
+            entries := alloc_slice(reader, []StackMapFrame, allocator) or_return
 
             for &entry in entries {
                 frame_type := read_u8(reader) or_return
@@ -330,12 +319,10 @@ read_attribute_info :: proc(
             }
             attribute = StackMapTable { entries }
         case "Exceptions":
-            number_of_exceptions := read_u16(reader) or_return
-            exception_idx_table := read_u16_array(reader, number_of_exceptions) or_return
+            exception_idx_table := read_u16_slice(reader) or_return
             attribute = Exceptions { exception_idx_table }
         case "InnerClasses":
-            number_of_classes := read_u16(reader) or_return
-            classes := make_safe([]InnerClassEntry, number_of_classes, allocator) or_return
+            classes := alloc_slice(reader, []InnerClassEntry, allocator) or_return
 
             for &class in classes {
                 inner_class_info_idx := read_u16(reader) or_return
@@ -365,8 +352,7 @@ read_attribute_info :: proc(
             attribute = SourceDebugExtension { string(debug_extension) }
         case "LineNumberTable":
             // TODO: slice.reinterpret?
-            table_length := read_u16(reader) or_return
-            table := make_safe([]LineNumberTableEntry, table_length, allocator) or_return
+            table := alloc_slice(reader, []LineNumberTableEntry, allocator) or_return
 
             for &entry in table {
                 start_pc := read_u16(reader) or_return
@@ -398,13 +384,11 @@ read_attribute_info :: proc(
             default_value := read_element_value(reader, allocator) or_return
             info := AnnotationDefault { default_value }
         case "BootstrapMethods":
-            num_bootstrap_methods := read_u16(reader) or_return
-            bootstrap_methods := make_safe([]BootstrapMethod, num_bootstrap_methods, allocator) or_return
+            bootstrap_methods := alloc_slice(reader, []BootstrapMethod, allocator) or_return
 
             for &method in bootstrap_methods {
                 bootstrap_method_ref := read_u16(reader) or_return
-                num_bootstrap_args := read_u16(reader) or_return
-                bootstrap_args := read_u16_array(reader, num_bootstrap_args) or_return
+                bootstrap_args := read_u16_slice(reader) or_return
 
                 method = BootstrapMethod {
                     bootstrap_method_ref,
@@ -416,8 +400,7 @@ read_attribute_info :: proc(
             host_class_idx := read_u16(reader) or_return
             attribute = NestHost { host_class_idx }
         case "NestMembers":
-            number_of_classes := read_u16(reader) or_return
-            classes := read_u16_array(reader, number_of_classes) or_return
+            classes := read_u16_slice(reader) or_return
             attribute = NestMembers { classes }
         case "Module":
             module_name_idx := read_u16(reader) or_return
@@ -425,8 +408,7 @@ read_attribute_info :: proc(
             module_version_idx := read_u16(reader) or_return
 
             // read requires table
-            requires_count := read_u16(reader) or_return
-            requires := make_safe([]ModuleRequire, requires_count, allocator) or_return
+            requires := alloc_slice(reader, []ModuleRequire, allocator) or_return
 
             for &require in requires {
                 requires_idx := read_u16(reader) or_return
@@ -439,14 +421,12 @@ read_attribute_info :: proc(
             }
 
             // read exports table
-            exports_count := read_u16(reader) or_return
-            exports := make_safe([]ModuleExport, exports_count, allocator) or_return
+            exports := alloc_slice(reader, []ModuleExport, allocator) or_return
 
             for &export in exports {
                 exports_idx := read_u16(reader) or_return
                 exports_flags := transmute(ModuleExportFlags) read_u16(reader) or_return
-                exports_to_count := read_u16(reader) or_return
-                exports_to_idx := read_u16_array(reader, exports_to_count) or_return
+                exports_to_idx := read_u16_slice(reader) or_return
 
                 export = ModuleExport {
                     exports_idx, exports_flags, exports_to_idx,
@@ -454,31 +434,26 @@ read_attribute_info :: proc(
             }
 
             // read opens table
-            opens_count := read_u16(reader) or_return
-            opens := make_safe([]ModuleOpens, opens_count, allocator) or_return
+            opens := alloc_slice(reader, []ModuleOpens, allocator) or_return
 
             for &open in opens {
                 opens_idx := read_u16(reader) or_return
                 opens_flags := transmute(ModuleOpensFlags) read_u16(reader) or_return
-                opens_to_count := read_u16(reader) or_return
-                opens_to_idx := read_u16_array(reader, opens_to_count) or_return
+                opens_to_idx := read_u16_slice(reader) or_return
 
                 open = ModuleOpens {
                     opens_idx, opens_flags, opens_to_idx,
                 }
             }
 
-            uses_count := read_u16(reader) or_return
-            uses_idx := read_u16_array(reader, uses_count) or_return
+            uses_idx := read_u16_slice(reader) or_return
 
             // read provides table
-            provides_count := read_u16(reader) or_return
-            provides := make_safe([]ModuleProvides, provides_count, allocator) or_return
+            provides := alloc_slice(reader, []ModuleProvides, allocator) or_return
 
             for &provide in provides {
                 provides_idx := read_u16(reader) or_return
-                provides_with_count := read_u16(reader) or_return
-                provides_with_idx := read_u16_array(reader, provides_with_count) or_return
+                provides_with_idx := read_u16_slice(reader) or_return
 
                 provide = ModuleProvides {
                     provides_idx, provides_with_idx,
@@ -495,15 +470,13 @@ read_attribute_info :: proc(
                 provides,
             }
         case "ModulePackages":
-            package_count := read_u16(reader) or_return
-            package_idx := read_u16_array(reader, package_count) or_return
+            package_idx := read_u16_slice(reader) or_return
             attribute = ModulePackages { package_idx }
         case "ModuleMainClass":
             main_class_idx := read_u16(reader) or_return
             attribute = ModuleMainClass { main_class_idx }
         case "Record":
-            components_count := read_u16(reader) or_return
-            components := make_safe([]RecordComponentInfo, components_count, allocator) or_return
+            components := alloc_slice(reader, []RecordComponentInfo, allocator) or_return
 
             for &component in components {
                 name_idx := read_u16(reader) or_return
@@ -516,8 +489,7 @@ read_attribute_info :: proc(
             }
             attribute = Record { components }
         case "PermittedSubclasses":
-            number_of_classes := read_u16(reader) or_return
-            classes := read_u16_array(reader, number_of_classes) or_return
+            classes := read_u16_slice(reader) or_return
             attribute = PermittedSubclasses { classes }
         case:
             return attribute, .UnknownAttributeName
@@ -538,8 +510,7 @@ read_local_variable_table :: proc(
     table: []LocalVariableTableEntry, 
     err: Error,
 ) {
-    table_length := read_u16(reader) or_return
-    table = make_safe([]LocalVariableTableEntry, table_length, allocator) or_return
+    table = alloc_slice(reader, []LocalVariableTableEntry, allocator) or_return
 
     for &local_var in table {
         start_pc := read_u16(reader) or_return
@@ -565,8 +536,7 @@ read_parameter_annotations :: proc(
     param_annotations: []ParameterAnnotation, 
     err: Error,
 ) {
-    num_parameters := read_u8(reader) or_return
-    param_annotations = make_safe([]ParameterAnnotation, num_parameters, allocator) or_return
+    param_annotations = alloc_slice(reader, []ParameterAnnotation, allocator) or_return
 
     for &annotation in param_annotations {
         annotations := read_annotations(reader, allocator) or_return
@@ -583,8 +553,7 @@ read_annotations :: proc(
     annotations: []Annotation, 
     err: Error,
 ) {
-    num_annotations := read_u16(reader) or_return
-    annotations = make_safe([]Annotation, num_annotations, allocator) or_return
+    annotations = alloc_slice(reader, []Annotation, allocator) or_return
 
     for &annotation in annotations {
         annotation = read_annotation(reader, allocator) or_return
@@ -601,8 +570,7 @@ read_annotation :: proc(
     err: Error,
 ) {
     type_idx := read_u16(reader) or_return
-    num_element_value_pairs := read_u16(reader) or_return
-    element_value_pairs := make_safe([]ElementValuePair, num_element_value_pairs, allocator) or_return
+    element_value_pairs := alloc_slice(reader, []ElementValuePair, allocator) or_return
 
     for &pair in element_value_pairs {
         element_value_idx := read_u16(reader) or_return
@@ -637,8 +605,7 @@ read_element_value :: proc(
         case '@':
             value = read_annotation(reader) or_return
         case '[':
-            num_values := read_u16(reader) or_return
-            values := make_safe([]ElementValue, num_values, allocator) or_return
+            values := alloc_slice(reader, []ElementValue, allocator) or_return
             for &value in values {
                 value = read_element_value(reader, allocator) or_return
             }
@@ -705,6 +672,24 @@ make_safe :: proc(
 }
 
 @private
+alloc_slice :: proc(
+    reader: ^ClassFileReader,
+    $T: typeid/[]$E,
+    allocator: mem.Allocator, // make the allocator explicit
+    loc := #caller_location,
+) -> (
+    res: T, 
+    err: Error,
+) {
+    length := read_u16(reader) or_return
+    alloc_err: mem.Allocator_Error
+    res, alloc_err = make(T, length, allocator, loc)
+
+    if alloc_err != .None do return res, .AllocatorError
+    return res, .None
+}
+
+@private
 read_u8 :: proc(using reader: ^ClassFileReader) -> (u8, Error) #no_bounds_check {
     if pos >= len(bytes) {
         return 0, .UnexpectedEof
@@ -741,15 +726,11 @@ read_nbytes :: proc(using reader: ^ClassFileReader, #any_int n: int) -> ([]u8, E
 
 // TODO: method that reads a slice with prepended length
 
-// Reads a number of bytes and reinterprets that as a slice of u16s.
-// Params:
-// - elem_count: the expected amount of elements in the returned slice.
-//   The actual amount of read bytes will be elem_count * size_of(u16).
+// Reads a slice of u16s, the length is prepended as a u16 before the actual data.
+// | length: u16 | data: ...u16 (length items) |
 @private
-read_u16_array :: proc(reader: ^ClassFileReader, #any_int elem_count: int) -> (
-    ret: []u16,
-    err: Error,
-) {
+read_u16_slice :: proc(reader: ^ClassFileReader) -> (ret: []u16, err: Error) {
+    elem_count := read_u16(reader) or_return
     bytes := read_nbytes(reader, elem_count * size_of(u16)) or_return
     ret = slice.reinterpret([]u16, bytes)
     return ret, .None

@@ -2,16 +2,25 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "type": "node",
+            "request": "launch",
+            "name": "Debug Odin Executable",
+            "preLaunchTask": "build",
+            "program": "${workspaceFolder}/classreader",
+            "postDebugTask": "remove_pdb"
+        },
+
+        {
             "type": "cppvsdbg",
             "request": "launch",
-            "preLaunchTask": "build",
             "name": "Debug Odin Executable",
-            "program": "${workspaceFolder}/classreaader",
+            "preLaunchTask": "build",
+            "program": "${workspaceFolder}/classreader",
             "args": [
                 "res/Test.class"
             ],
             "cwd": "${workspaceFolder}",
             "postDebugTask": "remove_pdb"
-        }
+        },
     ]
 }

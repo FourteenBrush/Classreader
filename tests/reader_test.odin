@@ -74,7 +74,7 @@ test_reading1 :: proc(t: ^testing.T) {
 // Workaround for non capturing closures
 @(private)
 TestArgs :: struct {
-	t:                                 ^testing.T,
+	t: ^testing.T,
 	name, descriptor, declaring_class: string,
 }
 
