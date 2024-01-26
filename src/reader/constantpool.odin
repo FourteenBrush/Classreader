@@ -114,7 +114,8 @@ ConstantMethodHandleInfo :: struct {
     // If reference_kind is InvokeVirtual, InvokeStatic, InvokeSpecial or NewInvokeSpecial,
     // then this must point to a ConstantMethodRefInfo representing a class method 
     // or constructor for which a method handle is to be created. 
-    // When reference_kind is InvokeInterface, this points to a ConstantInterfaceMethodRefInfo.
+    // When reference_kind is InvokeInterface, this points to a 
+    // ConstantInterfaceMethodRefInfo.
     reference_idx: u16,
 }
 
@@ -148,7 +149,8 @@ ConstantDynamicInfo :: struct {
 
 // Used by an invokedynamic instruction to specify a bootstrap method,
 // the dynamic invocation name, the argument and return types of the call,
-// and optionally, a sequence of additional constants called static arguments to the bootstrap method.
+// and optionally, a sequence of additional constants called static arguments 
+// to the bootstrap method.
 ConstantInvokeDynamicInfo :: struct {
     // Points to an entry in the BootstrapMethods table of the class file.
     bootstrap_method_attr_idx: u16,

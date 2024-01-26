@@ -281,6 +281,15 @@ cp_entry_dump :: proc(classfile: ClassFile, cp_info: ConstantPoolEntry) {
         case ConstantMethodTypeInfo:
             descriptor := cp_get_str(classfile, cp_info.descriptor_idx)
             fmt.println(descriptor)
+
+        case ConstantDynamicInfo:
+            using name_and_type := cp_get(ConstantNameAndTypeInfo, classfile, cp_info.name_and_type_idx)
+            method_name := cp_get_str(classfile, name_idx)
+            method_descriptor := cp_get_str(classfile, descriptor_idx)
+            fmt.printf(
+                "#%v:%v:%v\n", 
+                cp_info.bootstrap_method_attr_idx, method_name, method_descriptor,
+            )
         case ConstantInvokeDynamicInfo:
             using name_and_type := cp_get(ConstantNameAndTypeInfo, classfile, cp_info.name_and_type_idx)
             method_name := cp_get_str(classfile, name_idx)

@@ -154,10 +154,20 @@ read_constant_pool_entry :: proc(
         case .MethodType:
             descriptor_idx := read_u16(reader) or_return
             entry = ConstantMethodTypeInfo { descriptor_idx }
+        case .Dynamic:
+            bootstrap_method_attr_idx := read_u16(reader) or_return
+            name_and_type_idx := read_u16(reader) or_return
+            entry = ConstantDynamicInfo { 
+                bootstrap_method_attr_idx, 
+                name_and_type_idx,
+            }
         case .InvokeDynamic:
             bootstrap_method_attr_idx := read_u16(reader) or_return
             name_and_type_idx := read_u16(reader) or_return
-            entry = ConstantInvokeDynamicInfo { bootstrap_method_attr_idx, name_and_type_idx }
+            entry = ConstantInvokeDynamicInfo { 
+                bootstrap_method_attr_idx, 
+                name_and_type_idx,
+            }
         case .Module:
             name_idx := read_u16(reader) or_return
             entry = ConstantModuleInfo { name_idx }
