@@ -133,16 +133,19 @@ cp_get_str :: proc(using classfile: ClassFile, idx: u16) -> string {
 }
 
 // Returns the constantpool entry stored at the given index.
-// Panics if the expected and actual type differ.
-cp_get :: proc($T: typeid, using classfile: ClassFile, idx: u16, loc := #caller_location) -> T
-where intrinsics.type_is_variant_of(CPInfo, T) {
-    return constant_pool[idx - 1].info.(T)
+// Panics if idx is invalid or the expected and actual type differ.
+cp_get :: proc($E: typeid, using classfile: ClassFile, idx: u16, loc := #caller_location) -> E
+where intrinsics.type_is_variant_of(CPInfo, E) {
+    return constant_pool[idx - 1].info.(E)
 }
 
 // An alternative to cp_get(), with safe semantics.
-cp_get_safe :: proc($T: typeid, using classfile: ClassFile, idx: u16) -> (T, bool)
-where intrinsics.type_is_variant_of(CPInfo, T) {
-    return constant_pool[idx - 1].info.(T)
+cp_get_safe :: proc($E: typeid, using classfile: ClassFile, idx: u16) -> (E, Error)
+where intrinsics.type_is_variant_of(CPInfo, E) {
+    if idx - 1 <= 0 || idx - 1 > constant_pool_count do return {}, .InvalidCPIndex
+    entry, ok := constant_pool[idx - 1].info.(E)
+    if !ok do return entry, .WrongCPType
+    return entry
 }
 
 // Dumps a ClassFile to the stdout.
@@ -174,11 +177,13 @@ classfile_dump :: proc(using classfile: ClassFile) {
         i += 1
     }
 
-    fmt.println("Attributes:")
+    if len(attributes) > 0 {
+        fmt.println("Attributes:")
 
-    for attrib in attributes {
-        name := attribute_to_str(attrib)
-        fmt.println(" ", name)
+        for attrib in attributes {
+            name := attribute_to_str(attrib)
+            fmt.println(" ", name)
+        }
     }
 }
 

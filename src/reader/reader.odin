@@ -279,45 +279,7 @@ read_attribute_info :: proc(
                 attributes,
             }
         case "StackMapTable":
-            entries := alloc_slice(reader, []StackMapFrame, allocator) or_return
-
-            for &entry in entries {
-                frame_type := read_u8(reader) or_return
-                switch frame_type {
-                    case 0..=63:
-                        entry = SameFrame {}
-                    case 64..=127:
-                        stack := read_verification_type_info(reader) or_return
-                        entry = SameLocals1StackItemFrame { stack }
-                    case 128..=246:
-                        return attribute, .ReservedFrameType
-                    case 247:
-                        offset_delta := read_u16(reader) or_return
-                        stack := read_verification_type_info(reader) or_return
-                        entry = SameLocals1StackItemFrameExtended { offset_delta, stack }
-                    case 248..=250:
-                        offset_delta := read_u16(reader) or_return
-                        entry = ChopFrame { offset_delta }
-                    case 251:
-                        offset_delta := read_u16(reader) or_return
-                        entry = SameFrameExtended { offset_delta }
-                    case 252..=254:
-                        offset_delta := read_u16(reader) or_return
-                        count := u16(frame_type) - FRAME_LOCALS_OFFSET  
-                        locals := read_verification_type_infos(reader, count) or_return
-                        entry = AppendFrame { offset_delta, locals }
-                    case 255:
-                        offset_delta := read_u16(reader) or_return
-                        number_of_locals := read_u16(reader) or_return
-                        locals := read_verification_type_infos(reader, number_of_locals) or_return
-                        number_of_stack_items := read_u16(reader) or_return
-                        stack := read_verification_type_infos(reader, number_of_stack_items) or_return
-                        entry = FullFrame { offset_delta, locals, stack }
-                    case:
-                        return attribute, .UnknownFrameType
-                }
-            }
-            attribute = StackMapTable { entries }
+            attribute = read_stack_map_table(reader) or_return
         case "Exceptions":
             exception_idx_table := read_u16_slice(reader) or_return
             attribute = Exceptions { exception_idx_table }
@@ -403,72 +365,7 @@ read_attribute_info :: proc(
             classes := read_u16_slice(reader) or_return
             attribute = NestMembers { classes }
         case "Module":
-            module_name_idx := read_u16(reader) or_return
-            module_flags := transmute(ModuleFlags) read_u16(reader) or_return
-            module_version_idx := read_u16(reader) or_return
-
-            // read requires table
-            requires := alloc_slice(reader, []ModuleRequire, allocator) or_return
-
-            for &require in requires {
-                requires_idx := read_u16(reader) or_return
-                requires_flags := transmute(ModuleRequireFlags) read_u16(reader) or_return
-                requires_version_idx := read_u16(reader) or_return
-
-                require = ModuleRequire {
-                    requires_idx, requires_flags, requires_version_idx,
-                }
-            }
-
-            // read exports table
-            exports := alloc_slice(reader, []ModuleExport, allocator) or_return
-
-            for &export in exports {
-                exports_idx := read_u16(reader) or_return
-                exports_flags := transmute(ModuleExportFlags) read_u16(reader) or_return
-                exports_to_idx := read_u16_slice(reader) or_return
-
-                export = ModuleExport {
-                    exports_idx, exports_flags, exports_to_idx,
-                }
-            }
-
-            // read opens table
-            opens := alloc_slice(reader, []ModuleOpens, allocator) or_return
-
-            for &open in opens {
-                opens_idx := read_u16(reader) or_return
-                opens_flags := transmute(ModuleOpensFlags) read_u16(reader) or_return
-                opens_to_idx := read_u16_slice(reader) or_return
-
-                open = ModuleOpens {
-                    opens_idx, opens_flags, opens_to_idx,
-                }
-            }
-
-            uses_idx := read_u16_slice(reader) or_return
-
-            // read provides table
-            provides := alloc_slice(reader, []ModuleProvides, allocator) or_return
-
-            for &provide in provides {
-                provides_idx := read_u16(reader) or_return
-                provides_with_idx := read_u16_slice(reader) or_return
-
-                provide = ModuleProvides {
-                    provides_idx, provides_with_idx,
-                }
-            }
-            attribute = Module {
-                module_name_idx,
-                module_flags,
-                module_version_idx,
-                requires,
-                exports,
-                opens,
-                uses_idx,
-                provides,
-            }
+            attribute = read_module(reader) or_return
         case "ModulePackages":
             package_idx := read_u16_slice(reader) or_return
             attribute = ModulePackages { package_idx }
@@ -495,6 +392,118 @@ read_attribute_info :: proc(
             return attribute, .UnknownAttributeName
     }
     return attribute, .None
+}
+
+@private
+read_stack_map_table :: proc(reader: ^ClassFileReader) -> (table: StackMapTable, err: Error) {
+    frames := alloc_slice(reader, []StackMapFrame, allocator) or_return
+
+    for &frame in frames {
+        frame_type := read_u8(reader) or_return
+
+        switch frame_type {
+        case 0..=63: frame = SameFrame {}
+        case 64..=127:
+            stack := read_verification_type_info(reader) or_return
+            frame = SameLocals1StackItemFrame { stack }
+        case 128..=246: return {}, .ReservedFrameType
+        case 247:
+            offset_delta := read_u16(reader) or_return
+            stack := read_verification_type_info(reader) or_return
+            frame = SameLocals1StackItemFrameExtended { offset_delta, stack }
+        case 248..=250:
+            offset_delta := read_u16(reader) or_return
+            frame = ChopFrame { offset_delta }
+        case 251:
+            offset_delta := read_u16(reader) or_return
+            frame = SameFrameExtended { offset_delta }
+        case 252..=254:
+            offset_delta := read_u16(reader) or_return
+            count := u16(frame_type) - FRAME_LOCALS_OFFSET  
+            locals := read_verification_type_infos(reader, count) or_return
+            frame = AppendFrame { offset_delta, locals }
+        case 255:
+            offset_delta := read_u16(reader) or_return
+            number_of_locals := read_u16(reader) or_return
+            locals := read_verification_type_infos(reader, number_of_locals) or_return
+            number_of_stack_items := read_u16(reader) or_return
+            stack := read_verification_type_infos(reader, number_of_stack_items) or_return
+            frame = FullFrame { offset_delta, locals, stack }
+        case: return {}, .UnknownFrameType
+    }
+
+    return StackMapTable { frames }, .None
+}
+
+@private
+read_module :: proc(reader: ^ClassFileReader) -> (module: Module, err: Error) {
+    module_name_idx := read_u16(reader) or_return
+    module_flags := transmute(ModuleFlags) read_u16(reader) or_return
+    module_version_idx := read_u16(reader) or_return
+
+    // read requires table
+    requires := alloc_slice(reader, []ModuleRequire, allocator) or_return
+
+    for &require in requires {
+        requires_idx := read_u16(reader) or_return
+        requires_flags := transmute(ModuleRequireFlags) read_u16(reader) or_return
+        requires_version_idx := read_u16(reader) or_return
+
+        require = ModuleRequire {
+            requires_idx, requires_flags, requires_version_idx,
+        }
+    }
+
+    // read exports table
+    exports := alloc_slice(reader, []ModuleExport, allocator) or_return
+
+    for &export in exports {
+        exports_idx := read_u16(reader) or_return
+        exports_flags := transmute(ModuleExportFlags) read_u16(reader) or_return
+        exports_to_idx := read_u16_slice(reader) or_return
+
+        export = ModuleExport {
+            exports_idx, exports_flags, exports_to_idx,
+        }
+    }
+
+    // read opens table
+    opens := alloc_slice(reader, []ModuleOpens, allocator) or_return
+
+    for &open in opens {
+        opens_idx := read_u16(reader) or_return
+        opens_flags := transmute(ModuleOpensFlags) read_u16(reader) or_return
+        opens_to_idx := read_u16_slice(reader) or_return
+
+        open = ModuleOpens {
+            opens_idx, opens_flags, opens_to_idx,
+        }
+    }
+
+    uses_idx := read_u16_slice(reader) or_return
+
+    // read provides table
+    provides := alloc_slice(reader, []ModuleProvides, allocator) or_return
+
+    for &provide in provides {
+        provides_idx := read_u16(reader) or_return
+        provides_with_idx := read_u16_slice(reader) or_return
+
+        provide = ModuleProvides {
+            provides_idx, provides_with_idx,
+        }
+    }
+    
+    return Module {
+        module_name_idx,
+        module_flags,
+        module_version_idx,
+        requires,
+        exports,
+        opens,
+        uses_idx,
+        provides,
+    }, .None
 }
 
 // required for transmuting
