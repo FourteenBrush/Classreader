@@ -39,11 +39,11 @@ test_reading1 :: proc(t: ^testing.T) {
 	testing.expect_value(t, cr.classfile_get_super_class_name(classfile), "java/lang/Object")
 
 	// constantpool references to classes
-	this_class, ok1 := cr.cp_get_safe(cr.ConstantClassInfo, classfile, classfile.this_class)
-	testing.expect(t, ok1)
+	this_class, err1 := cr.cp_get_safe(cr.ConstantClassInfo, classfile, classfile.this_class)
+	testing.expect_value(t, err1, cr.Error.None)
 
-	utf8, ok2 := cr.cp_get_safe(cr.ConstantUtf8Info, classfile, this_class.name_idx)
-	testing.expect(t, ok2)
+	utf8, err2 := cr.cp_get_safe(cr.ConstantUtf8Info, classfile, this_class.name_idx)
+	testing.expect_value(t, err2, cr.Error.None)
 	desc := string(utf8.bytes)
 	testing.expect_value(t, desc, "Test")
 

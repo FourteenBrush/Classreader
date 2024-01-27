@@ -232,6 +232,10 @@ read_fields :: proc(
     return fields, .None
 }
 
+// ------------------------------ 
+// Attribute parsing functions
+// ------------------------------ 
+
 @private
 read_attributes :: proc(
     reader: ^ClassFileReader, 
@@ -249,6 +253,7 @@ read_attributes :: proc(
     return attributes, .None
 }
 
+// TODO: optimisation, check if we have length bytes, then do read all calls unchecked
 @private
 read_attribute_info :: proc(
     reader: ^ClassFileReader, 
@@ -290,7 +295,11 @@ read_attribute_info :: proc(
                 attributes,
             }
         case "StackMapTable":
-            attribute = read_stack_map_table(reader) or_return
+            frames := alloc_slice(reader, []StackMapFrame, allocator) or_return
+            for &frame in frames {
+                frame = read_stack_map_frame(reader) or_return
+            }
+            attribute = StackMapTable { frames }
         case "Exceptions":
             exception_idx_table := read_u16_slice(reader) or_return
             attribute = Exceptions { exception_idx_table }
@@ -353,6 +362,7 @@ read_attribute_info :: proc(
         case "RuntimeInvisibleParameterAnnotations":
             parameter_annotations := read_parameter_annotations(reader) or_return
             attribute = RuntimeInvisibleParameterAnnotations { parameter_annotations }
+        // TODO: read Runtime(In)VisibleTypeAnnotations
         case "AnnotationDefault":
             default_value := read_element_value(reader, allocator) or_return
             info := AnnotationDefault { default_value }
@@ -406,50 +416,45 @@ read_attribute_info :: proc(
 }
 
 @private
-read_stack_map_table :: proc(
-    reader: ^ClassFileReader, 
-    allocator := context.allocator,
+read_stack_map_frame :: proc(
+    reader: ^ClassFileReader,
 ) -> (
-    table: StackMapTable, 
+    frame: StackMapFrame, 
     err: Error,
 ) {
-    frames := alloc_slice(reader, []StackMapFrame, allocator) or_return
+    frame_type := read_u8(reader) or_return
 
-    for &frame in frames {
-        frame_type := read_u8(reader) or_return
-
-        switch frame_type {
-        case 0..=63: frame = SameFrame {}
-        case 64..=127:
-            stack := read_verification_type_info(reader) or_return
-            frame = SameLocals1StackItemFrame { stack }
-        case 128..=246: return {}, .ReservedFrameType
-        case 247:
-            offset_delta := read_u16(reader) or_return
-            stack := read_verification_type_info(reader) or_return
-            frame = SameLocals1StackItemFrameExtended { offset_delta, stack }
-        case 248..=250:
-            offset_delta := read_u16(reader) or_return
-            frame = ChopFrame { offset_delta }
-        case 251:
-            offset_delta := read_u16(reader) or_return
-            frame = SameFrameExtended { offset_delta }
-        case 252..=254:
-            offset_delta := read_u16(reader) or_return
-            count := u16(frame_type) - FRAME_LOCALS_OFFSET  
-            locals := read_verification_type_infos(reader, count) or_return
-            frame = AppendFrame { offset_delta, locals }
-        case 255:
-            offset_delta := read_u16(reader) or_return
-            number_of_locals := read_u16(reader) or_return
-            locals := read_verification_type_infos(reader, number_of_locals) or_return
-            number_of_stack_items := read_u16(reader) or_return
-            stack := read_verification_type_infos(reader, number_of_stack_items) or_return
-            frame = FullFrame { offset_delta, locals, stack }
-        case: return {}, .UnknownFrameType
-        }
+    switch frame_type {
+    case 0..=63: frame = SameFrame {}
+    case 64..=127:
+        stack := read_verification_type_info(reader) or_return
+        frame = SameLocals1StackItemFrame { stack }
+    case 128..=246: return {}, .ReservedFrameType
+    case 247:
+        offset_delta := read_u16(reader) or_return
+        stack := read_verification_type_info(reader) or_return
+        frame = SameLocals1StackItemFrameExtended { offset_delta, stack }
+    case 248..=250:
+        offset_delta := read_u16(reader) or_return
+        frame = ChopFrame { offset_delta }
+    case 251:
+        offset_delta := read_u16(reader) or_return
+        frame = SameFrameExtended { offset_delta }
+    case 252..=254:
+        offset_delta := read_u16(reader) or_return
+        count := u16(frame_type) - FRAME_LOCALS_OFFSET  
+        locals := read_verification_type_infos(reader, count) or_return
+        frame = AppendFrame { offset_delta, locals }
+    case 255:
+        offset_delta := read_u16(reader) or_return
+        number_of_locals := read_u16(reader) or_return
+        locals := read_verification_type_infos(reader, number_of_locals) or_return
+        number_of_stack_items := read_u16(reader) or_return
+        stack := read_verification_type_infos(reader, number_of_stack_items) or_return
+        frame = FullFrame { offset_delta, locals, stack }
+    case: return {}, .UnknownFrameType
     }
-    return StackMapTable { frames }, .None
+    return frame, .None
 }
 
 @private
@@ -666,20 +671,25 @@ read_verification_type_infos :: proc(
 }
 
 @private
-read_verification_type_info :: proc(reader: ^ClassFileReader) -> (info: VerificationTypeInfo, err: Error) {
-    tag := read_u8(reader) or_return
+read_verification_type_info :: proc(
+    reader: ^ClassFileReader,
+) -> (
+    info: VerificationTypeInfo, 
+    err: Error,
+) {
+    tag := FrameTag(read_u8(reader) or_return)
     switch tag {
-        case 0: info = TopVariableInfo {}
-        case 1: info = IntegerVariableInfo {}
-        case 2: info = FloatVariableInfo {}
-        case 3: info = DoubleVariableInfo {}
-        case 4: info = LongVariableInfo {}
-        case 5: info = NullVariableInfo {}
-        case 6: info = UninitializedThisVariableInfo {}
-        case 7: 
+        case .Top: info = TopVariableInfo {}
+        case .Integer: info = IntegerVariableInfo {}
+        case .Float: info = FloatVariableInfo {}
+        case .Double: info = DoubleVariableInfo {}
+        case .Long: info = LongVariableInfo {}
+        case .Null: info = NullVariableInfo {}
+        case .UninitializedThis: info = UninitializedThisVariableInfo {}
+        case .Object: 
             cp_idx := read_u16(reader) or_return
             info = ObjectVariableInfo { cp_idx }
-        case 8:
+        case .Uninitialized:
             offset := read_u16(reader) or_return
             info = UninitializedVariableInfo { offset }
         case: 
@@ -687,6 +697,23 @@ read_verification_type_info :: proc(reader: ^ClassFileReader) -> (info: Verifica
     }
     return info, .None
 }
+
+@private
+FrameTag :: enum u8 {
+    Top = 0,
+    Integer = 1,
+    Float = 2,
+    Double = 3,
+    Long = 4,
+    Null = 5,
+    UninitializedThis = 6,
+    Object = 7,
+    Uninitialized = 8,
+}
+
+/// ------------------------------ 
+/// Low level parsing functions
+/// ------------------------------ 
 
 // An alternative for builtin.make, which returns an optional Error, to use or_return on.
 @private

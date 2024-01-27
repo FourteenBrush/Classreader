@@ -47,6 +47,7 @@ ConstantType :: enum u8 {
 }
 
 // Represents a constant string value.
+// TODO: let the reader read this properly (slightly different utf8 encoding)
 ConstantUtf8Info :: struct {
     // The bytes of the string, no byte may be 0 or be within the range 0xf0 - 0xff.
     // String content is encoded in modified UTF8.

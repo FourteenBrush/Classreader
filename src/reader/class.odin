@@ -1,6 +1,7 @@
 package reader
 
 import "core:fmt"
+import "core:strings"
 import "core:reflect"
 import "core:intrinsics"
 
@@ -144,7 +145,7 @@ where intrinsics.type_is_variant_of(CPInfo, E) {
     if idx - 1 <= 0 || idx - 1 > constant_pool_count do return {}, .InvalidCPIndex
     entry, ok := constant_pool[idx - 1].info.(E)
     if !ok do return entry, .WrongCPType
-    return entry
+    return entry, .None
 }
 
 // Dumps a ClassFile to the stdout.
@@ -154,7 +155,7 @@ classfile_dump :: proc(using classfile: ClassFile) {
     version_str := major_version_to_str(major_version)
     fmt.printf("Version: minor=%v, major=%v (%v)\n", minor_version, major_version, version_str)
     fmt.printf("Access flags: 0x%4x ", access_flags)
-    class_access_flags_dump(access_flags)
+    access_flags_dump(access_flags)
 
     max_idx_width := count_digits(constant_pool_count)
     i := u16(1)
@@ -184,52 +185,58 @@ classfile_dump :: proc(using classfile: ClassFile) {
             fmt.println(" ", name)
         }
     }
+
+    for field in fields {
+        field_info_dump(field, classfile)
+    }
 }
 
 // Returns an understandable representation of the major version. E.g. 65 -> Java SE 21.
 major_version_to_str :: proc(major: u16) -> string {
     // http://en.wikipedia.org/wiki/Java_class_file#General_layout
     switch major {
-        case 65: return "Java SE 21"
-        case 64: return "Java SE 20"
-        case 63: return "Java SE 19"
-        case 62: return "Java SE 18"
-        case 61: return "Java SE 17"
-        case 60: return "Java SE 16"
-        case 59: return "Java SE 15"
-        case 58: return "Java SE 14"
-        case 57: return "Java SE 13"
-        case 56: return "Java SE 12"
-        case 55: return "Java SE 11"
-        case 54: return "Java SE 10"
-        case 53: return "Java SE 9"
-        case 52: return "Java SE 8"
-        case 51: return "Java SE 7"
-        case 50: return "Java SE 6.0"
-        case 49: return "Java SE 5.0"
-        case 48: return "JDK 1.4"
-        case 47: return "JDK 1.3"
-        case 46: return "JDK 1.2"
-        case 45: return "JDK 1.1"
-        // FIXME: probably want to apply verification before this gets reached
-        case: return "<unknown Version>"
+    case 65: return "Java SE 21"
+    case 64: return "Java SE 20"
+    case 63: return "Java SE 19"
+    case 62: return "Java SE 18"
+    case 61: return "Java SE 17"
+    case 60: return "Java SE 16"
+    case 59: return "Java SE 15"
+    case 58: return "Java SE 14"
+    case 57: return "Java SE 13"
+    case 56: return "Java SE 12"
+    case 55: return "Java SE 11"
+    case 54: return "Java SE 10"
+    case 53: return "Java SE 9"
+    case 52: return "Java SE 8"
+    case 51: return "Java SE 7"
+    case 50: return "Java SE 6.0"
+    case 49: return "Java SE 5.0"
+    case 48: return "JDK 1.4"
+    case 47: return "JDK 1.3"
+    case 46: return "JDK 1.2"
+    case 45: return "JDK 1.1"
+    // FIXME: probably want to apply verification before this gets reached
+    case: return "<unknown Version>"
     }
 }
 
+// Dumps a certain AccessFlags type.
 @private
-class_access_flags_dump :: proc(flags: ClassAccessFlags) {
+access_flags_dump :: proc(flags: $E/bit_set[$F; u16]) 
+where E == ClassAccessFlags || E == FieldAccessFlags || E == MethodAccessFlags {
     first := true
 
-    for flag in ClassAccessFlagBit {
-        if flag not_in flags do continue
+    for flag in F {
+        if flag not_in flags do continue 
         str := access_flag_to_str(flag)
 
         if first {
             fmt.print('(', str, sep="")
+            first = false
         } else {
             fmt.print(',', str)
         }
-        first = false
     }
     fmt.println(')')
 }
@@ -358,20 +365,61 @@ ClassAccessFlagBit :: enum u16 {
     Module     = 15,
 }
 
-// Returns the uppercase string representation of a ClassAccessFlagBit.
-access_flag_to_str :: proc(flag: ClassAccessFlagBit) -> string {
-    switch (flag) {
-        case .Public:     return "ACC_PUBLIC"
-        case .Final:      return "ACC_FINAL"
-        case .Super:      return "ACC_SUPER"
-        case .Interface:  return "ACC_INTERFACE"
-        case .Abstract:   return "ACC_ABSTRACT"
-        case .Synthetic:  return "ACC_SYNTHETIC"
-        case .Annotation: return "ACC_ANNOTATION"
-        case .Enum:       return "ACC_ENUM"
-        case .Module:     return "ACC_MODULE"
-        // in case someone would pass ClassAccessFlags(9999) or something
-        case: panic("invalid args passed to access_flag_to_str")
+// Returns the uppercase representation of the respective flag passed.
+access_flag_to_str :: proc {
+    class_access_flag_to_str,
+    field_access_flag_to_str,
+    method_access_flag_to_str,
+}
+
+@private
+class_access_flag_to_str :: proc(flag: ClassAccessFlagBit) -> string {
+    switch flag {
+    case .Public:     return "ACC_PUBLIC"
+    case .Final:      return "ACC_FINAL"
+    case .Super:      return "ACC_SUPER"
+    case .Interface:  return "ACC_INTERFACE"
+    case .Abstract:   return "ACC_ABSTRACT"
+    case .Synthetic:  return "ACC_SYNTHETIC"
+    case .Annotation: return "ACC_ANNOTATION"
+    case .Enum:       return "ACC_ENUM"
+    case .Module:     return "ACC_MODULE"
+    case: panic("class_access_flag_to_str(): invalid args")
+    }
+}
+
+@private
+field_access_flag_to_str :: proc(flag: FieldAccessFlagBit) -> string {
+    switch flag {
+    case .Public:    return "ACC_PUBLIC"
+    case .Private:   return "ACC_PRIVATE"
+    case .Protected: return "ACC_PROTECTED"
+    case .Static:    return "ACC_STATIC"
+    case .Final:     return "ACC_FINAL"
+    case .Volatile:  return "ACC_VOLATILE"
+    case .Transient: return "ACC_TRANSIENT"
+    case .Synthetic: return "ACC_SYNTHETIC"
+    case .Enum:      return "ACC_ENUM"
+    case: panic("field_access_flag_to_str(): invalid args")
+    }
+}
+
+@private
+method_access_flag_to_str :: proc(flag: MethodAccessFlagBit) -> string {
+    switch flag {
+    case .Public:       return "ACC_PUBLIC"
+    case .Private:      return "ACC_PRIVATE"
+    case .Protected:    return "ACC_PROTECTED"
+    case .Static:       return "ACC_STATIC"
+    case .Final:        return "ACC_FINAL"
+    case .Synchronized: return "ACC_SYNCHRONIZED"
+    case .Bridge:       return "ACC_BRIDGE"
+    case .Varargs:      return "ACC_VARARGS"
+    case .Native:       return "ACC_NATIVE"
+    case .Abstract:     return "ACC_ABSTRACT"
+    case .Strict:       return "ACC_STRICT"
+    case .Synthetic:    return "ACC_SYNTHETIC"
+    case: panic("method_access_flag_to_str(): invalid args")
     }
 }
 
@@ -419,6 +467,64 @@ FieldAccessFlagBit :: enum u16 {
     Transient = 7,
     Synthetic = 12,
     Enum      = 14,
+}
+
+field_info_dump :: proc(using field: FieldInfo, classfile: ClassFile) {
+    // TODO: what happens when package-private?
+    if .Private in access_flags do fmt.print("private ")
+    else if .Protected in access_flags do fmt.print("protected ")
+    else if .Public in access_flags do fmt.print("public ")
+
+    if .Static in access_flags do fmt.print("static ")
+    if .Final in access_flags do fmt.print("final ")
+
+    descriptor := cp_get_str(classfile, descriptor_idx)
+    name := cp_get_str(classfile, name_idx)
+
+    fmt.print(field_descriptor_to_str(descriptor), name)
+    fmt.println(";\n  descriptor:", descriptor)
+    fmt.printf("  flags: (0x%4x) ", access_flags)
+    access_flags_dump(access_flags)
+}
+
+@private
+field_descriptor_to_str :: proc(desc: string) -> string {
+    switch desc {
+    case "B": return "byte"
+    case "Z": return "boolean"
+    case "C": return "char"
+    case "S": return "short"
+    case "I": return "int"
+    case "F": return "float"
+    case "D": return "double"
+    case "J": return "long"
+    case:
+        switch desc[0] {
+        case '[':
+            // array, determine depth
+            depth := 1
+            for desc[depth] == '[' do depth += 1
+            // figure out base type
+            base_type := field_descriptor_to_str(desc[depth:])
+            arr := strings.repeat("[]", depth, context.temp_allocator)
+            return fmt.tprint(base_type, arr, sep="")
+        case 'L':
+            return descriptor_get_object_type(desc)
+        }
+    }
+    unreachable()
+}
+
+// Returns the object type of an object descriptor, as how it would
+// appear in the source code, e.g. java.awt.AWTEventMulticaster instead of
+// Ljava/awt/AWTEventMulticaster;.
+@private
+descriptor_get_object_type :: proc(desc: string) -> string {
+    // remove L and ; and replace all / with .
+    // TODO: does this alter the string passed?
+    desc := desc[1:len(desc) - 1]
+    object_type, _ := strings.replace_all(desc, "/", ".", context.temp_allocator)
+    return object_type
 }
 
 // A method descriptor.
@@ -478,4 +584,20 @@ MethodAccessFlagBit :: enum u16 {
     Abstract     = 10,
     Strict       = 11,
     Synthetic    = 12,
+}
+
+method_info_dump :: proc(using method: MethodInfo, classfile: ClassFile) {
+    // TODO: what happens when package-private?
+    if .Private in access_flags do fmt.print("private ")
+    else if .Protected in access_flags do fmt.print("protected ")
+    else if .Public in access_flags do fmt.println("public ")
+
+    if .Static in access_flags do fmt.print("static ")
+    if .Final in access_flags do fmt.print("final ")
+
+    descriptor := cp_get_str(classfile, descriptor_idx)
+    name := cp_get_str(classfile, name_idx)
+
+    // TODO: proper printing
+    fmt.print(field_descriptor_to_str(descriptor), name)
 }
