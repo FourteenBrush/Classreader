@@ -76,6 +76,10 @@ Error :: enum {
     UnknownFrameType,
     // Missing attribute in some attribute holder
     MissingAttribute,
+    // target_type of a TypeAnnotation was invalid
+    InvalidTargetType,
+    // path_kind of a TypePathEntry was invalid
+    InvalidPathKind,
     // Unknown opcode in the bytecode of a Code attribute
     UnknownOpcode,
 }
@@ -362,10 +366,15 @@ read_attribute_info :: proc(
         case "RuntimeInvisibleParameterAnnotations":
             parameter_annotations := read_parameter_annotations(reader) or_return
             attribute = RuntimeInvisibleParameterAnnotations { parameter_annotations }
-        // TODO: read Runtime(In)VisibleTypeAnnotations
+        case "RuntimeVisibleTypeAnnotations":
+            type_annotations := read_type_annotations(reader, allocator) or_return
+            attribute = RuntimeVisibleTypeAnnotations { type_annotations }
+        case "RuntimeInvisibleTypeAnnotations":
+            type_annotations := read_type_annotations(reader, allocator) or_return
+            attribute = RuntimeInvisibleTypeAnnotations { type_annotations }
         case "AnnotationDefault":
             default_value := read_element_value(reader, allocator) or_return
-            info := AnnotationDefault { default_value }
+            attribute = AnnotationDefault { default_value }
         case "BootstrapMethods":
             bootstrap_methods := alloc_slice(reader, []BootstrapMethod, allocator) or_return
 
@@ -607,15 +616,28 @@ read_annotation :: proc(
     err: Error,
 ) {
     type_idx := read_u16(reader) or_return
-    element_value_pairs := alloc_slice(reader, []ElementValuePair, allocator) or_return
+    element_value_pairs := read_element_value_pairs(reader, allocator) or_return
 
-    for &pair in element_value_pairs {
+    return Annotation { type_idx, element_value_pairs }, .None
+}
+
+@private
+read_element_value_pairs :: proc(
+    reader: ^ClassFileReader,
+    allocator := context.allocator,
+) -> (
+    pairs: []ElementValuePair,
+    err: Error,
+) {
+    pairs = alloc_slice(reader, []ElementValuePair, allocator) or_return
+
+    for &pair in pairs {
         element_value_idx := read_u16(reader) or_return
         element_value := read_element_value(reader, allocator) or_return
         pair = ElementValuePair { element_value_idx, element_value }
     }
 
-    return Annotation { type_idx, element_value_pairs }, .None
+    return pairs, .None
 }
 
 @private
@@ -709,6 +731,111 @@ FrameTag :: enum u8 {
     UninitializedThis = 6,
     Object = 7,
     Uninitialized = 8,
+}
+
+@private
+read_type_annotations :: proc(
+    reader: ^ClassFileReader,
+    allocator := context.allocator,
+) -> (
+    type_annotations: []TypeAnnotation,
+    err: Error,
+) {
+    type_annotations = alloc_slice(reader, []TypeAnnotation, allocator) or_return
+    for &annotation in type_annotations {
+        target_type := TargetType(read_u8(reader) or_return)
+        target_info: TargetInfo = ---
+
+        switch target_type {
+        case .ClassType, 
+             .MethodType:
+            type_parameter_idx := read_u16(reader) or_return
+            target_info = TypeParameterTarget { type_parameter_idx }
+        case .ClassExtends:
+            super_type_idx := read_u16(reader) or_return
+            target_info = SuperTypeTarget { super_type_idx }
+        case .ClassTypeParameterBound,
+             .MethodTypeParameterBound:
+            type_parameter_idx := read_u16(reader) or_return
+            bound_idx := read_u16(reader) or_return
+            target_info = TypeParameterBoundTarget { type_parameter_idx, bound_idx }
+        case .Field,
+             .MethodReturn,
+             .MethodReceiver:
+            target_info = EmptyTarget {}
+        case .MethodFormalParameter:
+            formal_parameter_idx := read_u16(reader) or_return
+            target_info = FormalParameterTarget { formal_parameter_idx }
+        case .Throws:
+            throws_type_idx := read_u16(reader) or_return
+            target_info = ThrowsTarget { throws_type_idx }
+        case .LocalVariable,
+             .ResourceVariable:
+            table := alloc_slice(reader, []LocalVarTargetEntry, allocator) or_return
+            for &entry in table {
+                start_pc := read_u16(reader) or_return
+                length := read_u16(reader) or_return
+                idx := read_u16(reader) or_return
+                entry = LocalVarTargetEntry { start_pc, length, idx }
+            }
+
+            target_info = LocalVarTarget { table }
+        case .ExceptionParameter:
+            exception_table_idx := read_u16(reader) or_return
+            target_info = CatchTarget { exception_table_idx }
+        case .Instanceof,
+             .New,
+             .ConstructorReference,
+             .MethodReference:
+            offset := read_u16(reader) or_return
+            target_info = OffsetTarget { offset }
+        case .Cast,
+             .ConstructorInvocationTypeArgument,
+             .MethodInvocationTypeArgument,
+             .ConstructorReferenceTypeArgument,
+             .MethodReferenceTypeArgument:
+            offset := read_u16(reader) or_return
+            type_argument_idx := read_u16(reader) or_return
+            target_info = TypeArgumentTarget { offset, type_argument_idx }
+        case: 
+            return type_annotations, .InvalidTargetType
+        }
+
+        path := alloc_slice(reader, []PathEntry, allocator) or_return
+        for &path in path {
+            path_kind := PathKind(read_u8(reader) or_return)
+            type_argument_idx: u8
+
+            switch path_kind {
+            case .ArrayType,
+                 .NestedType,
+                 .Wildcard:
+                type_argument_idx = 0
+            case .Parameterized:
+                // TODO: is this correct? where else would we get the value from
+                // https://docs.oracle.com/javase/specs/jvms/se21/html/jvms-4.html#jvms-4.7.20.2
+                type_argument_idx = read_u8(reader) or_return
+            case:
+                return type_annotations, .InvalidPathKind
+            }
+
+            path = PathEntry { path_kind, type_argument_idx }
+        }
+
+        target_path := TypePath { path }
+        type_idx := read_u16(reader) or_return
+        element_value_pairs := read_element_value_pairs(reader, allocator) or_return
+
+        annotation = TypeAnnotation {
+            target_type,
+            target_info,
+            target_path,
+            type_idx,
+            element_value_pairs,
+        }
+    }
+
+    return type_annotations, .None
 }
 
 /// ------------------------------ 
