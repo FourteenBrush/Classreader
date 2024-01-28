@@ -1,7 +1,9 @@
 package reader
 
+import "core:fmt"
 import "core:mem"
 import "core:slice"
+import "core:reflect"
 import "core:encoding/endian"
 
 MAGIC :: 0xCAFEBABE
@@ -37,8 +39,7 @@ read_classfile :: proc(
     constant_pool_count = read_u16(reader) or_return
     constant_pool = read_constant_pool(reader, constant_pool_count, allocator) or_return
 
-    // TODO: ensure valid
-    access_flags = transmute(ClassAccessFlags) read_u16(reader) or_return
+    access_flags = read_flags(reader, ClassAccessFlags) or_return
     this_class = read_u16(reader) or_return
     super_class = read_u16(reader) or_return
 
@@ -80,6 +81,8 @@ Error :: enum {
     InvalidTargetType,
     // path_kind of a TypePathEntry was invalid
     InvalidPathKind,
+    // A type with an access_flags field (class, field, etc.) has invalid flag bits set
+    InvalidAccessFlags,
     // Unknown opcode in the bytecode of a Code attribute
     UnknownOpcode,
 }
@@ -194,8 +197,7 @@ read_methods :: proc(
     methods = alloc_slice(reader, []MethodInfo, allocator) or_return
 
     for &method in methods {
-        // TODO: validate
-        access_flags := transmute(MethodAccessFlags) read_u16(reader) or_return
+        access_flags := read_flags(reader, MethodAccessFlags) or_return
         name_idx := read_u16(reader) or_return
         descriptor_idx := read_u16(reader) or_return
         attributes := read_attributes(reader, classfile, allocator) or_return
@@ -222,8 +224,8 @@ read_fields :: proc(
     fields = alloc_slice(reader, []FieldInfo, allocator) or_return
 
     for &field in fields{
-        // TODO: validate
-        access_flags := transmute(FieldAccessFlags)read_u16(reader) or_return
+        access_flags := read_flags(reader, FieldAccessFlags) or_return
+        validate_flags(access_flags)
         name_idx := read_u16(reader) or_return
         descriptor_idx := read_u16(reader) or_return
 
@@ -234,6 +236,35 @@ read_fields :: proc(
         }
     }
     return fields, .None
+}
+
+@private
+read_flags :: proc(
+    reader: ^ClassFileReader, 
+    $T: typeid/bit_set[$F; u16],
+) -> (
+    flags: T, 
+    err: Error,
+) {
+    flags = transmute(T) read_u16(reader) or_return
+    validate_flags(flags) or_return
+    return flags, .None
+}
+
+@private
+validate_flags :: proc(flags: $T/bit_set[$F; u16]) -> Error {
+    flags := transmute(u16) flags
+    // assuming F holds the bit values
+    enum_bits := transmute([]i64) reflect.enum_field_values(F)
+    // ensure no bits are set that are not an enum value
+    for bit in 0..<uint(16) {
+        is_set := flags & (1 << bit) != 0
+        // FIXME: slice.contains is a bit overkill
+        if is_set && !slice.contains(enum_bits, i64(bit)) {
+            return .InvalidAccessFlags
+        }
+    }
+    return .None
 }
 
 // ------------------------------ 
@@ -314,7 +345,7 @@ read_attribute_info :: proc(
                 inner_class_info_idx := read_u16(reader) or_return
                 outer_class_info_idx := read_u16(reader) or_return
                 name_idx := read_u16(reader) or_return
-                access_flags := transmute(InnerClassAccessFlags) read_u16(reader) or_return
+                access_flags := read_flags(reader, InnerClassAccessFlags) or_return
                 class = InnerClassEntry {
                     inner_class_info_idx,
                     outer_class_info_idx,
@@ -475,7 +506,7 @@ read_module :: proc(
     err: Error,
 ) {
     module_name_idx := read_u16(reader) or_return
-    module_flags := transmute(ModuleFlags) read_u16(reader) or_return
+    module_flags := read_flags(reader, ModuleFlags) or_return
     module_version_idx := read_u16(reader) or_return
 
     // read requires table
@@ -483,7 +514,7 @@ read_module :: proc(
 
     for &require in requires {
         requires_idx := read_u16(reader) or_return
-        requires_flags := transmute(ModuleRequireFlags) read_u16(reader) or_return
+        requires_flags := read_flags(reader, ModuleRequireFlags) or_return
         requires_version_idx := read_u16(reader) or_return
 
         require = ModuleRequire {
@@ -496,7 +527,7 @@ read_module :: proc(
 
     for &export in exports {
         exports_idx := read_u16(reader) or_return
-        exports_flags := transmute(ModuleExportFlags) read_u16(reader) or_return
+        exports_flags := read_flags(reader, ModuleExportFlags) or_return
         exports_to_idx := read_u16_slice(reader) or_return
 
         export = ModuleExport {
@@ -509,7 +540,7 @@ read_module :: proc(
 
     for &open in opens {
         opens_idx := read_u16(reader) or_return
-        opens_flags := transmute(ModuleOpensFlags) read_u16(reader) or_return
+        opens_flags := read_flags(reader, ModuleOpensFlags) or_return
         opens_to_idx := read_u16_slice(reader) or_return
 
         open = ModuleOpens {

@@ -389,7 +389,6 @@ TypeAnnotation :: struct {
 }
 
 // https://docs.oracle.com/javase/specs/jvms/se21/html/jvms-4.html#jvms-4.7.20-400
-// TODO: some values sound ambiguous
 TargetType :: enum u8 {
     ClassType = 0x00,
     MethodType = 0x01,
@@ -493,7 +492,6 @@ LocalVarTarget :: struct {
 }
 
 // Used within a LocalValTarget.
-// FIXME: probably rename
 LocalVarTargetEntry :: struct {
     // An index into the code array in the interval [start_pc:][:length]
     start_pc: u16,
