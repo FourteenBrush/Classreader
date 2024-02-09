@@ -1,6 +1,5 @@
 package reader
 
-import "core:fmt"
 import "core:mem"
 import "core:slice"
 import "core:reflect"
@@ -50,20 +49,23 @@ read_classfile :: proc(
     return
 }
 
+// An error returned while reading the ClassFile.
 Error :: enum {
     // No error
     None,
     // Some generic IO error
     IO,
-    // Provided allocator returned a runtime.Allocator_Error
+    // Provided allocator returned a mem.Allocator_Error
     AllocatorError,
     // Magic number was not present in the file header
     InvalidHeader,
     // Expected more bytes
     UnexpectedEof,
-    // Constant pool index is invalid
+    // Constant pool index is invalid.
+    // Used within cp_get_safe()
     InvalidCPIndex,
-    // Constant pool index points to an entry with the wrong type
+    // Constant pool index points to an entry with the wrong type.
+    // Used within cp_get_safe()
     WrongCPType,
     // Unknown VerificationTypeInfo tag
     UnknownVerificationTypeInfoTag,
@@ -122,65 +124,65 @@ read_constant_pool_entry :: proc(
     err: Error,
 ) {
     switch tag {
-        case .Utf8:
-            length := read_u16(reader) or_return
-            bytes := read_nbytes(reader, length) or_return
-            entry = ConstantUtf8Info { bytes }
-        case .Integer:
-            bytes := read_u32(reader) or_return
-            entry = ConstantIntegerInfo { bytes }
-        case .Float:
-            bytes := read_u32(reader) or_return
-            entry = ConstantFloatInfo { bytes }
-        case .Long:
-            high_bytes := read_u32(reader) or_return
-            low_bytes := read_u32(reader) or_return
-            entry = ConstantLongInfo { high_bytes, low_bytes }
-        case .Double:
-            high_bytes := read_u32(reader) or_return
-            low_bytes := read_u32(reader) or_return
-            entry = ConstantDoubleInfo { high_bytes, low_bytes }
-        case .Class:
-            name_idx := read_u16(reader) or_return
-            entry = ConstantClassInfo { name_idx }
-        case .String:
-            string_idx := read_u16(reader) or_return
-            entry = ConstantStringInfo { string_idx }
-        case .FieldRef, .MethodRef, .InterfaceMethodRef:
-            class_idx := read_u16(reader) or_return
-            name_and_type_idx := read_u16(reader) or_return
-            entry = ConstantFieldRefInfo { class_idx, name_and_type_idx }
-        case .NameAndType:
-            name_idx := read_u16(reader) or_return
-            descriptor_idx := read_u16(reader) or_return
-            entry = ConstantNameAndTypeInfo { name_idx, descriptor_idx }
-        case .MethodHandle:
-            reference_kind := ReferenceKind(read_u8(reader) or_return)
-            reference_idx := read_u16(reader) or_return
-            entry = ConstantMethodHandleInfo { reference_kind, reference_idx }
-        case .MethodType:
-            descriptor_idx := read_u16(reader) or_return
-            entry = ConstantMethodTypeInfo { descriptor_idx }
-        case .Dynamic:
-            bootstrap_method_attr_idx := read_u16(reader) or_return
-            name_and_type_idx := read_u16(reader) or_return
-            entry = ConstantDynamicInfo { 
-                bootstrap_method_attr_idx, 
-                name_and_type_idx,
-            }
-        case .InvokeDynamic:
-            bootstrap_method_attr_idx := read_u16(reader) or_return
-            name_and_type_idx := read_u16(reader) or_return
-            entry = ConstantInvokeDynamicInfo { 
-                bootstrap_method_attr_idx, 
-                name_and_type_idx,
-            }
-        case .Module:
-            name_idx := read_u16(reader) or_return
-            entry = ConstantModuleInfo { name_idx }
-        case .Package:
-            name_idx := read_u16(reader) or_return
-            entry = ConstantPackageInfo { name_idx }
+    case .Utf8:
+        length := read_u16(reader) or_return
+        bytes := read_nbytes(reader, length) or_return
+        entry = ConstantUtf8Info { bytes }
+    case .Integer:
+        bytes := read_u32(reader) or_return
+        entry = ConstantIntegerInfo { bytes }
+    case .Float:
+        bytes := read_u32(reader) or_return
+        entry = ConstantFloatInfo { bytes }
+    case .Long:
+        high_bytes := read_u32(reader) or_return
+        low_bytes := read_u32(reader) or_return
+        entry = ConstantLongInfo { high_bytes, low_bytes }
+    case .Double:
+        high_bytes := read_u32(reader) or_return
+        low_bytes := read_u32(reader) or_return
+        entry = ConstantDoubleInfo { high_bytes, low_bytes }
+    case .Class:
+        name_idx := read_u16(reader) or_return
+        entry = ConstantClassInfo { name_idx }
+    case .String:
+        string_idx := read_u16(reader) or_return
+        entry = ConstantStringInfo { string_idx }
+    case .FieldRef, .MethodRef, .InterfaceMethodRef:
+        class_idx := read_u16(reader) or_return
+        name_and_type_idx := read_u16(reader) or_return
+        entry = ConstantFieldRefInfo { class_idx, name_and_type_idx }
+    case .NameAndType:
+        name_idx := read_u16(reader) or_return
+        descriptor_idx := read_u16(reader) or_return
+        entry = ConstantNameAndTypeInfo { name_idx, descriptor_idx }
+    case .MethodHandle:
+        reference_kind := ReferenceKind(read_u8(reader) or_return)
+        reference_idx := read_u16(reader) or_return
+        entry = ConstantMethodHandleInfo { reference_kind, reference_idx }
+    case .MethodType:
+        descriptor_idx := read_u16(reader) or_return
+        entry = ConstantMethodTypeInfo { descriptor_idx }
+    case .Dynamic:
+        bootstrap_method_attr_idx := read_u16(reader) or_return
+        name_and_type_idx := read_u16(reader) or_return
+        entry = ConstantDynamicInfo { 
+            bootstrap_method_attr_idx, 
+            name_and_type_idx,
+        }
+    case .InvokeDynamic:
+        bootstrap_method_attr_idx := read_u16(reader) or_return
+        name_and_type_idx := read_u16(reader) or_return
+        entry = ConstantInvokeDynamicInfo { 
+            bootstrap_method_attr_idx, 
+            name_and_type_idx,
+        }
+    case .Module:
+        name_idx := read_u16(reader) or_return
+        entry = ConstantModuleInfo { name_idx }
+    case .Package:
+        name_idx := read_u16(reader) or_return
+        entry = ConstantPackageInfo { name_idx }
     }
     return entry, .None
 }
@@ -202,12 +204,7 @@ read_methods :: proc(
         descriptor_idx := read_u16(reader) or_return
         attributes := read_attributes(reader, classfile, allocator) or_return
         
-        method = MethodInfo {
-            access_flags,
-            name_idx,
-            descriptor_idx,
-            attributes,
-        }
+        method = MethodInfo { access_flags, name_idx, descriptor_idx, attributes }
     }
     return methods, .None
 }
@@ -228,16 +225,16 @@ read_fields :: proc(
         validate_flags(access_flags)
         name_idx := read_u16(reader) or_return
         descriptor_idx := read_u16(reader) or_return
+        attributes := read_attributes(reader, classfile, allocator) or_return
 
-        field = FieldInfo {
-            access_flags, name_idx,
-            descriptor_idx,
-            read_attributes(reader, classfile, allocator) or_return,
-        }
+        field = FieldInfo { access_flags, name_idx, descriptor_idx, attributes }
     }
     return fields, .None
 }
 
+// Reads a binary encoded flags type, backed by a u16 and validates it.
+// Returns Error.InvalidAccessFlags if bits are set which are not a valid 
+// flag of type F.
 @private
 read_flags :: proc(
     reader: ^ClassFileReader, 
@@ -288,10 +285,12 @@ read_attributes :: proc(
     return attributes, .None
 }
 
+EXPERIMENTAL_UNCHECKED_READS :: true
+
 // TODO: optimisation, check if we have length bytes, then do read all calls unchecked
 @private
 read_attribute_info :: proc(
-    reader: ^ClassFileReader, 
+    using reader: ^ClassFileReader, 
     classfile: ClassFile, 
     allocator := context.allocator,
 ) -> (
@@ -302,155 +301,166 @@ read_attribute_info :: proc(
     length := read_u32(reader) or_return
     attrib_name := cp_get_str(classfile, name_idx)
 
+when EXPERIMENTAL_UNCHECKED_READS {
+    if pos + int(length) > len(bytes) {
+        return attribute, .UnexpectedEof
+    }
+
+    read_u16 :: unchecked_read_u16
+    read_u32 :: unchecked_read_u32
+    read_nbytes :: unchecked_read_nbytes
+    read_u16_slice :: unchecked_read_u16_slice
+}
+
     switch attrib_name {
-        case "ConstantValue":
-            constantvalue_idx := read_u16(reader) or_return
-            attribute = ConstantValue { constantvalue_idx }
-        case "Code":
-            // TODO: read bytecode
-            max_stack := read_u16(reader) or_return
-            max_locals := read_u16(reader) or_return
-            code_length := read_u32(reader) or_return
-            code := read_nbytes(reader, code_length) or_return
-            exception_table := alloc_slice(reader, []ExceptionHandler, allocator) or_return
+    case "ConstantValue":
+        constantvalue_idx := read_u16(reader) or_return
+        attribute = ConstantValue { constantvalue_idx }
+    case "Code":
+        // TODO: read bytecode
+        max_stack := read_u16(reader) or_return
+        max_locals := read_u16(reader) or_return
+        code_length := read_u32(reader) or_return
+        code := read_nbytes(reader, code_length) or_return
+        exception_table := alloc_slice(reader, []ExceptionHandler, allocator) or_return
 
-            for &exception in exception_table {
-                start_pc := read_u16(reader) or_return
-                end_pc := read_u16(reader) or_return
-                handler_pc := read_u16(reader) or_return
-                catch_type := read_u16(reader) or_return
-                exception = ExceptionHandler { start_pc, end_pc, handler_pc, catch_type }
+        for &exception in exception_table {
+            start_pc := read_u16(reader) or_return
+            end_pc := read_u16(reader) or_return
+            handler_pc := read_u16(reader) or_return
+            catch_type := read_u16(reader) or_return
+            exception = ExceptionHandler { start_pc, end_pc, handler_pc, catch_type }
+        }
+
+        attributes := read_attributes(reader, classfile) or_return
+        attribute = Code {
+            max_stack, max_locals, 
+            code,
+            exception_table,
+            attributes,
+        }
+    case "StackMapTable":
+        frames := alloc_slice(reader, []StackMapFrame, allocator) or_return
+        for &frame in frames {
+            frame = read_stack_map_frame(reader) or_return
+        }
+        attribute = StackMapTable { frames }
+    case "Exceptions":
+        exception_idx_table := read_u16_slice(reader) or_return
+        attribute = Exceptions { exception_idx_table }
+    case "InnerClasses":
+        classes := alloc_slice(reader, []InnerClassEntry, allocator) or_return
+
+        for &class in classes {
+            inner_class_info_idx := read_u16(reader) or_return
+            outer_class_info_idx := read_u16(reader) or_return
+            name_idx := read_u16(reader) or_return
+            access_flags := read_flags(reader, InnerClassAccessFlags) or_return
+            class = InnerClassEntry {
+                inner_class_info_idx,
+                outer_class_info_idx,
+                name_idx, access_flags,
             }
+        }
+        attribute = InnerClasses { classes }
+    case "EnclosingMethod":
+        class_idx := read_u16(reader) or_return
+        method_idx := read_u16(reader) or_return
+        attribute = EnclosingMethod { class_idx, method_idx }
+    case "Synthetic": attribute = Synthetic {}
+    case "Signature": 
+        signature_idx := read_u16(reader) or_return
+        attribute = Signature { signature_idx }
+    case "SourceFile": 
+        sourcefile_idx := read_u16(reader) or_return
+        attribute = SourceFile { sourcefile_idx }
+    case "SourceDebugExtension":
+        debug_extension := read_nbytes(reader, length) or_return
+        attribute = SourceDebugExtension { string(debug_extension) }
+    case "LineNumberTable":
+        // TODO: slice.reinterpret?
+        table := alloc_slice(reader, []LineNumberTableEntry, allocator) or_return
 
-            attributes := read_attributes(reader, classfile) or_return
-            attribute = Code {
-                max_stack, max_locals, 
-                code,
-                exception_table,
-                attributes,
+        for &entry in table {
+            start_pc := read_u16(reader) or_return
+            line_number := read_u16(reader) or_return
+            entry = LineNumberTableEntry { start_pc, line_number }
+        }
+        attribute = LineNumberTable { table }
+    case "LocalVariableTable":
+        table := read_local_variable_table(reader) or_return
+        attribute = LocalVariableTable  { table }
+    case "LocalVariableTypeTable":
+        table := read_local_variable_type_table(reader) or_return
+        // SAFETY: this should keep working as long as both entry types have the same size
+        attribute = LocalVariableTypeTable { transmute([]LocalVariableTypeTableEntry)table }
+    case "Deprecated": attribute = Deprecated {}
+    case "RuntimeVisibleAnnotations":
+        annotations := read_annotations(reader, allocator) or_return
+        attribute = RuntimeVisibleAnnotations { annotations }
+    case "RuntimeInvisibleAnnotations":
+        annotations := read_annotations(reader, allocator) or_return
+        attribute = RuntimeInvisibleAnnotations { annotations }
+    case "RuntimeVisibleParameterAnnotations":
+        parameter_annotations := read_parameter_annotations(reader) or_return
+        attribute = RuntimeVisibleParameterAnnotations { parameter_annotations }
+    case "RuntimeInvisibleParameterAnnotations":
+        parameter_annotations := read_parameter_annotations(reader) or_return
+        attribute = RuntimeInvisibleParameterAnnotations { parameter_annotations }
+    case "RuntimeVisibleTypeAnnotations":
+        type_annotations := read_type_annotations(reader, allocator) or_return
+        attribute = RuntimeVisibleTypeAnnotations { type_annotations }
+    case "RuntimeInvisibleTypeAnnotations":
+        type_annotations := read_type_annotations(reader, allocator) or_return
+        attribute = RuntimeInvisibleTypeAnnotations { type_annotations }
+    case "AnnotationDefault":
+        default_value := read_element_value(reader, allocator) or_return
+        attribute = AnnotationDefault { default_value }
+    case "BootstrapMethods":
+        bootstrap_methods := alloc_slice(reader, []BootstrapMethod, allocator) or_return
+
+        for &method in bootstrap_methods {
+            bootstrap_method_ref := read_u16(reader) or_return
+            bootstrap_args := read_u16_slice(reader) or_return
+
+            method = BootstrapMethod {
+                bootstrap_method_ref,
+                bootstrap_args,
             }
-        case "StackMapTable":
-            frames := alloc_slice(reader, []StackMapFrame, allocator) or_return
-            for &frame in frames {
-                frame = read_stack_map_frame(reader) or_return
+        }
+        attribute = BootstrapMethods { bootstrap_methods }
+    case "NestHost":
+        host_class_idx := read_u16(reader) or_return
+        attribute = NestHost { host_class_idx }
+    case "NestMembers":
+        classes := read_u16_slice(reader) or_return
+        attribute = NestMembers { classes }
+    case "Module":
+        attribute = read_module(reader) or_return
+    case "ModulePackages":
+        package_idx := read_u16_slice(reader) or_return
+        attribute = ModulePackages { package_idx }
+    case "ModuleMainClass":
+        main_class_idx := read_u16(reader) or_return
+        attribute = ModuleMainClass { main_class_idx }
+    case "Record":
+        components := alloc_slice(reader, []RecordComponentInfo, allocator) or_return
+
+        for &component in components {
+            name_idx := read_u16(reader) or_return
+            descriptor_idx := read_u16(reader) or_return
+            attributes := read_attributes(reader, classfile, allocator) or_return
+
+            component = RecordComponentInfo {
+                name_idx, descriptor_idx, attributes,
             }
-            attribute = StackMapTable { frames }
-        case "Exceptions":
-            exception_idx_table := read_u16_slice(reader) or_return
-            attribute = Exceptions { exception_idx_table }
-        case "InnerClasses":
-            classes := alloc_slice(reader, []InnerClassEntry, allocator) or_return
-
-            for &class in classes {
-                inner_class_info_idx := read_u16(reader) or_return
-                outer_class_info_idx := read_u16(reader) or_return
-                name_idx := read_u16(reader) or_return
-                access_flags := read_flags(reader, InnerClassAccessFlags) or_return
-                class = InnerClassEntry {
-                    inner_class_info_idx,
-                    outer_class_info_idx,
-                    name_idx, access_flags,
-                }
-            }
-            attribute = InnerClasses { classes }
-        case "EnclosingMethod":
-            class_idx := read_u16(reader) or_return
-            method_idx := read_u16(reader) or_return
-            attribute = EnclosingMethod { class_idx, method_idx }
-        case "Synthetic": attribute = Synthetic {}
-        case "Signature": 
-            signature_idx := read_u16(reader) or_return
-            attribute = Signature { signature_idx }
-        case "SourceFile": 
-            sourcefile_idx := read_u16(reader) or_return
-            attribute = SourceFile { sourcefile_idx }
-        case "SourceDebugExtension":
-            debug_extension := read_nbytes(reader, length) or_return
-            attribute = SourceDebugExtension { string(debug_extension) }
-        case "LineNumberTable":
-            // TODO: slice.reinterpret?
-            table := alloc_slice(reader, []LineNumberTableEntry, allocator) or_return
-
-            for &entry in table {
-                start_pc := read_u16(reader) or_return
-                line_number := read_u16(reader) or_return
-                entry = LineNumberTableEntry { start_pc, line_number }
-            }
-            attribute = LineNumberTable { table }
-        case "LocalVariableTable":
-            table := read_local_variable_table(reader) or_return
-            attribute = LocalVariableTable  { table }
-        case "LocalVariableTypeTable":
-            table := read_local_variable_type_table(reader) or_return
-            // SAFETY: this should keep working as long as both entry types have the same size
-            attribute = LocalVariableTypeTable { transmute([]LocalVariableTypeTableEntry)table }
-        case "Deprecated": attribute = Deprecated {}
-        case "RuntimeVisibleAnnotations":
-            annotations := read_annotations(reader, allocator) or_return
-            attribute = RuntimeVisibleAnnotations { annotations }
-        case "RuntimeInvisibleAnnotations":
-            annotations := read_annotations(reader, allocator) or_return
-            attribute = RuntimeInvisibleAnnotations { annotations }
-        case "RuntimeVisibleParameterAnnotations":
-            parameter_annotations := read_parameter_annotations(reader) or_return
-            attribute = RuntimeVisibleParameterAnnotations { parameter_annotations }
-        case "RuntimeInvisibleParameterAnnotations":
-            parameter_annotations := read_parameter_annotations(reader) or_return
-            attribute = RuntimeInvisibleParameterAnnotations { parameter_annotations }
-        case "RuntimeVisibleTypeAnnotations":
-            type_annotations := read_type_annotations(reader, allocator) or_return
-            attribute = RuntimeVisibleTypeAnnotations { type_annotations }
-        case "RuntimeInvisibleTypeAnnotations":
-            type_annotations := read_type_annotations(reader, allocator) or_return
-            attribute = RuntimeInvisibleTypeAnnotations { type_annotations }
-        case "AnnotationDefault":
-            default_value := read_element_value(reader, allocator) or_return
-            attribute = AnnotationDefault { default_value }
-        case "BootstrapMethods":
-            bootstrap_methods := alloc_slice(reader, []BootstrapMethod, allocator) or_return
-
-            for &method in bootstrap_methods {
-                bootstrap_method_ref := read_u16(reader) or_return
-                bootstrap_args := read_u16_slice(reader) or_return
-
-                method = BootstrapMethod {
-                    bootstrap_method_ref,
-                    bootstrap_args,
-                }
-            }
-            attribute = BootstrapMethods { bootstrap_methods }
-        case "NestHost":
-            host_class_idx := read_u16(reader) or_return
-            attribute = NestHost { host_class_idx }
-        case "NestMembers":
-            classes := read_u16_slice(reader) or_return
-            attribute = NestMembers { classes }
-        case "Module":
-            attribute = read_module(reader) or_return
-        case "ModulePackages":
-            package_idx := read_u16_slice(reader) or_return
-            attribute = ModulePackages { package_idx }
-        case "ModuleMainClass":
-            main_class_idx := read_u16(reader) or_return
-            attribute = ModuleMainClass { main_class_idx }
-        case "Record":
-            components := alloc_slice(reader, []RecordComponentInfo, allocator) or_return
-
-            for &component in components {
-                name_idx := read_u16(reader) or_return
-                descriptor_idx := read_u16(reader) or_return
-                attributes := read_attributes(reader, classfile, allocator) or_return
-
-                component = RecordComponentInfo {
-                    name_idx, descriptor_idx, attributes,
-                }
-            }
-            attribute = Record { components }
-        case "PermittedSubclasses":
-            classes := read_u16_slice(reader) or_return
-            attribute = PermittedSubclasses { classes }
-        case:
-            return attribute, .UnknownAttributeName
+        }
+        attribute = Record { components }
+    case "PermittedSubclasses":
+        classes := read_u16_slice(reader) or_return
+        attribute = PermittedSubclasses { classes }
+    case:
+        return attribute, .UnknownAttributeName
     }
     return attribute, .None
 }
@@ -683,25 +693,25 @@ read_element_value :: proc(
     using element_value 
 
     switch element_value_tag {
-        case 'B', 'C', 'D', 'F', 'I', 'J', 'S', 'Z', 's':
-            value = ConstValueIdx(read_u16(reader) or_return)
-        case 'e':
-            type_name_idx := read_u16(reader) or_return
-            const_name_idx := read_u16(reader) or_return
-            value = EnumConstValue { type_name_idx, const_name_idx }
-        case 'c':
-            class_info_idx := read_u16(reader) or_return
-            value = ClassInfoIdx(class_info_idx)
-        case '@':
-            value = read_annotation(reader) or_return
-        case '[':
-            values := alloc_slice(reader, []ElementValue, allocator) or_return
-            for &value in values {
-                value = read_element_value(reader, allocator) or_return
-            }
-            value = ArrayValue { values }
-        case:
-            return element_value, .UnknownElementValueTag
+    case 'B', 'C', 'D', 'F', 'I', 'J', 'S', 'Z', 's':
+        value = ConstValueIdx(read_u16(reader) or_return)
+    case 'e':
+        type_name_idx := read_u16(reader) or_return
+        const_name_idx := read_u16(reader) or_return
+        value = EnumConstValue { type_name_idx, const_name_idx }
+    case 'c':
+        class_info_idx := read_u16(reader) or_return
+        value = ClassInfoIdx(class_info_idx)
+    case '@':
+        value = read_annotation(reader) or_return
+    case '[':
+        values := alloc_slice(reader, []ElementValue, allocator) or_return
+        for &value in values {
+            value = read_element_value(reader, allocator) or_return
+        }
+        value = ArrayValue { values }
+    case:
+        return element_value, .UnknownElementValueTag
     }
     return element_value, .None
 }
@@ -732,21 +742,21 @@ read_verification_type_info :: proc(
 ) {
     tag := FrameTag(read_u8(reader) or_return)
     switch tag {
-        case .Top: info = TopVariableInfo {}
-        case .Integer: info = IntegerVariableInfo {}
-        case .Float: info = FloatVariableInfo {}
-        case .Double: info = DoubleVariableInfo {}
-        case .Long: info = LongVariableInfo {}
-        case .Null: info = NullVariableInfo {}
-        case .UninitializedThis: info = UninitializedThisVariableInfo {}
-        case .Object: 
-            cp_idx := read_u16(reader) or_return
-            info = ObjectVariableInfo { cp_idx }
-        case .Uninitialized:
-            offset := read_u16(reader) or_return
-            info = UninitializedVariableInfo { offset }
-        case: 
-            return info, .UnknownVerificationTypeInfoTag
+    case .Top: info = TopVariableInfo {}
+    case .Integer: info = IntegerVariableInfo {}
+    case .Float: info = FloatVariableInfo {}
+    case .Double: info = DoubleVariableInfo {}
+    case .Long: info = LongVariableInfo {}
+    case .Null: info = NullVariableInfo {}
+    case .UninitializedThis: info = UninitializedThisVariableInfo {}
+    case .Object: 
+        cp_idx := read_u16(reader) or_return
+        info = ObjectVariableInfo { cp_idx }
+    case .Uninitialized:
+        offset := read_u16(reader) or_return
+        info = UninitializedVariableInfo { offset }
+    case: 
+        return info, .UnknownVerificationTypeInfoTag
     }
     return info, .None
 }
@@ -892,7 +902,7 @@ make_safe :: proc(
 alloc_slice :: proc(
     reader: ^ClassFileReader,
     $T: typeid/[]$E,
-    allocator: mem.Allocator, // make the allocator explicit
+    allocator := context.allocator,
     loc := #caller_location,
 ) -> (
     ret: T, 
@@ -911,8 +921,8 @@ read_u8 :: proc(using reader: ^ClassFileReader) -> (u8, Error) #no_bounds_check 
     if pos >= len(bytes) {
         return 0, .UnexpectedEof
     }
-    pos += 1
-    return bytes[pos - 1], .None
+    defer pos += 1
+    return bytes[pos], .None
 }
 
 @private
@@ -936,9 +946,8 @@ read_nbytes :: proc(using reader: ^ClassFileReader, #any_int n: int) -> ([]u8, E
     if pos + n > len(bytes) {
         return nil, .UnexpectedEof
     }
-    ret := bytes[pos:][:n]
-    pos += n
-    return ret, .None
+    defer pos += n
+    return bytes[pos:][:n], .None
 }
 
 // Reads a slice of u16s, the length is prefixed as a u16 before the actual data.
@@ -949,4 +958,33 @@ read_u16_slice :: proc(reader: ^ClassFileReader) -> (ret: []u16, err: Error) {
     bytes := read_nbytes(reader, elem_count * size_of(u16)) or_return
     ret = slice.reinterpret([]u16, bytes)
     return ret, .None
+}
+
+// ------------------------------ 
+// Unchecked low level parsing functions.
+// ------------------------------ 
+
+@private
+unchecked_read_u16 :: proc(using reader: ^ClassFileReader) -> (u16, Error) {
+    defer pos += 2
+    return endian.unchecked_get_u16be(bytes), .None
+}
+
+@private
+unchecked_read_u32 :: proc(using reader: ^ClassFileReader) -> (u32, Error) {
+    defer pos += 4
+    return endian.unchecked_get_u32be(bytes), .None
+}
+
+@private
+unchecked_read_nbytes :: proc(using reader: ^ClassFileReader, #any_int n: int) -> ([]u8, Error) #no_bounds_check {
+    defer pos += n
+    return bytes[pos:][:n], .None
+}
+
+@private
+unchecked_read_u16_slice :: proc(reader: ^ClassFileReader) -> ([]u16, Error) {
+    elem_count, _ := unchecked_read_u16(reader)
+    bytes, _ := unchecked_read_nbytes(reader, elem_count * size_of(u16))
+    return slice.reinterpret([]u16, bytes), .None
 }

@@ -53,53 +53,53 @@ attributes_destroy :: proc(attributes: []AttributeInfo) {
 // AttributeInfo destructor.
 attribute_destroy :: proc(attrib: AttributeInfo) {
     #partial switch &attrib in attrib {
-        case Code:
-            delete(attrib.exception_table)
-            attributes_destroy(attrib.attributes)
-        case StackMapTable:
-            for frame in attrib.entries {
-                stack_map_frame_destroy(frame)
-            }
-        case InnerClasses:
-            delete(attrib.classes)
-        case SourceDebugExtension:
-            delete(attrib.debug_extension)
-        case LineNumberTable:
-            delete(attrib.line_number_table)
-        case LocalVariableTable:
-            delete(attrib.local_variable_table)
-        case LocalVariableTypeTable:
-            delete(attrib.local_variable_type_table)
-        case RuntimeVisibleAnnotations:
-            annotations_destroy(attrib.annotations)
-        case RuntimeInvisibleAnnotations:
-            annotations_destroy(attrib.annotations)
-        case RuntimeVisibleParameterAnnotations:
-            parameter_annotations_destroy(attrib.parameter_annotations)
-        case RuntimeInvisibleParameterAnnotations:
-            parameter_annotations_destroy(attrib.parameter_annotations)
-        case AnnotationDefault:
-            element_value_destroy(attrib.default_value.value)
-        case BootstrapMethods:
-            delete(attrib.bootstrap_methods)
-        case Module:
-            delete(attrib.requires)
-            delete(attrib.exports)
-            delete(attrib.opens)
-            delete(attrib.provides)
-        case Record:
-            delete(attrib.components)
+    case Code:
+        delete(attrib.exception_table)
+        attributes_destroy(attrib.attributes)
+    case StackMapTable:
+        for frame in attrib.frames {
+            stack_map_frame_destroy(frame)
+        }
+    case InnerClasses:
+        delete(attrib.classes)
+    case SourceDebugExtension:
+        delete(attrib.debug_extension)
+    case LineNumberTable:
+        delete(attrib.line_number_table)
+    case LocalVariableTable:
+        delete(attrib.local_variable_table)
+    case LocalVariableTypeTable:
+        delete(attrib.local_variable_type_table)
+    case RuntimeVisibleAnnotations:
+        annotations_destroy(attrib.annotations)
+    case RuntimeInvisibleAnnotations:
+        annotations_destroy(attrib.annotations)
+    case RuntimeVisibleParameterAnnotations:
+        parameter_annotations_destroy(attrib.parameter_annotations)
+    case RuntimeInvisibleParameterAnnotations:
+        parameter_annotations_destroy(attrib.parameter_annotations)
+    case AnnotationDefault:
+        element_value_destroy(attrib.default_value.value)
+    case BootstrapMethods:
+        delete(attrib.bootstrap_methods)
+    case Module:
+        delete(attrib.requires)
+        delete(attrib.exports)
+        delete(attrib.opens)
+        delete(attrib.provides)
+    case Record:
+        delete(attrib.components)
     }
 }
 
 element_value_destroy :: proc(value: ElementValueInner) {
     #partial switch &value in value {
-        case Annotation:
-            annotation_destroy(value)
-        case ArrayValue:
-            for element in value.values {
-                element_value_destroy(element.value)
-            }
+    case Annotation:
+        annotation_destroy(value)
+    case ArrayValue:
+        for element in value.values {
+            element_value_destroy(element.value)
+        }
     }
 }
 
@@ -179,7 +179,7 @@ ExceptionHandler :: struct {
 // This attribute is used during the process of verification by type checking.
 // A method's Code attribute may have at most one StackMapTable attribute.
 StackMapTable :: struct {
-    entries: []StackMapFrame,
+    frames: []StackMapFrame,
 }
 
 // Indicates which checked exceptions a method may throw.

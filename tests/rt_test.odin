@@ -72,7 +72,6 @@ visit_file :: proc(file: os.File_Info, in_err: os.Errno, user_data: rawptr) -> (
     defer delete(data)
     if !ok do return
 
-    fmt.eprintln(file.name)
     reader := cr.reader_new(data)
     classfile, cerr := cr.read_classfile(&reader)
     defer cr.classfile_destroy(classfile)

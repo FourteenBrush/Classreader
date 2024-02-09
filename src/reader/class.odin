@@ -99,7 +99,8 @@ classfile_find_method :: proc(using classfile: ClassFile, name: string) -> Maybe
 classfile_find_attribute :: proc(using classfile: ClassFile, $T: typeid) -> Maybe(T)
 where intrinsics.type_is_variant_of(AttributeInfo, T) {
     for &attribute in attributes {
-        if type_of(attribute) == T do return attribute
+        attribute, ok := attribute.(T)
+        if ok do return attribute
     }
     return nil
 }
@@ -162,10 +163,11 @@ classfile_dump :: proc(using classfile: ClassFile) {
     fmt.println("Constant pool:")
 
     for entry in constant_pool {
-        if entry.info == nil { i += 1; continue } // skip unusable entry
+        defer i += 1
+        if entry.info == nil do continue // skip unusable entry
 
         MIN_PADDING :: 2 // minimum amount of spaces in front of #num
-        // TODO: determine the max length of the tags first rather than hardcoding an arbitrary one
+        // FIXME: determine the max length of the tags first rather than hardcoding an arbitrary one
         MAX_TAG_LEN :: len("InterfaceMethodRef") // longest tag
 
         padding := MIN_PADDING + max_idx_width - count_digits(i) + 1
@@ -174,7 +176,6 @@ classfile_dump :: proc(using classfile: ClassFile) {
 
         fmt.printf("%*s%i = %s%*s", padding, "#", i, entry.tag, description_padding, "")
         cp_entry_dump(classfile, entry)
-        i += 1
     }
 
     if len(attributes) > 0 {
@@ -247,70 +248,70 @@ FLOAT_POS_INFINITY :: 0x7f800000
 // Dumps a constantpool entry's data to the stdout.
 cp_entry_dump :: proc(classfile: ClassFile, cp_info: ConstantPoolEntry) {
     switch &cp_info in cp_info.info {
-        case ConstantUtf8Info:
-            fmt.println(string(cp_info.bytes))
-        case ConstantIntegerInfo:
-            fmt.println(cp_info.bytes)
-        case ConstantFloatInfo:
-            switch cp_info.bytes {
-                case FLOAT_POS_INFINITY: fmt.println("infinity")
-                case FLOAT_NEG_INFINITY: fmt.println("-infinity")
-                case 0x7f800001..=0x7fffffff,
-                     0xff800001..=0xffffffff:
-                    fmt.println("NaN")
-                case:
-                    val := transmute(f32)cp_info.bytes
-                    fmt.println(val)
-            }
-        case ConstantLongInfo:
-            long_val := i64(cp_info.high_bytes) << 32 + i64(cp_info.low_bytes)
-            fmt.println(long_val)
-        case ConstantDoubleInfo:
-            int_val := u64(cp_info.high_bytes) << 32 + u64(cp_info.low_bytes)
-            val := transmute(f64)int_val
+    case ConstantUtf8Info:
+        fmt.println(string(cp_info.bytes))
+    case ConstantIntegerInfo:
+        fmt.println(cp_info.bytes)
+    case ConstantFloatInfo:
+        switch cp_info.bytes {
+        case FLOAT_POS_INFINITY: fmt.println("infinity")
+        case FLOAT_NEG_INFINITY: fmt.println("-infinity")
+        case 0x7f800001..=0x7fffffff,
+             0xff800001..=0xffffffff:
+            fmt.println("NaN")
+        case:
+            val := transmute(f32)cp_info.bytes
             fmt.println(val)
-        case ConstantClassInfo:
-            class_name := cp_get_str(classfile, cp_info.name_idx)
-            fmt.println(class_name)
-        case ConstantStringInfo:
-            str := cp_get_str(classfile, cp_info.string_idx)
-            fmt.println(str)
-        case ConstantFieldRefInfo:
-            ref_dump(classfile, cp_info)
-        case ConstantNameAndTypeInfo:
-            name := cp_get_str(classfile, cp_info.name_idx)
-            descriptor := cp_get_str(classfile, cp_info.descriptor_idx)
-            fmt.println(name, descriptor, sep=":")
-        case ConstantMethodHandleInfo:
-            // note that ConstantFieldRefInfo has multiple aliases, see constantpool file
-            ref := cp_get(ConstantFieldRefInfo, classfile, cp_info.reference_idx)
-            ref_dump(classfile, ref)
-        case ConstantMethodTypeInfo:
-            descriptor := cp_get_str(classfile, cp_info.descriptor_idx)
-            fmt.println(descriptor)
+        }
+    case ConstantLongInfo:
+        long_val := i64(cp_info.high_bytes) << 32 + i64(cp_info.low_bytes)
+        fmt.println(long_val)
+    case ConstantDoubleInfo:
+        int_val := u64(cp_info.high_bytes) << 32 + u64(cp_info.low_bytes)
+        val := transmute(f64)int_val
+        fmt.println(val)
+    case ConstantClassInfo:
+        class_name := cp_get_str(classfile, cp_info.name_idx)
+        fmt.println(class_name)
+    case ConstantStringInfo:
+        str := cp_get_str(classfile, cp_info.string_idx)
+        fmt.println(str)
+    case ConstantFieldRefInfo:
+        ref_dump(classfile, cp_info)
+    case ConstantNameAndTypeInfo:
+        name := cp_get_str(classfile, cp_info.name_idx)
+        descriptor := cp_get_str(classfile, cp_info.descriptor_idx)
+        fmt.println(name, descriptor, sep=":")
+    case ConstantMethodHandleInfo:
+        // note that ConstantFieldRefInfo has multiple aliases, see constantpool file
+        ref := cp_get(ConstantFieldRefInfo, classfile, cp_info.reference_idx)
+        ref_dump(classfile, ref)
+    case ConstantMethodTypeInfo:
+        descriptor := cp_get_str(classfile, cp_info.descriptor_idx)
+        fmt.println(descriptor)
 
-        case ConstantDynamicInfo:
-            using name_and_type := cp_get(ConstantNameAndTypeInfo, classfile, cp_info.name_and_type_idx)
-            method_name := cp_get_str(classfile, name_idx)
-            method_descriptor := cp_get_str(classfile, descriptor_idx)
-            fmt.printf(
-                "#%v:%v:%v\n", 
-                cp_info.bootstrap_method_attr_idx, method_name, method_descriptor,
-            )
-        case ConstantInvokeDynamicInfo:
-            using name_and_type := cp_get(ConstantNameAndTypeInfo, classfile, cp_info.name_and_type_idx)
-            method_name := cp_get_str(classfile, name_idx)
-            method_descriptor := cp_get_str(classfile, descriptor_idx)
-            fmt.printf(
-                "#%v:%v:%v\n", 
-                cp_info.bootstrap_method_attr_idx, method_name, method_descriptor,
-            )
-        case ConstantModuleInfo:
-            module_name := cp_get_str(classfile, cp_info.name_idx)
-            fmt.println(module_name)
-        case ConstantPackageInfo: 
-            package_name := cp_get_str(classfile, cp_info.name_idx)
-            fmt.println(package_name)
+    case ConstantDynamicInfo:
+        using name_and_type := cp_get(ConstantNameAndTypeInfo, classfile, cp_info.name_and_type_idx)
+        method_name := cp_get_str(classfile, name_idx)
+        method_descriptor := cp_get_str(classfile, descriptor_idx)
+        fmt.printf(
+            "#%v:%v:%v\n", 
+            cp_info.bootstrap_method_attr_idx, method_name, method_descriptor,
+        )
+    case ConstantInvokeDynamicInfo:
+        using name_and_type := cp_get(ConstantNameAndTypeInfo, classfile, cp_info.name_and_type_idx)
+        method_name := cp_get_str(classfile, name_idx)
+        method_descriptor := cp_get_str(classfile, descriptor_idx)
+        fmt.printf(
+            "#%v:%v:%v\n", 
+            cp_info.bootstrap_method_attr_idx, method_name, method_descriptor,
+        )
+    case ConstantModuleInfo:
+        module_name := cp_get_str(classfile, cp_info.name_idx)
+        fmt.println(module_name)
+    case ConstantPackageInfo: 
+        package_name := cp_get_str(classfile, cp_info.name_idx)
+        fmt.println(package_name)
     }
 }
 
@@ -487,6 +488,8 @@ field_info_dump :: proc(using field: FieldInfo, classfile: ClassFile) {
     access_flags_dump(access_flags)
 }
 
+// Returns a field descriptor to a Java type name.
+// Assumes a valid field descriptor has been passed.
 @private
 field_descriptor_to_str :: proc(desc: string) -> string {
     switch desc {

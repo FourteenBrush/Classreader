@@ -15,11 +15,11 @@ StackMapFrame :: union {
 // StackMapFrame destructor.
 stack_map_frame_destroy :: proc(frame: StackMapFrame) {
     #partial switch &frame in frame {
-        case AppendFrame:
-            delete(frame.locals)
-        case FullFrame:
-            delete(frame.locals)
-            delete(frame.stack)
+    case AppendFrame:
+        delete(frame.locals)
+    case FullFrame:
+        delete(frame.locals)
+        delete(frame.stack)
     }
 }
 
