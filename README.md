@@ -9,6 +9,27 @@ A Java class-file reader
 classreader SomeJavaFile.class
 ```
 
+## API
+
+```go
+import "core:os"
+import "../dependencies/classreader"
+
+main :: proc() {
+    data, ok := os.read_entire_file("Demo.class")
+    assert(ok)
+    defer delete(data)
+
+    reader := classreader.reader_new()
+    // Note that the returned class' lifetime is bound to
+    // the bytes it got from the reader
+    class, err := classreader.read_classfile(&reader)
+    assert(err == .None)
+
+    classreader.classfile_dump(class)
+}
+```
+
 ## Sample output:
 
 ```

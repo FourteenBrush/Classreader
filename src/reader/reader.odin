@@ -49,7 +49,7 @@ read_classfile :: proc(
     return
 }
 
-// An error returned while reading the ClassFile.
+// An error returned while reading a ClassFile.
 Error :: enum {
     // No error
     None,
@@ -264,9 +264,9 @@ validate_flags :: proc(flags: $T/bit_set[$F; u16]) -> Error {
     return .None
 }
 
-// ------------------------------ 
+// -------------------------------------------------- 
 // Attribute parsing functions
-// ------------------------------ 
+// -------------------------------------------------- 
 
 @private
 read_attributes :: proc(
@@ -306,6 +306,8 @@ when EXPERIMENTAL_UNCHECKED_READS {
         return attribute, .UnexpectedEof
     }
 
+    // TODO: these don't apply to indirect calls
+    // not really something we can do about
     read_u16 :: unchecked_read_u16
     read_u32 :: unchecked_read_u32
     read_nbytes :: unchecked_read_nbytes
@@ -879,9 +881,9 @@ read_type_annotations :: proc(
     return type_annotations, .None
 }
 
-/// ------------------------------ 
+/// -------------------------------------------------- 
 /// Low level parsing functions
-/// ------------------------------ 
+/// -------------------------------------------------- 
 
 // An alternative for builtin.make, which returns an optional Error, to use or_return on.
 @private
@@ -960,9 +962,9 @@ read_u16_slice :: proc(reader: ^ClassFileReader) -> (ret: []u16, err: Error) {
     return ret, .None
 }
 
-// ------------------------------ 
+// -------------------------------------------------- 
 // Unchecked low level parsing functions.
-// ------------------------------ 
+// -------------------------------------------------- 
 
 @private
 unchecked_read_u16 :: proc(using reader: ^ClassFileReader) -> (u16, Error) {
