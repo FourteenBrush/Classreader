@@ -20,7 +20,7 @@ main :: proc() {
     assert(ok)
     defer delete(data)
 
-    reader := classreader.reader_new()
+    reader := classreader.reader_new(data)
     // Note that the returned class' lifetime is bound to
     // the bytes it got from the reader
     class, err := classreader.read_classfile(&reader)
