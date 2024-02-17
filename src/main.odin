@@ -3,10 +3,13 @@ package classreader
 import "core:os"
 import "core:fmt"
 import "core:mem"
+import "core:c/libc"
+import "core:runtime"
 @require // suppress unused package error on non windows targets
 import win32 "core:sys/windows"
 
 import "reader"
+import "../dependencies/back"
 
 main :: proc() {
     when ODIN_DEBUG {
@@ -29,6 +32,8 @@ main :: proc() {
             }
             mem.tracking_allocator_destroy(&alloc)
         }
+
+        register_sigill_handler()
     }
 
     args := os.args
@@ -56,6 +61,27 @@ main :: proc() {
 
     reader.classfile_dump(classfile)
 }
+
+register_sigill_handler :: proc() {
+    libc.signal(libc.SIGILL, proc "c" (code: i32) {
+        context = runtime.default_context()
+        context.allocator = context.temp_allocator
+
+        backtrace: {
+            t := back.trace()
+            lines, err := back.lines(t.trace[:t.len])
+            if err != nil {
+                fmt.eprintf("Exception (Code %i)\nCould not get backtrace: %v\n", code, err)
+                break backtrace
+            }
+
+            fmt.eprintf("Exception (Code %i)\n[back trace]\n", code)
+            back.print(lines)
+        }
+        os.exit(int(code))
+    }) 
+}
+
 
 get_last_error :: proc() -> int {
     return int(win32.GetLastError()) when ODIN_OS == .Windows else os.get_last_error()

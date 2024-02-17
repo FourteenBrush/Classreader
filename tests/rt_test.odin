@@ -11,27 +11,6 @@ import "core:compress/zlib"
 import "core:path/filepath"
 
 import cr "../src/reader"
-import "../dependencies/back"
-
-register_sigill_handler :: proc() {
-    libc.signal(libc.SIGILL, proc "c" (code: i32) {
-        context = runtime.default_context()
-        context.allocator = context.temp_allocator
-
-        backtrace: {
-            t := back.trace()
-            lines, err := back.lines(t.trace[:t.len])
-            if err != nil {
-                fmt.eprintf("Exception (Code %i)\nCould not get backtrace: %v\n", code, err)
-                break backtrace
-            }
-
-            fmt.eprintf("Exception (Code %i)\n[back trace]\n", code)
-            back.print(lines)
-        }
-        os.exit(int(code))
-    }) 
-}
 
 // TODO: when we are able to extract zip files via the stdlib
 //@test

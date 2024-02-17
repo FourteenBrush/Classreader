@@ -969,13 +969,13 @@ read_u16_slice :: proc(reader: ^ClassFileReader) -> (ret: []u16, err: Error) {
 @private
 unchecked_read_u16 :: proc(using reader: ^ClassFileReader) -> (u16, Error) {
     defer pos += 2
-    return endian.unchecked_get_u16be(bytes), .None
+    return endian.unchecked_get_u16be(bytes[pos:]), .None
 }
 
 @private
 unchecked_read_u32 :: proc(using reader: ^ClassFileReader) -> (u32, Error) {
     defer pos += 4
-    return endian.unchecked_get_u32be(bytes), .None
+    return endian.unchecked_get_u32be(bytes[pos:]), .None
 }
 
 @private

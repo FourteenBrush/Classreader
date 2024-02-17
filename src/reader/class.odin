@@ -218,7 +218,7 @@ major_version_to_str :: proc(major: u16) -> string {
     case 46: return "JDK 1.2"
     case 45: return "JDK 1.1"
     // FIXME: probably want to apply verification before this gets reached
-    case: return "<unknown Version>"
+    case: return "<unknown version>"
     }
 }
 
@@ -289,7 +289,6 @@ cp_entry_dump :: proc(classfile: ClassFile, cp_info: ConstantPoolEntry) {
     case ConstantMethodTypeInfo:
         descriptor := cp_get_str(classfile, cp_info.descriptor_idx)
         fmt.println(descriptor)
-
     case ConstantDynamicInfo:
         using name_and_type := cp_get(ConstantNameAndTypeInfo, classfile, cp_info.name_and_type_idx)
         method_name := cp_get_str(classfile, name_idx)
