@@ -53,8 +53,8 @@ ClassFile :: struct {
 classfile_destroy :: proc(using classfile: ClassFile, allocator := context.allocator) {
     // recursively apply provided allocator
     context.allocator = allocator
-    for &field in fields do attributes_destroy(field.attributes)
-    for &method in methods do attributes_destroy(method.attributes)
+    for field in fields do attributes_destroy(field.attributes)
+    for method in methods do attributes_destroy(method.attributes)
     attributes_destroy(attributes) 
 
     delete(constant_pool)
@@ -78,7 +78,7 @@ classfile_get_super_class_name :: proc(using classfile: ClassFile) -> string {
 
 // Attempts to find a FieldInfo with the given field name.
 classfile_find_field :: proc(using classfile: ClassFile, name: string) -> Maybe(FieldInfo) {
-    for &field in fields {
+    for field in fields {
         field_name := cp_get_str(classfile, field.name_idx)
         if field_name == name do return field
     }
@@ -87,7 +87,7 @@ classfile_find_field :: proc(using classfile: ClassFile, name: string) -> Maybe(
 
 // Attempts to find a MethodInfo with the given method name.
 classfile_find_method :: proc(using classfile: ClassFile, name: string) -> Maybe(MethodInfo) {
-    for &method in methods {
+    for method in methods {
         method_name := cp_get_str(classfile, method.name_idx)
         if method_name == name do return method
     } 
@@ -98,7 +98,7 @@ classfile_find_method :: proc(using classfile: ClassFile, name: string) -> Maybe
 // Finds the first occurence of the given attribute type.
 classfile_find_attribute :: proc(using classfile: ClassFile, $T: typeid) -> Maybe(T)
 where intrinsics.type_is_variant_of(AttributeInfo, T) {
-    for &attribute in attributes {
+    for attribute in attributes {
         attribute, ok := attribute.(T)
         if ok do return attribute
     }
@@ -107,7 +107,7 @@ where intrinsics.type_is_variant_of(AttributeInfo, T) {
 
 find_attribute :: proc(container: $C, $T: typeid) -> Maybe(T)
 where intrinsics.type_is_variant_of(AttributeInfo, T) {
-    for &attribute in container.attributes {
+    for attribute in container.attributes {
         if type_of(attribute) == T do return attribute
     }
     return nil
@@ -118,7 +118,7 @@ cp_find :: proc(
     $E: typeid,
     predicate: proc(ClassFile, E) -> bool,
 ) -> Maybe(E) where intrinsics.type_is_variant_of(CPInfo, E) {
-    for &entry in constant_pool {
+    for entry in constant_pool {
         entry := entry.info.(E) or_continue
         if predicate(classfile, entry) {
             return entry
@@ -149,6 +149,7 @@ where intrinsics.type_is_variant_of(CPInfo, E) {
     return entry, .None
 }
 
+// TODO: take in configuration options, e.g. verbosity
 // Dumps a ClassFile to the stdout.
 classfile_dump :: proc(using classfile: ClassFile) {
     fmt.println("Class name:", classfile_get_class_name(classfile))
@@ -157,7 +158,31 @@ classfile_dump :: proc(using classfile: ClassFile) {
     fmt.printf("Version: minor=%v, major=%v (%v)\n", minor_version, major_version, version_str)
     fmt.printf("Access flags: 0x%4x ", access_flags)
     access_flags_dump(access_flags)
+    fmt.println()
 
+    for field in fields {
+        field_info_dump(field, classfile)
+    }
+    fmt.println()
+
+    constantpool_dump(classfile, constant_pool, constant_pool_count)
+
+    if len(attributes) > 0 {
+        fmt.println("Attributes:")
+
+        for attrib in attributes {
+            name := attribute_to_str(attrib)
+            fmt.println(" ", name)
+        }
+    }
+
+}
+
+constantpool_dump :: proc(
+    classfile: ClassFile, 
+    constant_pool: []ConstantPoolEntry,
+    constant_pool_count: u16,
+) {
     max_idx_width := count_digits(constant_pool_count)
     i := u16(1)
     fmt.println("Constant pool:")
@@ -176,19 +201,6 @@ classfile_dump :: proc(using classfile: ClassFile) {
 
         fmt.printf("%*s%i = %s%*s", padding, "#", i, entry.tag, description_padding, "")
         cp_entry_dump(classfile, entry)
-    }
-
-    if len(attributes) > 0 {
-        fmt.println("Attributes:")
-
-        for attrib in attributes {
-            name := attribute_to_str(attrib)
-            fmt.println(" ", name)
-        }
-    }
-
-    for field in fields {
-        field_info_dump(field, classfile)
     }
 }
 
@@ -247,7 +259,7 @@ FLOAT_POS_INFINITY :: 0x7f800000
 
 // Dumps a constantpool entry's data to the stdout.
 cp_entry_dump :: proc(classfile: ClassFile, cp_info: ConstantPoolEntry) {
-    switch &cp_info in cp_info.info {
+    switch cp_info in cp_info.info {
     case ConstantUtf8Info:
         fmt.println(string(cp_info.bytes))
     case ConstantIntegerInfo:
@@ -481,7 +493,7 @@ field_info_dump :: proc(using field: FieldInfo, classfile: ClassFile) {
     descriptor := cp_get_str(classfile, descriptor_idx)
     name := cp_get_str(classfile, name_idx)
 
-    fmt.print(field_descriptor_to_str(descriptor), name)
+    fmt.print(field_descriptor_to_str(descriptor, context.temp_allocator), name)
     fmt.println(";\n  descriptor:", descriptor)
     fmt.printf("  flags: (0x%4x) ", access_flags)
     access_flags_dump(access_flags)
@@ -490,7 +502,7 @@ field_info_dump :: proc(using field: FieldInfo, classfile: ClassFile) {
 // Returns a field descriptor to a Java type name.
 // Assumes a valid field descriptor has been passed.
 @private
-field_descriptor_to_str :: proc(desc: string) -> string {
+field_descriptor_to_str :: proc(desc: string, allocator := context.allocator) -> string {
     switch desc {
     case "B": return "byte"
     case "Z": return "boolean"
@@ -508,10 +520,10 @@ field_descriptor_to_str :: proc(desc: string) -> string {
             for desc[depth] == '[' do depth += 1
             // figure out base type
             base_type := field_descriptor_to_str(desc[depth:])
-            arr := strings.repeat("[]", depth, context.temp_allocator)
+            arr := strings.repeat("[]", depth, allocator)
             return fmt.tprint(base_type, arr, sep="")
         case 'L':
-            return descriptor_get_object_type(desc)
+            return descriptor_get_object_type(desc, allocator)
         }
     }
     unreachable()
@@ -521,11 +533,10 @@ field_descriptor_to_str :: proc(desc: string) -> string {
 // appear in the source code, e.g. java.awt.AWTEventMulticaster instead of
 // Ljava/awt/AWTEventMulticaster;.
 @private
-descriptor_get_object_type :: proc(desc: string) -> string {
+descriptor_get_object_type :: proc(desc: string, allocator := context.allocator) -> string {
     // remove L and ; and replace all / with .
-    // TODO: does this alter the string passed?
-    desc := desc[1:len(desc) - 1]
-    object_type, _ := strings.replace_all(desc, "/", ".", context.temp_allocator)
+    #no_bounds_check desc := desc[1:len(desc) - 1]
+    object_type, _ := strings.replace_all(desc, "/", ".", allocator)
     return object_type
 }
 
@@ -601,5 +612,5 @@ method_info_dump :: proc(using method: MethodInfo, classfile: ClassFile) {
     name := cp_get_str(classfile, name_idx)
 
     // TODO: proper printing
-    fmt.print(field_descriptor_to_str(descriptor), name)
+    fmt.print(field_descriptor_to_str(descriptor, context.temp_allocator), name)
 }

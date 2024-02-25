@@ -952,7 +952,7 @@ read_nbytes :: proc(using reader: ^ClassFileReader, #any_int n: int) -> ([]u8, E
     return bytes[pos:][:n], .None
 }
 
-// Reads a slice of u16s, the length is prefixed as a u16 before the actual data.
+// Reads a slice of u16s, the length is prepended as a u16 before the actual data.
 // | length: u16 | data: ...u16 (length items) |
 @private
 read_u16_slice :: proc(reader: ^ClassFileReader) -> (ret: []u16, err: Error) {

@@ -11,6 +11,7 @@ import "core:compress/zlib"
 import "core:path/filepath"
 
 import cr "../src/reader"
+import shared "../src"
 
 // TODO: when we are able to extract zip files via the stdlib
 //@test
@@ -37,7 +38,7 @@ test_rt_jar_files :: proc(t: ^testing.T) {
 
 @test
 test_arbitrary_classes :: proc(t: ^testing.T) {
-    register_sigill_handler()
+    shared.register_sigill_handler()
     files_read := 0
     filepath.walk("res/java", visit_file, &files_read)
     testing.expect_value(t, files_read, 1313)

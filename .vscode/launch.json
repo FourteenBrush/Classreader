@@ -21,6 +21,6 @@
             ],
             "cwd": "${workspaceFolder}",
             "postDebugTask": "remove_pdb"
-        },
+        }
     ]
 }

@@ -4,9 +4,6 @@ import "core:testing"
 
 import validation "../src/common"
 
-expect :: testing.expect
-expect_value :: testing.expect_value
-
 FIELD_DESCRIPTOR_CASES := []struct { desc: string, valid: bool } {
     { "Ljava/lang/Object;", true },
     { "[[[D", true },

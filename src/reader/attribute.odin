@@ -38,7 +38,7 @@ AttributeInfo :: union {
 attribute_to_str :: proc(attrib: AttributeInfo) -> string {
     type := reflect.union_variant_typeid(attrib)
     typeinfo := type_info_of(type)
-    named, _ := typeinfo.variant.(reflect.Type_Info_Named)
+    named := typeinfo.variant.(reflect.Type_Info_Named)
     return named.name
 }
 
@@ -390,28 +390,28 @@ TypeAnnotation :: struct {
 
 // https://docs.oracle.com/javase/specs/jvms/se21/html/jvms-4.html#jvms-4.7.20-400
 TargetType :: enum u8 {
-    ClassType = 0x00,
-    MethodType = 0x01,
-    ClassExtends = 0x10,
-    ClassTypeParameterBound = 0x11,
-    MethodTypeParameterBound = 0x12,
-    Field = 0x13,
-    MethodReturn = 0x14,
-    MethodReceiver = 0x15,
-    MethodFormalParameter = 0x16,
-    Throws = 0x17,
-    LocalVariable = 0x40,
-    ResourceVariable = 0x41,
-    ExceptionParameter = 0x42,
-    Instanceof = 0x43,
-    New = 0x44,
-    ConstructorReference = 0x45,
-    MethodReference = 0x46,
-    Cast = 0x47,
-    ConstructorInvocationTypeArgument = 0x48,
-    MethodInvocationTypeArgument = 0x49,
-    ConstructorReferenceTypeArgument = 0x4A,
-    MethodReferenceTypeArgument = 0x4B,
+	ClassType                         = 0x00,
+	MethodType                        = 0x01,
+	ClassExtends                      = 0x10,
+	ClassTypeParameterBound           = 0x11,
+	MethodTypeParameterBound          = 0x12,
+	Field                             = 0x13,
+	MethodReturn                      = 0x14,
+	MethodReceiver                    = 0x15,
+	MethodFormalParameter             = 0x16,
+	Throws                            = 0x17,
+	LocalVariable                     = 0x40,
+	ResourceVariable                  = 0x41,
+	ExceptionParameter                = 0x42,
+	Instanceof                        = 0x43,
+	New                               = 0x44,
+	ConstructorReference              = 0x45,
+	MethodReference                   = 0x46,
+	Cast                              = 0x47,
+	ConstructorInvocationTypeArgument = 0x48,
+	MethodInvocationTypeArgument      = 0x49,
+	ConstructorReferenceTypeArgument  = 0x4A,
+	MethodReferenceTypeArgument       = 0x4B,
 }
 
 TargetInfo :: union {
@@ -584,21 +584,27 @@ ElementValuePair :: struct {
 // (Runtime(In)VisibleAnnotations and, Runtime(In)VisibleParameterAnnotations.
 ElementValue :: struct {
     // The type of the element-value pair.
-    // The letters B, C, D, F, I, J, S and Z indicate a primitive type
-    // to be interpreted as if they were field descriptors.
-    // Other legal values can be found below:
 
-    // | tag | type            |
-    // |-----|-----------------|
-    // | s   | String          |
-    // | e   | enum constant   |
-    // | c   | class           |
-    // | @   | annotation type |
-    // | [   | array           |
+    // | Tag Item | Type                | Value Item      | Constant Type      |
+    // |----------|---------------------|-----------------|--------------------|
+    // | B        | byte                | ConstValueIdx   | ConstantIntegerInfo|
+    // | C        | char                | ConstValueIdx   | ConstantIntegerInfo|
+    // | D        | double              | ConstValueIdx   | ConstantDoubleInfo |
+    // | F        | float               | ConstValueIdx   | ConstantFloatInfo  |
+    // | I        | int                 | ConstValueIdx   | ConstantIntegerInfo|
+    // | J        | long                | ConstValueIdx   | ConstantLongInfo   |
+    // | S        | short               | ConstValueIdx   | ConstantIntegerInfo|
+    // | Z        | boolean             | ConstValueIdx   | ConstantIntegerInfo|
+    // | s        | String              | ConstValueIdx   | ConstantUtf8Info   |
+    // | e        | Enum class          | EnumConstValue  | Not applicable     |
+    // | c        | Class               | ClassInfoIdx    | Not applicable     |
+    // | @        | Annotation interface| Annotation      | Not applicable     |
+    // | [        | Array type          | ArrayValue      | Not applicable     |
     tag: u8,
     value: ElementValueInner,
 }
 
+// See ElementValue.
 ElementValueInner :: union {
     ConstValueIdx,
     EnumConstValue,
@@ -779,6 +785,7 @@ ModuleRequireFlag :: enum u16 {
 
 ModuleRequireFlags :: bit_set[ModuleRequireFlagBit; u16]
 
+// Log 2's of ModuleRequireFlag, for use within a bit_set.
 ModuleRequireFlagBit :: enum u16 {
     Transitive  = 5,
     StaticPhase = 6,
