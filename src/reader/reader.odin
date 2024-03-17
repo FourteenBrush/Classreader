@@ -285,9 +285,6 @@ read_attributes :: proc(
     return attributes, .None
 }
 
-EXPERIMENTAL_UNCHECKED_READS :: true
-
-// TODO: optimisation, check if we have length bytes, then do read all calls unchecked
 @private
 read_attribute_info :: proc(
     using reader: ^ClassFileReader, 
@@ -301,7 +298,6 @@ read_attribute_info :: proc(
     length := read_u32(reader) or_return
     attrib_name := cp_get_str(classfile, name_idx)
 
-when EXPERIMENTAL_UNCHECKED_READS {
     if pos + int(length) > len(bytes) {
         return attribute, .UnexpectedEof
     }
@@ -312,7 +308,6 @@ when EXPERIMENTAL_UNCHECKED_READS {
     read_u32 :: unchecked_read_u32
     read_nbytes :: unchecked_read_nbytes
     read_u16_slice :: unchecked_read_u16_slice
-}
 
     switch attrib_name {
     case "ConstantValue":
