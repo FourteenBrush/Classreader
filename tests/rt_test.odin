@@ -57,7 +57,7 @@ visit_file :: proc(file: os.File_Info, in_err: os.Errno, user_data: rawptr) -> (
     defer cr.classfile_destroy(classfile)
     if cerr != .None {
         classname := cr.classfile_get_class_name(classfile) 
-        fmt.eprintf("error reading file %v: %v\n", classname, cerr)
+        fmt.eprintfln("error reading file %v: %v", classname, cerr)
     } else {
         files_read := cast(^int)user_data
         files_read^ += 1

@@ -19,15 +19,15 @@ main :: proc() {
 
         defer {
             if len(alloc.allocation_map) > 0 {
-                fmt.eprintf("=== %v allocations not freed: ===\n", len(alloc.allocation_map))
+                fmt.eprintfln("=== %v allocations not freed: ===", len(alloc.allocation_map))
                 for _, entry in alloc.allocation_map {
-                    fmt.eprintf("- %v bytes @ %v\n", entry.size, entry.location)
+                    fmt.eprintfln("- %v bytes @ %v", entry.size, entry.location)
                 }
             }
             if len(alloc.bad_free_array) > 0 {
-                fmt.eprintf("=== %v incorrect frees: ===\n", len(alloc.bad_free_array))
+                fmt.eprintfln("=== %v incorrect frees: ===", len(alloc.bad_free_array))
                 for entry in alloc.bad_free_array {
-                    fmt.eprintf("- %p @ %v\n", entry.memory, entry.location)
+                    fmt.eprintf("- %p @ %v", entry.memory, entry.location)
                 }
             }
             mem.tracking_allocator_destroy(&alloc)
@@ -38,7 +38,7 @@ main :: proc() {
 
     args := os.args
     if len(args) < 2 {
-        fmt.printf("Usage: %s <input file>\n", args[0])
+        fmt.printfln("Usage: %s <input file>", args[0])
         os.exit(1)
     }
 
@@ -71,11 +71,11 @@ register_sigill_handler :: proc() {
             t := back.trace()
             lines, err := back.lines(t.trace[:t.len])
             if err != nil {
-                fmt.eprintf("Exception (Code %i)\nCould not get backtrace: %v\n", code, err)
+                fmt.eprintfln("Exception (Code %i)\nCould not get backtrace: %v", code, err)
                 break backtrace
             }
 
-            fmt.eprintf("Exception (Code %i)\n[back trace]\n", code)
+            fmt.eprintfln("Exception (Code %i)\n[back trace]", code)
             back.print(lines)
         }
         os.exit(int(code))

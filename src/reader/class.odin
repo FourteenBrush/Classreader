@@ -155,7 +155,7 @@ classfile_dump :: proc(using classfile: ClassFile) {
     fmt.println("Class name:", classfile_get_class_name(classfile))
 
     version_str := major_version_to_str(major_version)
-    fmt.printf("Version: minor=%v, major=%v (%v)\n", minor_version, major_version, version_str)
+    fmt.printfln("Version: minor=%v, major=%v (%v)", minor_version, major_version, version_str)
     fmt.printf("Access flags: 0x%4x ", access_flags)
     access_flags_dump(access_flags)
     fmt.println()
@@ -305,16 +305,16 @@ cp_entry_dump :: proc(classfile: ClassFile, cp_info: ConstantPoolEntry) {
         using name_and_type := cp_get(ConstantNameAndTypeInfo, classfile, cp_info.name_and_type_idx)
         method_name := cp_get_str(classfile, name_idx)
         method_descriptor := cp_get_str(classfile, descriptor_idx)
-        fmt.printf(
-            "#%v:%v:%v\n", 
+        fmt.printfln(
+            "#%v:%v:%v", 
             cp_info.bootstrap_method_attr_idx, method_name, method_descriptor,
         )
     case ConstantInvokeDynamicInfo:
         using name_and_type := cp_get(ConstantNameAndTypeInfo, classfile, cp_info.name_and_type_idx)
         method_name := cp_get_str(classfile, name_idx)
         method_descriptor := cp_get_str(classfile, descriptor_idx)
-        fmt.printf(
-            "#%v:%v:%v\n", 
+        fmt.printfln(
+            "#%v:%v:%v", 
             cp_info.bootstrap_method_attr_idx, method_name, method_descriptor,
         )
     case ConstantModuleInfo:
