@@ -277,16 +277,13 @@ read_attributes :: proc(
 ) {
     attributes = alloc_slice(reader, []AttributeInfo, allocator) or_return
 
-    for i in 0..<len(attributes) {
-        attribute := read_attribute_info(reader, classfile, allocator) or_return
-        if attribute == nil do continue // unknown attribute
-        #no_bounds_check attributes[i] = attribute
+    for &attribute in attributes {
+        attribute = read_attribute_info(reader, classfile, allocator) or_return
     }
+
     return attributes, .None
 }
 
-// Returns nil, .None when an unknown attribute was encountered, which we
-// are supposed to silently ignore.
 @private
 read_attribute_info :: proc(
     using reader: ^ClassFileReader, 
