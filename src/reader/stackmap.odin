@@ -43,7 +43,6 @@ SameLocals1StackItemFrameExtended :: struct {
     stack: VerificationTypeInfo,
 }
 
-
 // The operand stack is empty and the current locals are the same as the locals 
 // in the previous frame, except that the k last locals are absent.
 // The value of k is given by the formula 251 (FRAME_LOCALS_OFFSET) - frame_type.
@@ -109,7 +108,7 @@ UninitializedThisVariableInfo :: struct {}
 // Indicates that the location contains an instance of the class 
 // represented by the ConstantClassInfo structure at the index given by cp_idx.
 ObjectVariableInfo :: struct {
-    cp_idx: u16,
+    cp_idx: Ptr(ConstantClassInfo),
 }
 
 // Indicates that the location contains the verification type uninitialized(offset).

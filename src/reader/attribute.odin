@@ -173,7 +173,7 @@ ExceptionHandler :: struct {
     // If zero, this exception handler is called for all exceptions, to 
     // implement *finally*. Otherwise this points to a ConstantClassInfo
     // representing a class of exceptions that this handler is designated to catch.
-    catch_type: u16,
+    catch_type: Ptr(ConstantClassInfo),
 }
 
 // This attribute is used during the process of verification by type checking.
@@ -187,7 +187,7 @@ StackMapTable :: struct {
 Exceptions :: struct {
     // Each entry points to a ConstantClassInfo, representing a class 
     // that this method is declared to throw.
-    exception_idx_table: []u16,
+    exception_idx_table: []Ptr(ConstantClassInfo),
 }
 
 // If the constant pool of a class or interface C contains a ConstantClassInfo
@@ -200,14 +200,14 @@ InnerClasses :: struct {
 // Represents a class or interface that's not a package member.
 InnerClassEntry :: struct {
     // Points to a ConstantClassInfo representing this entry's class (call it C). 
-    inner_class_info_idx: u16,
+    inner_class_info_idx: Ptr(ConstantClassInfo),
     // If C is not a member of a class or interface, this must be zero.
     // Otherwise it points to a ConstantClassInfo representing the 
     // class or interface of which C is a member.
-    outer_class_info_idx: u16,
+    outer_class_info_idx: Ptr(ConstantClassInfo),
     // If C is anonymous, this must be zero. Otherwise this points to a 
     // ConstantUtf8Info, representing the simple name of C, in its sourcecode.
-    name_idx: u16,
+    name_idx: Ptr(ConstantUtf8Info),
     // Denotes access permissions to and properties of C.
     access_flags: InnerClassAccessFlags,
 }
@@ -248,11 +248,11 @@ InnerClassAccessFlagBit :: enum u16 {
 EnclosingMethod :: struct {
     // Points to a ConstantClassInfo, representing the innermost class 
     // that encloses the declaration of the current class.
-    class_idx: u16,
+    class_idx: Ptr(ConstantClassInfo),
     // If the current class is not immediately enclosed by a method or constructor,
     // Then this must be zero. Otherwise points to a ConstantNameAndTypeInfo 
     // representing the method referenced by the class_idx above.
-    method_idx: u16,
+    method_idx: Ptr(ConstantNameAndTypeInfo),
 }
 
 // A class member that doesn't appear in the source code must have this attribute,
@@ -263,14 +263,14 @@ Synthetic :: struct {}
 // Records generic signature info for any class, interface constructor or class member.
 Signature :: struct {
     // Points to a ConstantUtf8Info representing a class signature.
-    signature_idx: u16,
+    signature_idx: Ptr(ConstantUtf8Info),
 }
 
 // An optional classfile attribute, acting as a filename marker.
 SourceFile :: struct {
     // points to a ConstantUtf8Info representing the name of the source file
     // from which this class was compiled.
-    sourcefile_idx: u16,
+    sourcefile_idx: Ptr(ConstantUtf8Info),
 }
 
 // A vendor specific debugging extension.
@@ -302,9 +302,9 @@ LocalVariableTableEntry :: struct {
     start_pc: u16,
     length: u16,
     // Points to a ConstantUtf8Info representing a valid unqualified name.
-    name_idx: u16,
+    name_idx: Ptr(ConstantUtf8Info),
     // Points to a ConstantUtf8Info representing a field descriptor.
-    descriptor_idx: u16,
+    descriptor_idx: Ptr(ConstantUtf8Info),
     // Index into the local variable array of the current frame.
     idx: u16,
 }
@@ -321,10 +321,10 @@ LocalVariableTypeTableEntry :: struct {
     start_pc: u16,
     length: u16,
     // Points to a ConstantUtf8Info representing a valid unqualified name.
-    name_idx: u16,
+    name_idx: Ptr(ConstantUtf8Info),
     // Points to a ConstantUtf8Info structure, representing
     // a field type signature encoding the type of the local variable.
-    signature_idx: u16,
+    signature_idx: Ptr(ConstantUtf8Info),
     // Index into the local variable array of the current frame.
     idx: u16,
 }
@@ -373,18 +373,18 @@ RuntimeInvisibleParameterAnnotations :: struct {
 Annotation :: struct {
     // Points to a ConstantUtf8Info, representing a field descriptor 
     // for the annotation type.
-    type_idx: u16,
+    type_idx: Ptr(ConstantUtf8Info),
     element_value_pairs: []ElementValuePair,
 }
 
 // Represents a single runtime visible annotation on a type used in a declaration or
-// expression.
+// expression. The meaning of those fields is the same as in an Annotation.
 TypeAnnotation :: struct {
     // Denotes the kind of target on which the annotation appears.
     target_type: TargetType,
     target_info: TargetInfo,
     target_path: TypePath,
-    type_idx: u16,
+    type_idx: Ptr(ConstantUtf8Info),
     element_value_pairs: []ElementValuePair,
 }
 
@@ -574,7 +574,7 @@ PathKind :: enum u8 {
 ElementValuePair :: struct {
     // Points to a ConstantUtf8Info representing a field descriptor that denotes 
     // the name of the annotation type element value.
-    element_name_idx: u16,
+    element_name_idx: Ptr(ConstantUtf8Info),
     // The element value.
     value: ElementValue,
 }
@@ -624,9 +624,9 @@ ClassInfoIdx :: distinct u16
 EnumConstValue :: struct {
     // Points to a ConstantUtf8Info representing a field descriptor that 
     // denotes the internal form of the binary name of the enum type.
-    type_name_idx: u16,
+    type_name_idx: Ptr(ConstantUtf8Info),
     // Points to a ConstantUtf8Info representing the simple name of the enum constant.
-    const_name_idx: u16,
+    const_name_idx: Ptr(ConstantUtf8Info),
 }
 
 // Used when the tag is '['.
@@ -658,9 +658,10 @@ BootstrapMethod :: struct {
     // Points to a ConstantMethodHandleInfo, which reference_kind should be
     // InvokeStatic or NewInvokeSpecial or else invocation of the method handle
     // during call site specifier resolution will complete abruptly.
-    bootstrap_method_ref: u16,
+    bootstrap_method_ref: Ptr(ConstantMethodHandleInfo),
     // Each entry must point to a ConstantStringInfo, Class, Integer, Long, 
     // Float, Double, MethodHandle or ConstantMethodTypeInfo.
+    // TODO: encode in ptr
     bootstrap_args: []u16,
 }
 
@@ -668,7 +669,7 @@ BootstrapMethod :: struct {
 // the current class or interface claims to belong.
 NestHost :: struct {
     // Constant pool index to a ConstantClassInfo.
-    host_class_idx: u16,
+    host_class_idx: Ptr(ConstantClassInfo),
 }
 
 // Records the classes and interfaces that are authorized to claim membership 
@@ -677,7 +678,7 @@ NestMembers :: struct {
     // A number of indices pointing to a ConstantClassInfo which represents 
     // a class or interface which is a member of the nest,
     // hosted by the current class or interface.
-    classes: []u16,
+    classes: []Ptr(ConstantClassInfo),
 }
 
 // Records information about formal parameters of a method, such as their names.
@@ -689,7 +690,7 @@ MethodParameters :: struct {
 MethodParameter :: struct {
     // When zero, this MethodParameter indicates a parameter with no name.
     // Otherwise points to a ConstantUtf8Info representing a unqualified name.
-    name_idx: u16,
+    name_idx: Ptr(ConstantUtf8Info),
     access_flags: MethodParameterAccessFlags,
 }
 
@@ -716,11 +717,11 @@ MethodParameterAccessFlagBit :: enum {
 // and the services used and provided by a module.
 Module :: struct {
     // Points to a ConstantModuleInfo denoting the current module.
-    module_name_idx: u16,
+    module_name_idx: Ptr(ConstantModuleInfo),
     module_flags: ModuleFlags,
     // When zero, then no version information about the current module is present.
     // Otherwise points to a ConstantUtf8Info representing the version.
-    module_version_idx: u16,
+    module_version_idx: Ptr(ConstantUtf8Info),
     // Each entry specifies a dependence on the current module.
     // Unless the current module is java.base, exactly one entry must have 
     // all of the following:
@@ -733,7 +734,7 @@ Module :: struct {
     opens: []ModuleOpens,
     // Each entry points to a ConstantClassInfo representing a service interface 
     // which the current module may discover via java.util.ServiceLoader.
-    uses_idx: []u16,
+    uses_idx: []Ptr(ConstantClassInfo),
     provides: []ModuleProvides,
 }
 
@@ -760,12 +761,12 @@ ModuleFlagBit :: enum u16 {
 ModuleRequire :: struct {
     // Points to a ConstantModuleInfo denoting a module 
     // on which the current module depends.
-    requires_idx: u16,
+    requires_idx: Ptr(ConstantModuleInfo),
     requires_flags: ModuleRequireFlags,
     // When zero then no version information about the dependence is present.
     // Otherwise, points to a ConstantUtf8Info representing the version of the module
     // specified by the requires_idx.
-    requires_version_idx: u16,
+    requires_version_idx: Ptr(ConstantUtf8Info),
 }
 
 ModuleRequireFlag :: enum u16 {
@@ -796,7 +797,7 @@ ModuleRequireFlagBit :: enum u16 {
 // Represents a package exported by the current module.
 ModuleExport :: struct {
     // Points to a ConstantPackageInfo representing an exported package.
-    exports_idx: u16,
+    exports_idx: Ptr(ConstantPackageInfo),
     exports_flags: ModuleExportFlags,
     // When len(exports_to_idx) is zero, then this package is exported 
     // by the current module in an unqualified fashion; 
@@ -805,7 +806,7 @@ ModuleExport :: struct {
     // access the types and members in this package.
     // Each entry points to a ConstantModuleInfo denoting a module 
     // which can access the types and members in this exported package.
-    exports_to_idx: []u16,
+    exports_to_idx: []Ptr(ConstantModuleInfo),
 }
 
 ModuleExportFlag :: enum u16 {
@@ -824,12 +825,12 @@ ModuleExportFlagBit :: enum u16 {
 // A package opened by the current module.
 ModuleOpens :: struct {
     // Points to a ConstantPackageInfo representing a package opened.
-    opens_idx: u16,
+    opens_idx: Ptr(ConstantPackageInfo),
     opens_flags: ModuleOpensFlags,
     // When len(opens_to_idx) is zero, then code in any other module 
     // may reflectively access the types and members in the package.
     // Otherwise only code in this table may reflectively access them.
-    opens_to_idx: []u16, 
+    opens_to_idx: []Ptr(ConstantModuleInfo), 
 }
 
 ModuleOpensFlag :: enum u16 {
@@ -849,10 +850,10 @@ ModuleOpensFlagBit :: enum u16 {
 ModuleProvides :: struct {
     // Points to a ConstantClassInfo representing a service interface for which
     // the current module provides an interface.
-    provides_idx: u16,
+    provides_idx: Ptr(ConstantClassInfo),
     // Each entry must point to a ConstantClassInfo representing a 
     // service implementation for the service specified by provides_idx.
-    provides_with_idx: []u16,
+    provides_with_idx: []Ptr(ConstantClassInfo),
 }
 
 // Indicates all the packages that are exported or opened by 
@@ -860,13 +861,13 @@ ModuleProvides :: struct {
 ModulePackages :: struct {
     // Each entry points to a ConstantPackageInfo representing a package
     // in the current module.
-    package_idx: []u16,
+    package_idx: []Ptr(ConstantPackageInfo),
 }
 
 // Indicates the main class of a module.
 ModuleMainClass :: struct {
     // Points to a ConstantClassInfo.
-    main_class_idx: u16,
+    main_class_idx: Ptr(ConstantClassInfo),
 }
 
 // Indicates that the current class is a record, and stores information about
@@ -879,10 +880,10 @@ Record :: struct {
 RecordComponentInfo :: struct {
     // Points to a ConstantUtf8Info representing an unqualified name
     // denoting the record component.
-    name_idx: u16,
+    name_idx: Ptr(ConstantUtf8Info),
     // Points to a ConstantUtf8Info, representing a field descriptor, which
     // encodes the type of the record component.
-    descriptor_idx: u16,
+    descriptor_idx: Ptr(ConstantUtf8Info),
     // Valid attributes for a Record attribute are:
     // - Signature
     // - Runtime(In)VisibleAnnotations
@@ -895,5 +896,5 @@ PermittedSubclasses :: struct {
     // Each entry points to a ConstantClassInfo, representing a class or
     // interface which is authorized to directly extend or implement the
     // current class or interface.
-    classes: []u16,
+    classes: []Ptr(ConstantClassInfo),
 }

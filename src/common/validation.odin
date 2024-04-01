@@ -62,16 +62,6 @@ get_binary_class_name_invalid_chars :: proc() -> strings.Ascii_Set {
     return set
 }
 
-validate_field_descriptor_single :: proc(desc: string) -> bool {
-    if len(desc) == 0 do return false
-
-    switch desc[0] {
-    case 'B', 'C', 'D', 'F', 'I', 'J', 'S', 'Z': return len(desc) == 1
-    case 'L':
-        if 
-    }
-}
-
 /*
 Validates a field descriptor string.
 
@@ -109,5 +99,6 @@ validate_method_descriptor :: proc(desc: string) -> bool {
     if curr >= end || desc[0] != '(' do return false
 
     curr += 1 // skip '('
+    // TODO
     return true
 }

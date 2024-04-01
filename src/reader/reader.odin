@@ -3,6 +3,7 @@ package reader
 import "core:mem"
 import "core:slice"
 import "core:reflect"
+import "base:intrinsics"
 import "core:encoding/endian"
 
 MAGIC :: 0xCAFEBABE
@@ -39,10 +40,10 @@ read_classfile :: proc(
     constant_pool = read_constant_pool(reader, constant_pool_count, allocator) or_return
 
     access_flags = read_flags(reader, ClassAccessFlags) or_return
-    this_class = read_u16(reader) or_return
-    super_class = read_u16(reader) or_return
+    this_class = read_idx(ConstantClassInfo, reader) or_return
+    super_class = read_idx(ConstantClassInfo, reader) or_return
 
-    interfaces = read_u16_slice(reader) or_return
+    interfaces = read_indices(ConstantClassInfo, reader) or_return
     fields = read_fields(reader, classfile, allocator) or_return
     methods = read_methods(reader, classfile, allocator) or_return
     attributes = read_attributes(reader, classfile, allocator) or_return
@@ -143,45 +144,45 @@ read_constant_pool_entry :: proc(
         low_bytes := read_u32(reader) or_return
         entry = ConstantDoubleInfo { high_bytes, low_bytes }
     case .Class:
-        name_idx := read_u16(reader) or_return
+        name_idx := read_idx(ConstantUtf8Info, reader) or_return
         entry = ConstantClassInfo { name_idx }
     case .String:
-        string_idx := read_u16(reader) or_return
+        string_idx := read_idx(ConstantUtf8Info, reader) or_return
         entry = ConstantStringInfo { string_idx }
     case .FieldRef, .MethodRef, .InterfaceMethodRef:
-        class_idx := read_u16(reader) or_return
-        name_and_type_idx := read_u16(reader) or_return
+        class_idx := read_idx(ConstantClassInfo, reader) or_return
+        name_and_type_idx := read_idx(ConstantNameAndTypeInfo, reader) or_return
         entry = ConstantFieldRefInfo { class_idx, name_and_type_idx }
     case .NameAndType:
-        name_idx := read_u16(reader) or_return
-        descriptor_idx := read_u16(reader) or_return
+        name_idx := read_idx(ConstantUtf8Info, reader) or_return
+        descriptor_idx := read_idx(ConstantUtf8Info, reader) or_return
         entry = ConstantNameAndTypeInfo { name_idx, descriptor_idx }
     case .MethodHandle:
         reference_kind := ReferenceKind(read_u8(reader) or_return)
-        reference_idx := read_u16(reader) or_return
+        reference_idx := read_idx(ConstantMethodRefInfo, reader) or_return
         entry = ConstantMethodHandleInfo { reference_kind, reference_idx }
     case .MethodType:
-        descriptor_idx := read_u16(reader) or_return
+        descriptor_idx := read_idx(ConstantUtf8Info, reader) or_return
         entry = ConstantMethodTypeInfo { descriptor_idx }
     case .Dynamic:
         bootstrap_method_attr_idx := read_u16(reader) or_return
-        name_and_type_idx := read_u16(reader) or_return
+        name_and_type_idx := read_idx(ConstantNameAndTypeInfo, reader) or_return
         entry = ConstantDynamicInfo { 
             bootstrap_method_attr_idx, 
             name_and_type_idx,
         }
     case .InvokeDynamic:
         bootstrap_method_attr_idx := read_u16(reader) or_return
-        name_and_type_idx := read_u16(reader) or_return
+        name_and_type_idx := read_idx(ConstantNameAndTypeInfo, reader) or_return
         entry = ConstantInvokeDynamicInfo { 
             bootstrap_method_attr_idx, 
             name_and_type_idx,
         }
     case .Module:
-        name_idx := read_u16(reader) or_return
+        name_idx := read_idx(ConstantUtf8Info, reader) or_return
         entry = ConstantModuleInfo { name_idx }
     case .Package:
-        name_idx := read_u16(reader) or_return
+        name_idx := read_idx(ConstantUtf8Info, reader) or_return
         entry = ConstantPackageInfo { name_idx }
     }
     return entry, .None
@@ -200,8 +201,8 @@ read_methods :: proc(
 
     for &method in methods {
         access_flags := read_flags(reader, MethodAccessFlags) or_return
-        name_idx := read_u16(reader) or_return
-        descriptor_idx := read_u16(reader) or_return
+        name_idx := read_idx(ConstantUtf8Info, reader) or_return
+        descriptor_idx := read_idx(ConstantUtf8Info, reader) or_return
         attributes := read_attributes(reader, classfile, allocator) or_return
         
         method = MethodInfo { access_flags, name_idx, descriptor_idx, attributes }
@@ -222,9 +223,8 @@ read_fields :: proc(
 
     for &field in fields{
         access_flags := read_flags(reader, FieldAccessFlags) or_return
-        validate_flags(access_flags)
-        name_idx := read_u16(reader) or_return
-        descriptor_idx := read_u16(reader) or_return
+        name_idx := read_idx(ConstantUtf8Info, reader) or_return
+        descriptor_idx := read_idx(ConstantUtf8Info, reader) or_return
         attributes := read_attributes(reader, classfile, allocator) or_return
 
         field = FieldInfo { access_flags, name_idx, descriptor_idx, attributes }
@@ -294,7 +294,7 @@ read_attribute_info :: proc(
     attribute: AttributeInfo, 
     err: Error,
 ) {
-    name_idx := read_u16(reader) or_return
+    name_idx := read_idx(ConstantUtf8Info, reader) or_return
     length := read_u32(reader) or_return
     attrib_name := cp_get_str(classfile, name_idx)
 
@@ -325,7 +325,7 @@ read_attribute_info :: proc(
             start_pc := read_u16(reader) or_return
             end_pc := read_u16(reader) or_return
             handler_pc := read_u16(reader) or_return
-            catch_type := read_u16(reader) or_return
+            catch_type := read_idx(ConstantClassInfo, reader) or_return
             exception = ExceptionHandler { start_pc, end_pc, handler_pc, catch_type }
         }
 
@@ -343,15 +343,15 @@ read_attribute_info :: proc(
         }
         attribute = StackMapTable { frames }
     case "Exceptions":
-        exception_idx_table := read_u16_slice(reader) or_return
+        exception_idx_table := read_indices(ConstantClassInfo, reader) or_return
         attribute = Exceptions { exception_idx_table }
     case "InnerClasses":
         classes := alloc_slice(reader, []InnerClassEntry, allocator) or_return
 
         for &class in classes {
-            inner_class_info_idx := read_u16(reader) or_return
-            outer_class_info_idx := read_u16(reader) or_return
-            name_idx := read_u16(reader) or_return
+            inner_class_info_idx := read_idx(ConstantClassInfo, reader) or_return
+            outer_class_info_idx := read_idx(ConstantClassInfo, reader) or_return
+            name_idx := read_idx(ConstantUtf8Info, reader) or_return
             access_flags := read_flags(reader, InnerClassAccessFlags) or_return
             class = InnerClassEntry {
                 inner_class_info_idx,
@@ -361,15 +361,15 @@ read_attribute_info :: proc(
         }
         attribute = InnerClasses { classes }
     case "EnclosingMethod":
-        class_idx := read_u16(reader) or_return
-        method_idx := read_u16(reader) or_return
+        class_idx := read_idx(ConstantClassInfo, reader) or_return
+        method_idx := read_idx(ConstantNameAndTypeInfo, reader) or_return
         attribute = EnclosingMethod { class_idx, method_idx }
     case "Synthetic": attribute = Synthetic {}
     case "Signature": 
-        signature_idx := read_u16(reader) or_return
+        signature_idx := read_idx(ConstantUtf8Info, reader) or_return
         attribute = Signature { signature_idx }
     case "SourceFile": 
-        sourcefile_idx := read_u16(reader) or_return
+        sourcefile_idx := read_idx(ConstantUtf8Info, reader) or_return
         attribute = SourceFile { sourcefile_idx }
     case "SourceDebugExtension":
         debug_extension := read_nbytes(reader, length) or_return
@@ -417,7 +417,7 @@ read_attribute_info :: proc(
         bootstrap_methods := alloc_slice(reader, []BootstrapMethod, allocator) or_return
 
         for &method in bootstrap_methods {
-            bootstrap_method_ref := read_u16(reader) or_return
+            bootstrap_method_ref := read_idx(ConstantMethodHandleInfo, reader) or_return
             bootstrap_args := read_u16_slice(reader) or_return
 
             method = BootstrapMethod {
@@ -427,25 +427,25 @@ read_attribute_info :: proc(
         }
         attribute = BootstrapMethods { bootstrap_methods }
     case "NestHost":
-        host_class_idx := read_u16(reader) or_return
+        host_class_idx := read_idx(ConstantClassInfo, reader) or_return
         attribute = NestHost { host_class_idx }
     case "NestMembers":
-        classes := read_u16_slice(reader) or_return
+        classes := read_indices(ConstantClassInfo, reader) or_return
         attribute = NestMembers { classes }
     case "Module":
         attribute = read_module(reader) or_return
     case "ModulePackages":
-        package_idx := read_u16_slice(reader) or_return
+        package_idx := read_indices(ConstantPackageInfo, reader) or_return
         attribute = ModulePackages { package_idx }
     case "ModuleMainClass":
-        main_class_idx := read_u16(reader) or_return
+        main_class_idx := read_idx(ConstantClassInfo, reader) or_return
         attribute = ModuleMainClass { main_class_idx }
     case "Record":
         components := alloc_slice(reader, []RecordComponentInfo, allocator) or_return
 
         for &component in components {
-            name_idx := read_u16(reader) or_return
-            descriptor_idx := read_u16(reader) or_return
+            name_idx := read_idx(ConstantUtf8Info, reader) or_return
+            descriptor_idx := read_idx(ConstantUtf8Info, reader) or_return
             attributes := read_attributes(reader, classfile, allocator) or_return
 
             component = RecordComponentInfo {
@@ -454,7 +454,7 @@ read_attribute_info :: proc(
         }
         attribute = Record { components }
     case "PermittedSubclasses":
-        classes := read_u16_slice(reader) or_return
+        classes := read_indices(ConstantClassInfo, reader) or_return
         attribute = PermittedSubclasses { classes }
     case:
         return attribute, .UnknownAttributeName
@@ -512,17 +512,17 @@ read_module :: proc(
     module: Module, 
     err: Error,
 ) {
-    module_name_idx := read_u16(reader) or_return
+    module_name_idx := read_idx(ConstantModuleInfo, reader) or_return
     module_flags := read_flags(reader, ModuleFlags) or_return
-    module_version_idx := read_u16(reader) or_return
+    module_version_idx := read_idx(ConstantUtf8Info, reader) or_return
 
     // read requires table
     requires := alloc_slice(reader, []ModuleRequire, allocator) or_return
 
     for &require in requires {
-        requires_idx := read_u16(reader) or_return
+        requires_idx := read_idx(ConstantModuleInfo, reader) or_return
         requires_flags := read_flags(reader, ModuleRequireFlags) or_return
-        requires_version_idx := read_u16(reader) or_return
+        requires_version_idx := read_idx(ConstantUtf8Info, reader) or_return
 
         require = ModuleRequire {
             requires_idx, requires_flags, requires_version_idx,
@@ -533,9 +533,9 @@ read_module :: proc(
     exports := alloc_slice(reader, []ModuleExport, allocator) or_return
 
     for &export in exports {
-        exports_idx := read_u16(reader) or_return
+        exports_idx := read_idx(ConstantPackageInfo, reader) or_return
         exports_flags := read_flags(reader, ModuleExportFlags) or_return
-        exports_to_idx := read_u16_slice(reader) or_return
+        exports_to_idx := read_indices(ConstantModuleInfo, reader) or_return
 
         export = ModuleExport {
             exports_idx, exports_flags, exports_to_idx,
@@ -546,23 +546,23 @@ read_module :: proc(
     opens := alloc_slice(reader, []ModuleOpens, allocator) or_return
 
     for &open in opens {
-        opens_idx := read_u16(reader) or_return
+        opens_idx := read_idx(ConstantPackageInfo, reader) or_return
         opens_flags := read_flags(reader, ModuleOpensFlags) or_return
-        opens_to_idx := read_u16_slice(reader) or_return
+        opens_to_idx := read_indices(ConstantModuleInfo, reader) or_return
 
         open = ModuleOpens {
             opens_idx, opens_flags, opens_to_idx,
         }
     }
 
-    uses_idx := read_u16_slice(reader) or_return
+    uses_idx := read_indices(ConstantClassInfo, reader) or_return
 
     // read provides table
     provides := alloc_slice(reader, []ModuleProvides, allocator) or_return
 
     for &provide in provides {
-        provides_idx := read_u16(reader) or_return
-        provides_with_idx := read_u16_slice(reader) or_return
+        provides_idx := read_idx(ConstantClassInfo, reader) or_return
+        provides_with_idx := read_indices(ConstantClassInfo, reader) or_return
 
         provide = ModuleProvides {
             provides_idx, provides_with_idx,
@@ -599,8 +599,8 @@ read_local_variable_table :: proc(
     for &local_var in table {
         start_pc := read_u16(reader) or_return
         length := read_u16(reader) or_return
-        name_idx := read_u16(reader) or_return
-        signature_idx := read_u16(reader) or_return
+        name_idx := read_idx(ConstantUtf8Info, reader) or_return
+        signature_idx := read_idx(ConstantUtf8Info, reader) or_return
         idx := read_u16(reader) or_return
 
         local_var = LocalVariableTableEntry {
@@ -653,7 +653,7 @@ read_annotation :: proc(
     annotation: Annotation, 
     err: Error,
 ) {
-    type_idx := read_u16(reader) or_return
+    type_idx := read_idx(ConstantUtf8Info, reader) or_return
     element_value_pairs := read_element_value_pairs(reader, allocator) or_return
 
     return Annotation { type_idx, element_value_pairs }, .None
@@ -670,7 +670,7 @@ read_element_value_pairs :: proc(
     pairs = alloc_slice(reader, []ElementValuePair, allocator) or_return
 
     for &pair in pairs {
-        element_value_idx := read_u16(reader) or_return
+        element_value_idx := read_idx(ConstantUtf8Info, reader) or_return
         element_value := read_element_value(reader, allocator) or_return
         pair = ElementValuePair { element_value_idx, element_value }
     }
@@ -693,8 +693,8 @@ read_element_value :: proc(
     case 'B', 'C', 'D', 'F', 'I', 'J', 'S', 'Z', 's':
         value = ConstValueIdx(read_u16(reader) or_return)
     case 'e':
-        type_name_idx := read_u16(reader) or_return
-        const_name_idx := read_u16(reader) or_return
+        type_name_idx := read_idx(ConstantUtf8Info, reader) or_return
+        const_name_idx := read_idx(ConstantUtf8Info, reader) or_return
         value = EnumConstValue { type_name_idx, const_name_idx }
     case 'c':
         class_info_idx := read_u16(reader) or_return
@@ -747,7 +747,7 @@ read_verification_type_info :: proc(
     case .Null: info = NullVariableInfo {}
     case .UninitializedThis: info = UninitializedThisVariableInfo {}
     case .Object: 
-        cp_idx := read_u16(reader) or_return
+        cp_idx := read_idx(ConstantClassInfo, reader) or_return
         info = ObjectVariableInfo { cp_idx }
     case .Uninitialized:
         offset := read_u16(reader) or_return
@@ -782,7 +782,7 @@ read_type_annotations :: proc(
     type_annotations = alloc_slice(reader, []TypeAnnotation, allocator) or_return
     for &annotation in type_annotations {
         target_type := TargetType(read_u8(reader) or_return)
-        target_info: TargetInfo = ---
+        target_info: TargetInfo
 
         switch target_type {
         case .ClassType, 
@@ -861,7 +861,7 @@ read_type_annotations :: proc(
         }
 
         target_path := TypePath { path }
-        type_idx := read_u16(reader) or_return
+        type_idx := read_idx(ConstantUtf8Info, reader) or_return
         element_value_pairs := read_element_value_pairs(reader, allocator) or_return
 
         annotation = TypeAnnotation {
@@ -947,14 +947,29 @@ read_nbytes :: proc(using reader: ^ClassFileReader, #any_int n: int) -> ([]u8, E
     return bytes[pos:][:n], .None
 }
 
+@private
+read_idx :: proc($E: typeid, reader: ^ClassFileReader) -> (ret: Ptr(E), err: Error)
+where intrinsics.type_is_variant_of(CPInfo, E) #no_bounds_check {
+    idx := #force_inline read_u16(reader) or_return
+    return Ptr(E) { idx }, .None
+}
+
+// See read_u16_slice().
+@private
+read_indices :: proc($E: typeid, reader: ^ClassFileReader) -> (ret: []Ptr(E), err: Error)
+where intrinsics.type_is_variant_of(CPInfo, E) {
+    elem_count := read_u16(reader) or_return
+    bytes := read_nbytes(reader, elem_count * size_of(u16)) or_return
+    return slice.reinterpret([]Ptr(E), bytes), .None
+}
+
 // Reads a slice of u16s, the length is prepended as a u16 before the actual data.
 // | length: u16 | data: ...u16 (length items) |
 @private
 read_u16_slice :: proc(reader: ^ClassFileReader) -> (ret: []u16, err: Error) {
     elem_count := read_u16(reader) or_return
     bytes := read_nbytes(reader, elem_count * size_of(u16)) or_return
-    ret = slice.reinterpret([]u16, bytes)
-    return ret, .None
+    return slice.reinterpret([]u16, bytes), .None
 }
 
 // -------------------------------------------------- 

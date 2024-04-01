@@ -3,7 +3,7 @@ package reader
 import "core:fmt"
 import "core:strings"
 import "core:reflect"
-import "core:intrinsics"
+import "base:intrinsics"
 
 // A code representation of a compiled Java class or interface.
 // To obtain an instance, call reader.read_classfile().
@@ -12,20 +12,20 @@ ClassFile :: struct {
     major_version: u16,
     constant_pool_count: u16,
     // The constant pool reserves the first entry as absent, we don't
-    // So any accesses of the constant pool should offset the index by -1 (see cp_get())
-    // Indices valid from 0 to constant_pool_count - 2
-    // see cp_get()
+    // So any accesses of the constant pool should offset the index by -1.
+    // Indices valid from 0 to constant_pool_count - 2.
+    // Interaction with the constant pool should happen with the appropriate cp_get() procedure.
     constant_pool: []ConstantPoolEntry,
     // Denotes access permissions to and properties of this class or interface.
     access_flags: ClassAccessFlags,
     // Points to a ConstantClassInfo entry, representing this class.
-    this_class: u16,
-    // Zero if there are no superclasses (java.lang.Object instead)
-    // or an index to a ConstantClassInfo, representing the super class.
-    super_class: u16,
+    this_class: Ptr(ConstantClassInfo),
+    // Points to zero if there are no superclasses (only java.lang.Object)
+    // or points to a ConstantClassInfo, representing the super class.
+    super_class: Ptr(ConstantClassInfo),
     // List of indices, pointing to ConstantClassInfo entries,
     // representing direct superinterfaces.
-    interfaces: []u16,
+    interfaces: []Ptr(ConstantClassInfo),
     fields: []FieldInfo,
     methods: []MethodInfo,
     // Valid attributes for a ClassFile are:
@@ -64,15 +64,15 @@ classfile_destroy :: proc(using classfile: ClassFile, allocator := context.alloc
 
 // Returns the name of the given class, as how it is found in the constantpool.
 classfile_get_class_name :: proc(using classfile: ClassFile) -> string {
-    class := cp_get(ConstantClassInfo, classfile, this_class)
+    class := cp_get(classfile, this_class)
     return cp_get_str(classfile, class.name_idx)
 }
 
 // Returns the name of the super class, or "java/lang/Object" 
 // if there was no explicit superclass.
 classfile_get_super_class_name :: proc(using classfile: ClassFile) -> string {
-    if super_class == 0 do return "java/lang/Object"
-    class := cp_get(ConstantClassInfo, classfile, super_class)
+    if super_class.idx == 0 do return "java/lang/Object"
+    class := cp_get(classfile, super_class)
     return cp_get_str(classfile, class.name_idx)
 }
 
@@ -99,8 +99,7 @@ classfile_find_method :: proc(using classfile: ClassFile, name: string) -> Maybe
 classfile_find_attribute :: proc(using classfile: ClassFile, $T: typeid) -> Maybe(T)
 where intrinsics.type_is_variant_of(AttributeInfo, T) {
     for attribute in attributes {
-        attribute, ok := attribute.(T)
-        if ok do return attribute
+        return attribute.(T) or_continue
     }
     return nil
 }
@@ -129,19 +128,19 @@ cp_find :: proc(
 
 // Returns a string stored within the constantpool.
 // Panics if the entry at that index is not a ConstantUtf8Info.
-cp_get_str :: proc(using classfile: ClassFile, idx: u16) -> string {
-    return string(cp_get(ConstantUtf8Info, classfile, idx).bytes)
+cp_get_str :: proc(using classfile: ClassFile, ptr: Ptr(ConstantUtf8Info)) -> string {
+    return string(cp_get(classfile, ptr).bytes)
 }
 
 // Returns the constantpool entry stored at the given index.
 // Panics if idx is invalid or the expected and actual type differ.
-cp_get :: proc($E: typeid, using classfile: ClassFile, idx: u16) -> E
+cp_get :: proc(using classfile: ClassFile, ptr: Ptr($E)) -> E
 where intrinsics.type_is_variant_of(CPInfo, E) {
-    return constant_pool[idx - 1].info.(E)
+    return constant_pool[ptr.idx - 1].info.(E)
 }
 
 // An alternative to cp_get(), with safe semantics.
-cp_get_safe :: proc($E: typeid, using classfile: ClassFile, idx: u16) -> (E, Error)
+cp_get_safe :: proc(using classfile: ClassFile, ptr: Ptr($E)) -> (E, Error)
 where intrinsics.type_is_variant_of(CPInfo, E) {
     if idx - 1 <= 0 || idx - 1 > constant_pool_count do return {}, .InvalidCPIndex
     entry, ok := constant_pool[idx - 1].info.(E)
@@ -169,13 +168,8 @@ classfile_dump :: proc(using classfile: ClassFile) {
 
     if len(attributes) > 0 {
         fmt.println("Attributes:")
-
-        for attrib in attributes {
-            name := attribute_to_str(attrib)
-            fmt.println(" ", name)
-        }
+        for attrib in attributes do fmt.println(" ", attribute_to_str(attrib))
     }
-
 }
 
 constantpool_dump :: proc(
@@ -296,13 +290,13 @@ cp_entry_dump :: proc(classfile: ClassFile, cp_info: ConstantPoolEntry) {
         fmt.println(name, descriptor, sep=":")
     case ConstantMethodHandleInfo:
         // note that ConstantFieldRefInfo has multiple aliases, see constantpool file
-        ref := cp_get(ConstantFieldRefInfo, classfile, cp_info.reference_idx)
+        ref := cp_get(classfile, cp_info.reference_idx)
         ref_dump(classfile, ref)
     case ConstantMethodTypeInfo:
         descriptor := cp_get_str(classfile, cp_info.descriptor_idx)
         fmt.println(descriptor)
     case ConstantDynamicInfo:
-        using name_and_type := cp_get(ConstantNameAndTypeInfo, classfile, cp_info.name_and_type_idx)
+        using name_and_type := cp_get(classfile, cp_info.name_and_type_idx)
         method_name := cp_get_str(classfile, name_idx)
         method_descriptor := cp_get_str(classfile, descriptor_idx)
         fmt.printfln(
@@ -310,7 +304,7 @@ cp_entry_dump :: proc(classfile: ClassFile, cp_info: ConstantPoolEntry) {
             cp_info.bootstrap_method_attr_idx, method_name, method_descriptor,
         )
     case ConstantInvokeDynamicInfo:
-        using name_and_type := cp_get(ConstantNameAndTypeInfo, classfile, cp_info.name_and_type_idx)
+        using name_and_type := cp_get(classfile, cp_info.name_and_type_idx)
         method_name := cp_get_str(classfile, name_idx)
         method_descriptor := cp_get_str(classfile, descriptor_idx)
         fmt.printfln(
@@ -328,9 +322,9 @@ cp_entry_dump :: proc(classfile: ClassFile, cp_info: ConstantPoolEntry) {
 
 @private
 ref_dump :: proc(using classfile: ClassFile, using field_ref: ConstantFieldRefInfo) {
-    class_name_idx := cp_get(ConstantClassInfo, classfile, class_idx).name_idx
+    class_name_idx := cp_get(classfile, class_idx).name_idx
     class_name := cp_get_str(classfile, class_name_idx)
-    name_and_type := cp_get(ConstantNameAndTypeInfo, classfile, name_and_type_idx)
+    name_and_type := cp_get(classfile, name_and_type_idx)
     field_or_method_name := cp_get_str(classfile, name_and_type.name_idx)
     
     fmt.println(class_name, field_or_method_name, sep=".")
@@ -440,9 +434,9 @@ FieldInfo :: struct {
     // Denotes access permissions to and properties of this field.
     access_flags: FieldAccessFlags,
     // Points to a ConstantUtf8Info representing the unqualified field name.
-    name_idx: u16,
+    name_idx: Ptr(ConstantUtf8Info),
     // Points to a ConstantUtf8Info representing a field descriptor.
-    descriptor_idx: u16,
+    descriptor_idx: Ptr(ConstantUtf8Info),
     // Valid attributes for a field descriptor are:
     // - ConstantValue
     // - Synthetic
@@ -499,8 +493,11 @@ field_info_dump :: proc(using field: FieldInfo, classfile: ClassFile) {
     access_flags_dump(access_flags)
 }
 
-// Returns a field descriptor to a Java type name.
+// Returns a human readable version of a field descriptor.
 // Assumes a valid field descriptor has been passed.
+// Examples:
+//  "B" -> byte
+//  Ljava/lang/Thread; -> java.lang.Thread
 @private
 field_descriptor_to_str :: proc(desc: string, allocator := context.allocator) -> string {
     switch desc {
@@ -518,7 +515,6 @@ field_descriptor_to_str :: proc(desc: string, allocator := context.allocator) ->
             // array, determine depth
             depth := 1
             for desc[depth] == '[' do depth += 1
-            // figure out base type
             base_type := field_descriptor_to_str(desc[depth:])
             arr := strings.repeat("[]", depth, allocator)
             return fmt.tprint(base_type, arr, sep="")
@@ -546,9 +542,9 @@ MethodInfo :: struct {
     access_flags: MethodAccessFlags,
     // Points to a ConstantUtf8Info, representing either the unqualified method name
     // or one of the special method names <init> or <clinit>.
-    name_idx: u16,
+    name_idx: Ptr(ConstantUtf8Info),
     // Points to a ConstantUtf8Info, representing a method descriptor.
-    descriptor_idx: u16,
+    descriptor_idx: Ptr(ConstantUtf8Info),
     // Valid attributes for a method descriptor are:
     // - Code
     // - Exceptions
