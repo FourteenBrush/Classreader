@@ -13,7 +13,8 @@ StackMapFrame :: union {
 }
 
 // StackMapFrame destructor.
-stack_map_frame_destroy :: proc(frame: StackMapFrame) {
+stack_map_frame_destroy :: proc(frame: StackMapFrame, allocator := context.allocator) {
+    context.allocator = allocator
     #partial switch &frame in frame {
     case AppendFrame:
         delete(frame.locals)

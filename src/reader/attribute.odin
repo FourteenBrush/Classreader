@@ -43,7 +43,8 @@ attribute_to_str :: proc(attrib: AttributeInfo) -> string {
 }
 
 // Recursively frees the given slice of AttributeInfos.
-attributes_destroy :: proc(attributes: []AttributeInfo) {
+attributes_destroy :: proc(attributes: []AttributeInfo, allocator := context.allocator) {
+    context.allocator = allocator
     for attrib in attributes {
         attribute_destroy(attrib)
     }
@@ -51,10 +52,11 @@ attributes_destroy :: proc(attributes: []AttributeInfo) {
 }
 
 // AttributeInfo destructor.
-attribute_destroy :: proc(attrib: AttributeInfo) {
+attribute_destroy :: proc(attrib: AttributeInfo, allocator := context.allocator) {
+    context.allocator = allocator
     #partial switch &attrib in attrib {
     case Code:
-        delete(attrib.exception_table)
+        delete(attrib.exception_table, allocator)
         attributes_destroy(attrib.attributes)
     case StackMapTable:
         for frame in attrib.frames {
@@ -92,7 +94,8 @@ attribute_destroy :: proc(attrib: AttributeInfo) {
     }
 }
 
-element_value_destroy :: proc(value: ElementValueInner) {
+element_value_destroy :: proc(value: ElementValueInner, allocator := context.allocator) {
+    context.allocator = allocator
     #partial switch &value in value {
     case Annotation:
         annotation_destroy(value)
@@ -103,7 +106,8 @@ element_value_destroy :: proc(value: ElementValueInner) {
     }
 }
 
-annotations_destroy :: proc(annotations: []Annotation) {
+annotations_destroy :: proc(annotations: []Annotation, allocator := context.allocator) {
+    context.allocator = allocator
     for annotation in annotations {
         annotation_destroy(annotation)
     }
@@ -111,13 +115,15 @@ annotations_destroy :: proc(annotations: []Annotation) {
 }
 
 // Annotation destructor.
-annotation_destroy :: proc(annotation: Annotation) {
+annotation_destroy :: proc(annotation: Annotation, allocator := context.allocator) {
+    context.allocator = allocator
     for pair in annotation.element_value_pairs {
         element_value_destroy(pair.value.value)
     }
 }
 
-parameter_annotations_destroy :: proc(annotations: []ParameterAnnotation) {
+parameter_annotations_destroy :: proc(annotations: []ParameterAnnotation, allocator := context.allocator) {
+    context.allocator = allocator
     for annotation in annotations {
         annotations_destroy(annotation.annotations)
     }
