@@ -70,8 +70,6 @@ Error :: enum {
     WrongCPType,
     // Unknown VerificationTypeInfo tag
     UnknownVerificationTypeInfoTag,
-    // Unknown attribute name
-    UnknownAttributeName,
     // Unknown ElementValue tag
     UnknownElementValueTag,
     // Using a reserved StackMapFrame type
@@ -278,13 +276,17 @@ read_attributes :: proc(
     err: Error,
 ) {
     attributes = alloc_slice(reader, []AttributeInfo, allocator) or_return
-    
-    for &attribute in attributes {
-        attribute = read_attribute_info(reader, classfile, allocator) or_return
+
+    for i in 0..<len(attributes) {
+        attribute := read_attribute_info(reader, classfile, allocator) or_return
+        if attribute == nil do continue // unknown attribute
+        #no_bounds_check attributes[i] = attribute
     }
     return attributes, .None
 }
 
+// Returns nil, .None when an unknown attribute was encountered, which we
+// are supposed to silently ignore.
 @private
 read_attribute_info :: proc(
     using reader: ^ClassFileReader, 
@@ -457,7 +459,7 @@ read_attribute_info :: proc(
         classes := read_indices(ConstantClassInfo, reader) or_return
         attribute = PermittedSubclasses { classes }
     case:
-        return attribute, .UnknownAttributeName
+        attribute = Unknown { bytes = unchecked_read_nbytes(reader, length) or_return }
     }
     return attribute, .None
 }
@@ -974,6 +976,7 @@ read_u16_slice :: proc(reader: ^ClassFileReader) -> (ret: []u16, err: Error) {
 
 // -------------------------------------------------- 
 // Unchecked low level parsing functions.
+// TODO: do something about them always returning Error.None
 // -------------------------------------------------- 
 
 @private

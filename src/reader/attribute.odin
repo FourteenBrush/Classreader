@@ -48,6 +48,7 @@ import "core:reflect"
 // - ModulePackages
 // - ModuleMainClass
 AttributeInfo :: union {
+    Unknown,
     ConstantValue,
     Code,
     StackMapTable,
@@ -175,6 +176,12 @@ parameter_annotations_destroy :: proc(annotations: []ParameterAnnotation, alloca
     delete(annotations)
 }
 
+// An unknown attribute, not recognized by the specification, which we are
+// required to silently ignore.
+Unknown :: struct {
+    bytes: []u8,
+}
+
 // Represents the value of a constant field.
 ConstantValue :: struct {
     // The constant pool entry at this index gives the constant value represented by this attribute
@@ -266,16 +273,16 @@ InnerClassEntry :: struct {
 // Don't confuse this with ClassAccessFlag
 // Access flags used in an InnerClassEntry.
 InnerClassAccessFlag :: enum {
-    Public     = 0x0001, // 0b0000 0000 0000 0001
-    Private    = 0x0002, // 0b0000 0000 0000 0010
-    Proteced   = 0x0004, // 0b0000 0000 0000 0100
-    Static     = 0x0008, // 0b0000 0000 0000 1000
-    Final      = 0x0010, // 0b0000 0000 0001 0000 
-    Interface  = 0x0200, // 0b0000 0010 0000 0000 
-    Abstract   = 0x0400, // 0b0000 0100 0000 0000 
-    Synthetic  = 0x1000, // 0b0001 0000 0000 0000 
-    Annotation = 0x2000, // 0b0010 0000 0000 0000 
-    Enum       = 0x4000, // 0b0100 0000 0000 0000 
+    Public     = 0x0001, 
+    Private    = 0x0002, 
+    Proteced   = 0x0004, 
+    Static     = 0x0008, 
+    Final      = 0x0010, 
+    Interface  = 0x0200, 
+    Abstract   = 0x0400, 
+    Synthetic  = 0x1000, 
+    Annotation = 0x2000, 
+    Enum       = 0x4000, 
 }
 
 InnerClassAccessFlags :: bit_set[InnerClassAccessFlagBit; u16]
