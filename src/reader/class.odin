@@ -10,6 +10,7 @@ import "base:intrinsics"
 ClassFile :: struct {
     minor_version: u16,
     major_version: u16,
+    // Amount of actual entries.
     constant_pool_count: u16,
     // The constant pool reserves the first entry as absent, we don't
     // So any accesses of the constant pool should offset the index by -1.
@@ -429,7 +430,7 @@ method_access_flag_to_str :: proc(flag: MethodAccessFlagBit) -> string {
     }
 }
 
-// A field descriptor.
+// A class field representation.
 FieldInfo :: struct {
     // Denotes access permissions to and properties of this field.
     access_flags: FieldAccessFlags,
@@ -437,7 +438,7 @@ FieldInfo :: struct {
     name_idx: Ptr(ConstantUtf8Info),
     // Points to a ConstantUtf8Info representing a field descriptor.
     descriptor_idx: Ptr(ConstantUtf8Info),
-    // Valid attributes for a field descriptor are:
+    // Valid attributes for a field are:
     // - ConstantValue
     // - Synthetic
     // - Signature
@@ -476,7 +477,6 @@ FieldAccessFlagBit :: enum u16 {
 }
 
 field_info_dump :: proc(using field: FieldInfo, classfile: ClassFile) {
-    // TODO: what happens when package-private?
     if .Private in access_flags do fmt.print("private ")
     else if .Protected in access_flags do fmt.print("protected ")
     else if .Public in access_flags do fmt.print("public ")
@@ -496,9 +496,8 @@ field_info_dump :: proc(using field: FieldInfo, classfile: ClassFile) {
 // Returns a human readable version of a field descriptor.
 // Assumes a valid field descriptor has been passed.
 // Examples:
-//  "B" -> byte
+//  B -> byte
 //  Ljava/lang/Thread; -> java.lang.Thread
-@private
 field_descriptor_to_str :: proc(desc: string, allocator := context.allocator) -> string {
     switch desc {
     case "B": return "byte"
@@ -528,7 +527,6 @@ field_descriptor_to_str :: proc(desc: string, allocator := context.allocator) ->
 // Returns the object type of an object descriptor, as how it would
 // appear in the source code, e.g. java.awt.AWTEventMulticaster instead of
 // Ljava/awt/AWTEventMulticaster;.
-@private
 descriptor_get_object_type :: proc(desc: string, allocator := context.allocator) -> string {
     // remove L and ; and replace all / with .
     #no_bounds_check desc := desc[1:len(desc) - 1]
@@ -536,7 +534,7 @@ descriptor_get_object_type :: proc(desc: string, allocator := context.allocator)
     return object_type
 }
 
-// A method descriptor.
+// A method representation, includes constructors and static initializers.
 MethodInfo :: struct {
     // Denotes access permissions to and properties of this method.
     access_flags: MethodAccessFlags,
@@ -545,7 +543,7 @@ MethodInfo :: struct {
     name_idx: Ptr(ConstantUtf8Info),
     // Points to a ConstantUtf8Info, representing a method descriptor.
     descriptor_idx: Ptr(ConstantUtf8Info),
-    // Valid attributes for a method descriptor are:
+    // Valid attributes for a method are:
     // - Code
     // - Exceptions
     // - Synthetic
@@ -596,7 +594,6 @@ MethodAccessFlagBit :: enum u16 {
 }
 
 method_info_dump :: proc(using method: MethodInfo, classfile: ClassFile) {
-    // TODO: what happens when package-private?
     if .Private in access_flags do fmt.print("private ")
     else if .Protected in access_flags do fmt.print("protected ")
     else if .Public in access_flags do fmt.println("public ")

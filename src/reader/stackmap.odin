@@ -27,7 +27,7 @@ stack_map_frame_destroy :: proc(frame: StackMapFrame, allocator := context.alloc
 // The frame has exactly the same locals as the previous stack map frame 
 // and the number of stack items is zero.
 // Represented by tags in the range [0, 63].
-SameFrame :: distinct struct {}
+SameFrame :: struct {}
 
 // The frame has exactly the same locals as the previous stack map frame
 // and the number of stack items is 1.
@@ -80,15 +80,15 @@ FullFrame :: struct {
 
 // Each verification_type_info structure specifies the verification type of one or two locations.
 VerificationTypeInfo :: union {
-    TopVariableInfo,                // 0
-    IntegerVariableInfo,            // 1
-    FloatVariableInfo,              // 2
-    LongVariableInfo,               // 4
-    DoubleVariableInfo,             // 3
-    NullVariableInfo,               // 5
-    UninitializedThisVariableInfo,  // 6
-    ObjectVariableInfo,             // 7
-    UninitializedVariableInfo,      // 8
+    TopVariableInfo,                
+    IntegerVariableInfo,            
+    FloatVariableInfo,              
+    LongVariableInfo,               
+    DoubleVariableInfo,             
+    NullVariableInfo,               
+    UninitializedThisVariableInfo,  
+    ObjectVariableInfo,             
+    UninitializedVariableInfo,      
 }
 
 // Indicates that the local variable has the verification type top.
