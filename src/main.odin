@@ -5,11 +5,12 @@ import "core:fmt"
 import "core:mem"
 import "core:c/libc"
 import "core:runtime"
-@require // suppress unused package error on non windows targets
 import win32 "core:sys/windows"
 
 import "reader"
 import "../dependencies/back"
+
+_ :: win32
 
 main :: proc() {
     when ODIN_DEBUG {
