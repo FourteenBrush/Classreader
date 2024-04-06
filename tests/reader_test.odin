@@ -1,10 +1,7 @@
 package test
 
 import cr "../src/reader"
-import "core:c/libc"
-import "core:fmt"
 import "core:os"
-import "core:slice"
 import "core:testing"
 
 @(test)
@@ -21,16 +18,25 @@ test_reading2 :: proc(t: ^testing.T) {
     this_class := cp_get(classfile, classfile.this_class)
     class_name := cp_get_str(classfile, this_class.name_idx)
     testing.expect_value(t, class_name, "Test")
+    testing.expect_value(t, classfile.access_flags, ClassAccessFlags{.Public, .Super})
 
     // super class
     super_class := cp_get(classfile, classfile.super_class)
     testing.expect_value(t, classfile_get_super_class_name(classfile), "java/lang/Object")
 
-    // if we get a SourceFile attribute, ensure it has the class name Test
+    // find constructor reference Object.<init>
+    init := classfile_find_method(classfile, "<init>")
+    testing.expect(t, init != nil, "no Object.<init> MethodInfo found")
+    // TODO: validate Object.<init> once
+
+    // if we get a SourceFile attribute, ensure it has the correct class name
     if source_file, present := classfile_find_attribute(classfile, SourceFile).?; present {
         class_name = cp_get_str(classfile, source_file.sourcefile_idx) 
         testing.expect_value(t, class_name, "Test.java")
     }
+
+    // fields
+    test_field(t, classfile, "i", "I", "Test", {.Final})
 }
 
 /*
@@ -92,6 +98,20 @@ TestArgs :: struct {
 	name, descriptor, declaring_class: string,
 }
 
+@private
+test_method_presence :: proc(
+    t: ^testing.T,
+    classfile: cr.ClassFile,
+    name: string,
+) {
+    using cr
+    // validate MethodInfo
+    method, present := classfile_find_method(classfile, name).?
+    testing.expectf(t, present, "no MethodInfo found for method %v", name)
+
+    descriptor := cp_get_str(classfile, method.descriptor_idx)
+}
+
 // TODO: rewrite this
 
 @(private)
@@ -133,38 +153,51 @@ test_method :: proc(
     */
 }
 
+// Validates the ClassFile concerning a certain field.
+// IMPORTANT NOTE: to find ConstantFieldRefInfo entries, methods must actually be REFERENCED.
+// The simplest way to do this is by creating a main method that calls those.
 @(private)
 test_field :: proc(
-	t: ^testing.T,
-	classfile: cr.ClassFile,
-	name, descriptor, declaring_class: string,
+    t: ^testing.T,
+    classfile: cr.ClassFile,
+    expected_name, expected_descriptor, surrounding_class: string,
+    access_flags: cr.FieldAccessFlags,
 ) {
-	field, found := cr.classfile_find_field(classfile, name).?
-	testing.expectf(t, found, "no FieldInfo found for field %v", name)
-	actual_descriptor := cr.cp_get_str(classfile, field.descriptor_idx)
-	testing.expect_value(t, actual_descriptor, descriptor)
-	context.user_ptr = &TestArgs{name, descriptor, declaring_class}
+    using cr
+    field, present := classfile_find_field(classfile, expected_name).?
+    testing.expectf(t, present, "no FieldInfo found for field %v", expected_name)
 
-	// now validate the constant pool
-	cp_field := cr.cp_find(
-	classfile,
-	cr.ConstantFieldRefInfo,
-	proc(classfile: cr.ClassFile, ref: cr.ConstantFieldRefInfo) -> bool {
-		using args := cast(^TestArgs)context.user_ptr
-		// declaring class name
-		class := cr.cp_get(classfile, ref.class_idx)
-		classname := cr.cp_get_str(classfile, class.name_idx)
-		if classname != declaring_class do return false
-		// field name
-		name_and_type := cr.cp_get(classfile, ref.name_and_type_idx)
-		fieldname := cr.cp_get_str(classfile, name_and_type.name_idx)
-		if fieldname != name do return false
+    name := cp_get_str(classfile, field.name_idx)
+    testing.expect_value(t, expected_name, name)
 
-		// field descriptor
-		actual_descriptor := cr.cp_get_str(classfile, name_and_type.descriptor_idx)
-		if actual_descriptor != descriptor do return false
-		return true
-	},
-	)
-	testing.expect(t, cp_field != nil, "FieldInfo without corresponding ConstantFieldRef")
+    descriptor := cp_get_str(classfile, field.descriptor_idx)
+    testing.expect_value(t, descriptor, expected_descriptor)
+
+    expected_name := expected_name
+    context.user_ptr = &expected_name
+
+    field_ref, ref_present := cp_find(
+        classfile, ConstantFieldRefInfo,
+        proc(classfile: ClassFile, field: ConstantFieldRefInfo) -> bool {
+            name_and_type := cp_get(classfile, field.name_and_type_idx)
+            field_name := cp_get_str(classfile, name_and_type.name_idx)
+            desired_name := (^string)(context.user_ptr)^
+            if field_name != desired_name do return false
+
+            return true
+        },
+    ).?
+    testing.expectf(t, ref_present, "no ConstantFieldRefInfo found for field %v", expected_name)
+
+    declaring_class := cp_get(classfile, field_ref.class_idx)
+    class_name := cp_get_str(classfile, declaring_class.name_idx)
+    testing.expect_value(t, class_name, surrounding_class)
+
+    name_and_type := cp_get(classfile, field_ref.name_and_type_idx)
+    name = cp_get_str(classfile, name_and_type.name_idx)
+    descriptor = cp_get_str(classfile, name_and_type.descriptor_idx)
+
+    // name and descriptor must be the same ones used in the FieldInfo
+    testing.expect_value(t, name, expected_name)
+    testing.expect_value(t, descriptor, expected_descriptor)
 }
