@@ -23,6 +23,8 @@ reader_new :: proc(bytes: []u8) -> ClassFileReader {
 // IMPORTANT NOTE: the resulting ClassFile's lifetime is bound to the bytes 
 // it got from the reader. This might become subject to change, 
 // to only clone necessary byte slices instead.
+// The returned classfile explicitly needs to be freed using classfile_destroy()
+// even if an error was returned.
 read_classfile :: proc(
     reader: ^ClassFileReader, 
     allocator := context.allocator,
@@ -726,17 +728,16 @@ read_verification_type_info :: proc(
     return info, .None
 }
 
-@private
 FrameTag :: enum u8 {
-    Top = 0,
-    Integer = 1,
-    Float = 2,
-    Double = 3,
-    Long = 4,
-    Null = 5,
-    UninitializedThis = 6,
-    Object = 7,
-    Uninitialized = 8,
+	Top               = 0,
+	Integer           = 1,
+	Float             = 2,
+	Double            = 3,
+	Long              = 4,
+	Null              = 5,
+	UninitializedThis = 6,
+	Object            = 7,
+	Uninitialized     = 8,
 }
 
 @private
@@ -971,7 +972,7 @@ unchecked_read_u16_slice :: proc(reader: ^ClassFileReader) -> []u16 {
 }
 
 @private
-unchecked_read_idx :: proc($E: typeid, reader: ^ClassFileReader) -> (ret: Ptr(E))
+unchecked_read_idx :: proc($E: typeid, reader: ^ClassFileReader) -> Ptr(E)
 where intrinsics.type_is_variant_of(CPInfo, E) #no_bounds_check {
     idx := #force_inline unchecked_read_u16(reader)
     return Ptr(E) { idx }
