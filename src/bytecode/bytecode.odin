@@ -4,14 +4,14 @@ package bytecode
 opcode_lookup :: proc(op: u8) -> Maybe(Opcode) {
 	// We don't handle reserved opcodes (0xca to 0xff)
 	// And the range breaks there too, 0xcb, 0xcc and 0xcd don't exist
-	if op >= 0 && op < u8(Opcode.Breakpoint) {
+	if op < u8(Opcode.Breakpoint) {
 		return Opcode(op)
 	}
 	return nil
 }
 
-// https://docs.oracle.com/javase/specs/jvms/se7/html/jvms-6.html
-// https://docs.oracle.com/javase/specs/jvms/se7/html/jvms-7.html 
+// https://docs.oracle.com/javase/specs/jvms/se21/html/jvms-6.html
+// https://docs.oracle.com/javase/specs/jvms/se21/html/jvms-7.html 
 Opcode :: enum u8 {
 	// Constants
 	Nop             = 0x00,
