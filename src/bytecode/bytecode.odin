@@ -55,7 +55,6 @@ Opcode :: enum u8 {
 	Fload3          = 0x25,
 	Dload0          = 0x26,
 	Dload1          = 0x27,
-	// Stores
 	Dload2          = 0x28,
 	Dload3          = 0x29,
 	Aload0          = 0x2a,
