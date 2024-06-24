@@ -2,7 +2,6 @@ package reader
 
 import "core:fmt"
 import "core:strings"
-import "core:reflect"
 import "base:intrinsics"
 
 // A code representation of a compiled Java class or interface.
@@ -178,23 +177,21 @@ constantpool_dump :: proc(
     constant_pool: []ConstantPoolEntry,
     constant_pool_count: u16,
 ) {
+    i := u16(1) 
     max_idx_width := count_digits(constant_pool_count)
-    i := u16(1)
     fmt.println("Constant pool:")
 
     for entry in constant_pool {
         defer i += 1
         if entry.info == nil do continue // skip unusable entry
 
-        MIN_PADDING :: 2 // minimum amount of spaces in front of #num
-        // FIXME: determine the max length of the tags first rather than hardcoding an arbitrary one
-        MAX_TAG_LEN :: len("InterfaceMethodRef") // longest tag
+        min_padding :: 2 // minimum amount of spaces in front of #num
+        max_tag_len :: len("InterfaceMethodRef") // longest tag, FIXME: don't hardcode
 
-        padding := MIN_PADDING + max_idx_width - count_digits(i) + 1
-        tag_len := len(reflect.enum_string(entry.tag))
-        description_padding := MAX_TAG_LEN - tag_len + 1
+        padding := min_padding + max_idx_width - count_digits(i) + 1
+        description_padding := max_tag_len + 1
 
-        fmt.printf("%*s%i = %s%*s", padding, "#", i, entry.tag, description_padding, "")
+        fmt.printf("%*[0]s%d = %-*[4]s", padding, "#", i, entry.tag, description_padding)
         cp_entry_dump(classfile, entry)
     }
 }
@@ -230,9 +227,9 @@ major_version_to_str :: proc(major: u16) -> string {
 }
 
 // Dumps a certain AccessFlags type.
-@private
+@(private)
 access_flags_dump :: proc(flags: $E/bit_set[$F; u16]) 
-where E == ClassAccessFlags || E == FieldAccessFlags || E == MethodAccessFlags {
+    where E == ClassAccessFlags || E == FieldAccessFlags || E == MethodAccessFlags {
     first := true
 
     for flag in F {
