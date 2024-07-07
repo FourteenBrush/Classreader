@@ -51,7 +51,7 @@ find_operand_byte_count :: proc(opcode: Opcode, stream: ^Stream) -> (count: int,
     #partial switch opcode {
     case .TableSwitch:
         padding := stream.pos & 3
-        advance_to(stream, align_up_to_u32(stream.pos))
+        advance_to(stream, align_up_to_u32(stream.pos)) or_return
 
         _ = peek(u32, stream) or_return // default
         low := peek(u32, stream, 4) or_return
@@ -80,7 +80,7 @@ find_operand_byte_count :: proc(opcode: Opcode, stream: ^Stream) -> (count: int,
     return
 }
 
-@(private)
+@(private, require_results)
 read :: proc($T: typeid, s: ^Stream) -> (T, bool) {
     if s.pos + size_of(T) > len(s.codeblob) {
         return {}, false
@@ -91,7 +91,7 @@ read :: proc($T: typeid, s: ^Stream) -> (T, bool) {
     return transmute(T) buf, true
 }
 
-@(private)
+@(private, require_results)
 peek :: proc($T: typeid, s: ^Stream, start := uint(0)) -> (T, bool) {
     if s.pos + start + size_of(T) > len(s.codeblob) {
         return {}, false
@@ -101,14 +101,14 @@ peek :: proc($T: typeid, s: ^Stream, start := uint(0)) -> (T, bool) {
     return transmute(T) buf, true
 }
 
-@(private)
+@(private, require_results)
 advance_to :: proc(s: ^Stream, pos: uint) -> bool {
     if pos >= len(s.codeblob) do return false
     s.pos = pos
     return true
 }
 
-@(private)
+@(private, require_results)
 ensure_readable :: proc(s: ^Stream, #any_int nbytes: uint) -> bool {
     return s.pos + nbytes <= len(s.codeblob)
 }

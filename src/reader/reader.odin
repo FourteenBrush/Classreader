@@ -90,7 +90,7 @@ Error :: enum {
     UnknownOpcode,
 }
 
-@private
+@(private, require_results)
 read_constant_pool :: proc(
     reader: ^ClassFileReader, 
     #any_int count: int, 
@@ -116,7 +116,7 @@ read_constant_pool :: proc(
     return constant_pool, .None
 }
 
-@private
+@(private, require_results)
 read_constant_pool_entry :: proc(
     reader: ^ClassFileReader,
     tag: ConstantType,
@@ -188,7 +188,7 @@ read_constant_pool_entry :: proc(
     return entry, .None
 }
 
-@private
+@(private, require_results)
 read_methods :: proc(
     reader: ^ClassFileReader, 
     classfile: ClassFile,
@@ -210,7 +210,7 @@ read_methods :: proc(
     return methods, .None
 }
 
-@private
+@(private, require_results)
 read_fields :: proc(
     reader: ^ClassFileReader,
     classfile: ClassFile,
@@ -235,7 +235,7 @@ read_fields :: proc(
 // Reads a binary encoded flags type, backed by a u16 and validates it.
 // Returns Error.InvalidAccessFlags if bits are set which are not a valid 
 // flag of type F.
-@private
+@(private, require_results)
 read_flags :: proc(
     reader: ^ClassFileReader, 
     $T: typeid/bit_set[$F; u16],
@@ -248,7 +248,7 @@ read_flags :: proc(
     return flags, .None
 }
 
-@private
+@(private, require_results)
 validate_flags :: proc(flags: $T/bit_set[$F; u16]) -> Error {
     flags := transmute(u16) flags
     // assuming F holds the bit values
@@ -268,7 +268,7 @@ validate_flags :: proc(flags: $T/bit_set[$F; u16]) -> Error {
 // Attribute parsing functions
 // -------------------------------------------------- 
 
-@private
+@(private, require_results)
 read_attributes :: proc(
     reader: ^ClassFileReader, 
     classfile: ClassFile, 
@@ -286,7 +286,7 @@ read_attributes :: proc(
     return attributes, .None
 }
 
-@private
+@(private, require_results)
 read_attribute_info :: proc(
     using reader: ^ClassFileReader, 
     classfile: ClassFile, 
@@ -452,7 +452,7 @@ read_attribute_info :: proc(
     return attribute, .None
 }
 
-@private
+@(private, require_results)
 read_stack_map_frame :: proc(
     reader: ^ClassFileReader,
 ) -> (
@@ -494,7 +494,7 @@ read_stack_map_frame :: proc(
     return frame, .None
 }
 
-@private
+@(private, require_results)
 read_module :: proc(
     reader: ^ClassFileReader, 
     allocator := context.allocator,
@@ -561,7 +561,7 @@ read_module :: proc(
 
 read_local_variable_type_table :: read_local_variable_table
 
-@private
+@(private, require_results)
 read_local_variable_table :: proc(
     reader: ^ClassFileReader, 
     allocator := context.allocator,
@@ -583,7 +583,7 @@ read_local_variable_table :: proc(
     return table, .None
 }
 
-@private
+@(private, require_results)
 read_parameter_annotations :: proc(
     reader: ^ClassFileReader, 
     allocator := context.allocator,
@@ -600,7 +600,7 @@ read_parameter_annotations :: proc(
     return param_annotations, .None
 }
 
-@private
+@(private, require_results)
 read_annotations :: proc(
     reader: ^ClassFileReader, 
     allocator := context.allocator,
@@ -616,7 +616,7 @@ read_annotations :: proc(
     return annotations, .None
 }
 
-@private
+@(private, require_results)
 read_annotation :: proc(
     reader: ^ClassFileReader, 
     allocator := context.allocator,
@@ -630,7 +630,7 @@ read_annotation :: proc(
     return Annotation { type_idx, element_value_pairs }, .None
 }
 
-@private
+@(private, require_results)
 read_element_value_pairs :: proc(
     reader: ^ClassFileReader,
     allocator := context.allocator,
@@ -649,7 +649,7 @@ read_element_value_pairs :: proc(
     return pairs, .None
 }
 
-@private
+@(private, require_results)
 read_element_value :: proc(
     reader: ^ClassFileReader, 
     allocator := context.allocator,
@@ -684,7 +684,7 @@ read_element_value :: proc(
     return element_value, .None
 }
 
-@private
+@(private, require_results)
 read_verification_type_infos :: proc(
     reader: ^ClassFileReader, 
     count: u16, 
@@ -701,7 +701,7 @@ read_verification_type_infos :: proc(
     return locals, .None
 }
 
-@private
+@(private, require_results)
 read_verification_type_info :: proc(
     reader: ^ClassFileReader,
 ) -> (
@@ -741,7 +741,7 @@ FrameTag :: enum u8 {
 	Uninitialized     = 8,
 }
 
-@private
+@(private, require_results)
 read_type_annotations :: proc(
     reader: ^ClassFileReader,
     allocator := context.allocator,
@@ -851,7 +851,7 @@ read_type_annotations :: proc(
 /// -------------------------------------------------- 
 
 // An alternative for builtin.make, which returns an optional Error, to use or_return on.
-@private
+@(private, require_results)
 make_safe :: proc(
     $T: typeid/[]$E, 
     #any_int len: int, 
@@ -865,7 +865,7 @@ make_safe :: proc(
     return t, .None
 }
 
-@private
+@(private, require_results)
 alloc_slice :: proc(
     reader: ^ClassFileReader,
     $T: typeid/[]$E,
@@ -883,7 +883,7 @@ alloc_slice :: proc(
     return ret, .None
 }
 
-@private
+@(private, require_results)
 read_u8 :: proc(using reader: ^ClassFileReader) -> (u8, Error) {
     if pos >= len(bytes) {
         return 0, .UnexpectedEof
@@ -892,7 +892,7 @@ read_u8 :: proc(using reader: ^ClassFileReader) -> (u8, Error) {
     #no_bounds_check return bytes[pos], .None
 }
 
-@private
+@(private, require_results)
 read_u16 :: proc(using reader: ^ClassFileReader) -> (u16, Error) {
     ret, ok := endian.get_u16(bytes[pos:], .Big)
     if !ok do return ret, .UnexpectedEof
@@ -900,7 +900,7 @@ read_u16 :: proc(using reader: ^ClassFileReader) -> (u16, Error) {
     return ret, .None
 }
 
-@private
+@(private, require_results)
 read_u32 :: proc(using reader: ^ClassFileReader) -> (u32, Error) {
     ret, ok := endian.get_u32(bytes[pos:], .Big)
     if !ok do return ret, .UnexpectedEof
@@ -908,7 +908,7 @@ read_u32 :: proc(using reader: ^ClassFileReader) -> (u32, Error) {
     return ret, .None
 }
 
-@private
+@(private, require_results)
 read_nbytes :: proc(using reader: ^ClassFileReader, #any_int n: int) -> ([]u8, Error) { 
     if pos + n > len(bytes) {
         return nil, .UnexpectedEof
@@ -919,7 +919,7 @@ read_nbytes :: proc(using reader: ^ClassFileReader, #any_int n: int) -> ([]u8, E
 
 // Reads a slice of u16s, the length is prepended as a u16 before the actual data.
 // | length: u16 | data: ...u16 (length items) |
-@private
+@(private, require_results)
 read_u16_slice :: proc(reader: ^ClassFileReader) -> (ret: []u16, err: Error) {
     elem_count := read_u16(reader) or_return
     bytes := read_nbytes(reader, elem_count * size_of(u16)) or_return
@@ -934,7 +934,7 @@ where intrinsics.type_is_variant_of(CPInfo, E) {
 }
 
 // See read_u16_slice().
-@private
+@(private, require_results)
 read_indices :: proc($E: typeid, reader: ^ClassFileReader) -> (ret: []Ptr(E), err: Error)
 where intrinsics.type_is_variant_of(CPInfo, E) {
     elem_count := read_u16(reader) or_return
@@ -946,32 +946,32 @@ where intrinsics.type_is_variant_of(CPInfo, E) {
 // Unchecked low level parsing functions.
 // -------------------------------------------------- 
 
-@private
+@(private, require_results)
 unchecked_read_u16 :: proc(using reader: ^ClassFileReader) -> u16 {
     defer pos += 2
     return endian.unchecked_get_u16be(bytes[pos:])
 }
 
-@private
+@(private, require_results)
 unchecked_read_u32 :: proc(using reader: ^ClassFileReader) -> u32 {
     defer pos += 4
     return endian.unchecked_get_u32be(bytes[pos:])
 }
 
-@private
+@(private, require_results)
 unchecked_read_nbytes :: proc(using reader: ^ClassFileReader, #any_int n: int) -> []u8 {
     defer pos += n
     #no_bounds_check return bytes[pos:][:n]
 }
 
-@private
+@(private, require_results)
 unchecked_read_u16_slice :: proc(reader: ^ClassFileReader) -> []u16 {
     elem_count := unchecked_read_u16(reader)
     bytes := unchecked_read_nbytes(reader, elem_count * size_of(u16))
     return slice.reinterpret([]u16, bytes)
 }
 
-@private
+@(private, require_results)
 unchecked_read_idx :: proc($E: typeid, reader: ^ClassFileReader) -> Ptr(E)
 where intrinsics.type_is_variant_of(CPInfo, E) #no_bounds_check {
     idx := #force_inline unchecked_read_u16(reader)
@@ -979,8 +979,8 @@ where intrinsics.type_is_variant_of(CPInfo, E) #no_bounds_check {
 }
 
 // See read_u16_slice().
-@private
-unchecked_read_indices :: proc($E: typeid, reader: ^ClassFileReader) -> (ret: []Ptr(E))
+@(private, require_results)
+unchecked_read_indices :: proc($E: typeid, reader: ^ClassFileReader) -> []Ptr(E)
 where intrinsics.type_is_variant_of(CPInfo, E) {
     elem_count := unchecked_read_u16(reader)
     bytes := unchecked_read_nbytes(reader, elem_count * size_of(u16))
