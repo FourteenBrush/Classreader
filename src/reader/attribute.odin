@@ -31,7 +31,8 @@ import "core:reflect"
 // - LocalVariableTypeTable
 //
 // Thirteen attributes are not critical to correct interpretation of the class file by the JVM,
-// but contain metadata about the class file that is either exposed by the class libraries // of the Java SE Platform, or made available by tools (in which case the section that 
+// but contain metadata about the class file that is either exposed by the class libraries 
+// of the Java SE Platform, or made available by tools (in which case the section that 
 // specifies an attribute describes it as "optional"):
 // 
 // - SourceDebugExtension

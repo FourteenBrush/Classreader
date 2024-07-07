@@ -316,6 +316,7 @@ read_attribute_info :: proc(
         max_locals := unchecked_read_u16(reader)
         code_length := unchecked_read_u32(reader)
         code := unchecked_read_nbytes(reader, code_length)
+
         exception_table := alloc_slice(reader, []ExceptionHandler, allocator) or_return
 
         for &exception in exception_table {
@@ -883,16 +884,16 @@ alloc_slice :: proc(
 }
 
 @private
-read_u8 :: proc(using reader: ^ClassFileReader) -> (u8, Error) #no_bounds_check {
+read_u8 :: proc(using reader: ^ClassFileReader) -> (u8, Error) {
     if pos >= len(bytes) {
         return 0, .UnexpectedEof
     }
     defer pos += 1
-    return bytes[pos], .None
+    #no_bounds_check return bytes[pos], .None
 }
 
 @private
-read_u16 :: proc(using reader: ^ClassFileReader) -> (u16, Error) #no_bounds_check {
+read_u16 :: proc(using reader: ^ClassFileReader) -> (u16, Error) {
     ret, ok := endian.get_u16(bytes[pos:], .Big)
     if !ok do return ret, .UnexpectedEof
     pos += 2
@@ -900,7 +901,7 @@ read_u16 :: proc(using reader: ^ClassFileReader) -> (u16, Error) #no_bounds_chec
 }
 
 @private
-read_u32 :: proc(using reader: ^ClassFileReader) -> (u32, Error) #no_bounds_check {
+read_u32 :: proc(using reader: ^ClassFileReader) -> (u32, Error) {
     ret, ok := endian.get_u32(bytes[pos:], .Big)
     if !ok do return ret, .UnexpectedEof
     pos += 4
@@ -908,12 +909,12 @@ read_u32 :: proc(using reader: ^ClassFileReader) -> (u32, Error) #no_bounds_chec
 }
 
 @private
-read_nbytes :: proc(using reader: ^ClassFileReader, #any_int n: int) -> ([]u8, Error) #no_bounds_check { 
+read_nbytes :: proc(using reader: ^ClassFileReader, #any_int n: int) -> ([]u8, Error) { 
     if pos + n > len(bytes) {
         return nil, .UnexpectedEof
     }
     defer pos += n
-    return bytes[pos:][:n], .None
+    #no_bounds_check return bytes[pos:][:n], .None
 }
 
 // Reads a slice of u16s, the length is prepended as a u16 before the actual data.
@@ -927,7 +928,7 @@ read_u16_slice :: proc(reader: ^ClassFileReader) -> (ret: []u16, err: Error) {
 
 @private
 read_idx :: proc($E: typeid, reader: ^ClassFileReader) -> (ret: Ptr(E), err: Error)
-where intrinsics.type_is_variant_of(CPInfo, E) #no_bounds_check {
+where intrinsics.type_is_variant_of(CPInfo, E) {
     idx := #force_inline read_u16(reader) or_return
     return Ptr(E) { idx }, .None
 }
@@ -943,7 +944,6 @@ where intrinsics.type_is_variant_of(CPInfo, E) {
 
 // -------------------------------------------------- 
 // Unchecked low level parsing functions.
-// TODO: do something about them always returning Error.None
 // -------------------------------------------------- 
 
 @private
@@ -959,9 +959,9 @@ unchecked_read_u32 :: proc(using reader: ^ClassFileReader) -> u32 {
 }
 
 @private
-unchecked_read_nbytes :: proc(using reader: ^ClassFileReader, #any_int n: int) -> []u8 #no_bounds_check {
+unchecked_read_nbytes :: proc(using reader: ^ClassFileReader, #any_int n: int) -> []u8 {
     defer pos += n
-    return bytes[pos:][:n]
+    #no_bounds_check return bytes[pos:][:n]
 }
 
 @private
