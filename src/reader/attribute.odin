@@ -190,9 +190,9 @@ ConstantValue :: struct {
     // |---------------------------------|---------------------|
     // | long 	                         | ConstantLongInfo    |
     // | float 	                         | ConstantFloatInfo   |
-    // | double 	                     | ConstantDoubleInfo  | 
+    // | double 	                 | ConstantDoubleInfo  | 
     // | int, short, char, byte, boolean | ConstantIntegerInfo |
-    // | String 	                     | ConstantStringInfo  |
+    // | String 	                 | ConstantStringInfo  |
     constantvalue_idx: u16,
 }
 
