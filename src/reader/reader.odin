@@ -35,7 +35,7 @@ read_classfile :: proc(
     magic := read_u32(reader) or_return
     if magic != MAGIC do return classfile, .InvalidHeader
 
-    using classfile
+    using classfile 
     minor_version = read_u16(reader) or_return
     major_version = read_u16(reader) or_return
     constant_pool_count = read_u16(reader) or_return
@@ -248,6 +248,7 @@ read_flags :: proc(
     return flags, .None
 }
 
+// TODO: where type_is_enum(F) maybe? or is that guaranteed already?
 @(private, require_results)
 validate_flags :: proc(flags: $T/bit_set[$F; u16]) -> Error {
     flags := transmute(u16) flags
