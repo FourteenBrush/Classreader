@@ -2,7 +2,6 @@ package reader
 
 import "core:mem"
 import "core:slice"
-import "core:reflect"
 import "base:intrinsics"
 import "core:encoding/endian"
 
@@ -248,20 +247,21 @@ read_flags :: proc(
     return flags, .None
 }
 
-// TODO: where type_is_enum(F) maybe? or is that guaranteed already?
 @(private, require_results)
 validate_flags :: proc(flags: $T/bit_set[$F; u16]) -> Error {
     flags := transmute(u16) flags
-    // assuming F holds the bit values
-    enum_bits := transmute([]i64) reflect.enum_field_values(F)
-    // ensure no bits are set that are not an enum value
+
+    check_bit:
     for bit in 0..<uint(16) {
         is_set := flags & (1 << bit) != 0
-        // FIXME: slice.contains is a bit overkill
-        if is_set && !slice.contains(enum_bits, i64(bit)) {
-            return .InvalidAccessFlags
+        if !is_set do continue
+
+        for flag in F {
+            if bit == uint(flag) do continue check_bit
         }
+        return .InvalidAccessFlags
     }
+
     return .None
 }
 

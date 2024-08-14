@@ -1,5 +1,6 @@
 package test
 
+import "core:log"
 import "core:testing"
 import "../src/reader"
 
@@ -39,7 +40,7 @@ test_field_descriptors :: proc(t: ^testing.T) {
     for entry in FIELD_DESCRIPTOR_CASES {
         result := reader.is_valid_field_descriptor(entry.desc)
         if result != entry.valid {
-            testing.logf(t, "expected %s to be %s field descriptor\n", entry.desc, "a valid" if entry.valid else "an invalid")
+            log.infof("expected %s to be %s field descriptor\n", entry.desc, "a valid" if entry.valid else "an invalid")
             testing.fail(t)
         }
     }

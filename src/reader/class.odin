@@ -63,7 +63,7 @@ classfile_destroy :: proc(using classfile: ClassFile, allocator := context.alloc
 }
 
 // Returns the name of the given class, as how it is found in the constantpool.
-classfile_get_class_name :: proc(using classfile: ClassFile) -> string {
+classfile_get_class_name :: proc(using classfile: ClassFile, loc := #caller_location) -> string {
     class := cp_get(classfile, this_class)
     return cp_get_str(classfile, class.name_idx)
 }
@@ -134,7 +134,7 @@ cp_get_str :: proc(using classfile: ClassFile, ptr: Ptr(ConstantUtf8Info)) -> st
 
 // Returns the constantpool entry stored at the given index.
 // Panics if idx is invalid or the expected and actual type differ.
-cp_get :: proc(using classfile: ClassFile, ptr: Ptr($E)) -> E
+cp_get :: proc(using classfile: ClassFile, ptr: Ptr($E), loc := #caller_location) -> E
 where intrinsics.type_is_variant_of(CPInfo, E) {
     return constant_pool[ptr.idx - 1].info.(E)
 }
@@ -185,11 +185,11 @@ constantpool_dump :: proc(
         defer i += 1
         if entry.info == nil do continue // skip unusable entry
 
-        min_padding :: 2 // minimum amount of spaces in front of #num
-        max_tag_len :: len("InterfaceMethodRef") // longest tag, FIXME: don't hardcode
+        min_lpadding :: 2 // minimum amount of spaces in front of #num
+        padding := min_lpadding + max_idx_width - count_digits(i) + 1
 
-        padding := min_padding + max_idx_width - count_digits(i) + 1
-        description_padding := max_tag_len + 1
+        longest_tag_len :: len("InterfaceMethodRef") // FIXME: don't hardcode
+        description_padding :: longest_tag_len + 1
 
         fmt.printf("%*[0]s%d = %-*[4]s", padding, "#", i, entry.tag, description_padding)
         cp_entry_dump(classfile, entry)

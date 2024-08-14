@@ -7,7 +7,8 @@ import "core:testing"
 @(test)
 test_reading2 :: proc(t: ^testing.T) {
     using cr
-    contents, ok := os.read_entire_file("tests/res/Test.class"); assert(ok)
+    contents := os.read_entire_file("tests/res/Test.class") or_else panic("file not found")
+    defer delete(contents)
 
     reader := reader_new(contents)
     classfile, err := read_classfile(&reader)

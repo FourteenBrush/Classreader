@@ -2,66 +2,66 @@ package test
 
 import "core:os"
 import "core:fmt"
-import "core:c/libc"
+import "core:log"
 import "core:bytes"
 import "core:strings"
-import "core:runtime"
 import "core:testing"
 import "core:compress/zlib"
 import "core:path/filepath"
 
 import cr "../src/reader"
-import shared "../src"
+import "../src/utils"
 
 // TODO: when we are able to extract zip files via the stdlib
-//@test
+//@(test)
 test_rt_jar_files :: proc(t: ^testing.T) {
     java_home := os.get_env("JAVA_HOME", context.temp_allocator)
     if len(java_home) == 0 do return
 
     filename := strings.concatenate({java_home, "/lib/jrt-fs.jar"}, context.temp_allocator)
     data, ok := os.read_entire_file(filename)
-    defer delete(data)
     if !ok do return // file may not be present there
+    defer delete(data)
 
     buf: bytes.Buffer
     defer bytes.buffer_destroy(&buf)
     err := zlib.inflate(data, &buf)
     if err != nil {
-        testing.logf(t, "err: %v\n", err)
+        log.infof("err: %v\n", err)
         testing.fail(t)
         return
     }
 
-    testing.log(t, buf)
+    log.info(buf)
 }
 
-@test
-test_arbitrary_classes :: proc(t: ^testing.T) {
-    shared.register_sigill_handler()
+// TODO: what even is the version of these files?
+@(test)
+test_java_stdlib :: proc(t: ^testing.T) {
+    utils.register_sigill_handler()
     files_read := 0
     filepath.walk("res/java", visit_file, &files_read)
     testing.expect_value(t, files_read, 1313)
 }
 
-@private
+@(private)
 visit_file :: proc(file: os.File_Info, in_err: os.Errno, user_data: rawptr) -> (err: os.Errno, skip_dir: bool) {
     if in_err != 0 do return
 
-    data, ok := os.read_entire_file(file.fullpath) 
+    data := os.read_entire_file(file.fullpath) or_return
     defer delete(data)
-    if !ok do return
 
     reader := cr.reader_new(data)
     classfile, cerr := cr.read_classfile(&reader)
     defer cr.classfile_destroy(classfile)
+
     if cerr != .None {
-        classname := cr.classfile_get_class_name(classfile) 
-        fmt.eprintfln("error reading file %v: %v", classname, cerr)
-    } else {
-        files_read := cast(^int)user_data
-        files_read^ += 1
+        fmt.eprintfln("error reading file %v: %v", file.name, cerr)
+        return
     }
+
+    files_read := cast(^int)user_data
+    files_read^ += 1
 
     return
 }

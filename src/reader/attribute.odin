@@ -150,6 +150,7 @@ element_value_destroy :: proc(value: ElementValueInner, allocator := context.all
         for element in value.values {
             element_value_destroy(element.value)
         }
+        delete(value.values)
     }
 }
 
@@ -167,6 +168,7 @@ annotation_destroy :: proc(annotation: Annotation, allocator := context.allocato
     for pair in annotation.element_value_pairs {
         element_value_destroy(pair.value.value)
     }
+    delete(annotation.element_value_pairs)
 }
 
 parameter_annotations_destroy :: proc(annotations: []ParameterAnnotation, allocator := context.allocator) {
