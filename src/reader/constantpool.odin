@@ -10,23 +10,23 @@ ConstantPoolEntry :: struct {
 
 // A ConstantPoolEntry tag.
 ConstantType :: enum u8 {
-	Utf8               = 1,
-	Integer            = 3,
-	Float              = 4,
-	Long               = 5,
-	Double             = 6,
-	Class              = 7,
-	String             = 8,
-	FieldRef           = 9,
-	MethodRef          = 10,
-	InterfaceMethodRef = 11,
-	NameAndType        = 12,
-	MethodHandle       = 15,
-	MethodType         = 16,
-	Dynamic            = 17,
-	InvokeDynamic      = 18,
-	Module             = 19,
-	Package            = 20,
+    Utf8               = 1,
+    Integer            = 3,
+    Float              = 4,
+    Long               = 5,
+    Double             = 6,
+    Class              = 7,
+    String             = 8,
+    FieldRef           = 9,
+    MethodRef          = 10,
+    InterfaceMethodRef = 11,
+    NameAndType        = 12,
+    MethodHandle       = 15,
+    MethodType         = 16,
+    Dynamic            = 17,
+    InvokeDynamic      = 18,
+    Module             = 19,
+    Package            = 20,
 }
 
 CPInfo :: union {
@@ -135,15 +135,15 @@ ConstantMethodHandleInfo :: struct {
 }
 
 ReferenceKind :: enum u8 {
-	GetField         = 1,
-	GetStatic        = 2,
-	PutField         = 3,
-	PutStatic        = 4,
-	InvokeVirtual    = 5,
-	InvokeStatic     = 6,
-	InvokeSpecial    = 7,
-	NewInvokeSpecial = 8,
-	InvokeInterface  = 9,
+    GetField         = 1,
+    GetStatic        = 2,
+    PutField         = 3,
+    PutStatic        = 4,
+    InvokeVirtual    = 5,
+    InvokeStatic     = 6,
+    InvokeSpecial    = 7,
+    NewInvokeSpecial = 8,
+    InvokeInterface  = 9,
 }
 
 // Represents a method type.

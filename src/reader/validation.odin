@@ -49,9 +49,9 @@ unqualified_name_invalid_chars := get_binary_class_name_invalid_chars()
 @(private)
 get_binary_class_name_invalid_chars :: proc() -> strings.Ascii_Set {
     // NOTE: we are including < and > because <init> and <clinit> are not validated here
-	set, ok := strings.ascii_set_make(".;[/<>")
-	assert(ok, "sanity check")
-	return set
+    set, ok := strings.ascii_set_make(".;[/<>")
+    assert(ok, "sanity check")
+    return set
 }
 
 // FieldDescriptor = FieldType
@@ -62,21 +62,21 @@ get_binary_class_name_invalid_chars :: proc() -> strings.Ascii_Set {
 // ArrayType = {\[}+ ComponentType
 // ComponentType = FieldType
 is_valid_field_descriptor :: proc(desc: string) -> bool #no_bounds_check {
-	if len(desc) == 0 do return false
+    if len(desc) == 0 do return false
 
-	switch desc[0] {
-	case 'B', 'C', 'D', 'F', 'I', 'J', 'S', 'Z': return len(desc) == 1
-	case 'L':
-		if len(desc) < 3 || desc[len(desc) - 1] != ';' do return false // Lx;
+    switch desc[0] {
+    case 'B', 'C', 'D', 'F', 'I', 'J', 'S', 'Z': return len(desc) == 1
+    case 'L':
+        if len(desc) < 3 || desc[len(desc) - 1] != ';' do return false // Lx;
         return is_valid_object_type(desc[1:len(desc) - 1])
-	case '[':
-		array_depth := 1
-		for array_depth < len(desc) && desc[array_depth] == '[' {
-			array_depth += 1
-			if array_depth > MAX_ARRAY_DEPTH do return false
-		}
-		return is_valid_field_descriptor(desc[array_depth:])
-	}
+    case '[':
+        array_depth := 1
+        for array_depth < len(desc) && desc[array_depth] == '[' {
+            array_depth += 1
+            if array_depth > MAX_ARRAY_DEPTH do return false
+        }
+        return is_valid_field_descriptor(desc[array_depth:])
+    }
     return false
 }
 

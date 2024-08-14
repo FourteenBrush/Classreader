@@ -186,13 +186,13 @@ Unknown :: struct {
 // Represents the value of a constant field.
 ConstantValue :: struct {
     // The constant pool entry at this index gives the constant value represented by this attribute
-    // | Field Type 	                 |  Entry Type         |
+    // | Field Type                      |  Entry Type         |
     // |---------------------------------|---------------------|
-    // | long 	                         | ConstantLongInfo    |
-    // | float 	                         | ConstantFloatInfo   |
-    // | double 	                 | ConstantDoubleInfo  | 
+    // | long                            | ConstantLongInfo    |
+    // | float                           | ConstantFloatInfo   |
+    // | double                      | ConstantDoubleInfo  | 
     // | int, short, char, byte, boolean | ConstantIntegerInfo |
-    // | String 	                 | ConstantStringInfo  |
+    // | String                      | ConstantStringInfo  |
     constantvalue_idx: u16,
 }
 
@@ -449,28 +449,28 @@ TypeAnnotation :: struct {
 
 // https://docs.oracle.com/javase/specs/jvms/se21/html/jvms-4.html#jvms-4.7.20-400
 TargetType :: enum u8 {
-	ClassType                         = 0x00,
-	MethodType                        = 0x01,
-	ClassExtends                      = 0x10,
-	ClassTypeParameterBound           = 0x11,
-	MethodTypeParameterBound          = 0x12,
-	Field                             = 0x13,
-	MethodReturn                      = 0x14,
-	MethodReceiver                    = 0x15,
-	MethodFormalParameter             = 0x16,
-	Throws                            = 0x17,
-	LocalVariable                     = 0x40,
-	ResourceVariable                  = 0x41,
-	ExceptionParameter                = 0x42,
-	Instanceof                        = 0x43,
-	New                               = 0x44,
-	ConstructorReference              = 0x45,
-	MethodReference                   = 0x46,
-	Cast                              = 0x47,
-	ConstructorInvocationTypeArgument = 0x48,
-	MethodInvocationTypeArgument      = 0x49,
-	ConstructorReferenceTypeArgument  = 0x4A,
-	MethodReferenceTypeArgument       = 0x4B,
+    ClassType                         = 0x00,
+    MethodType                        = 0x01,
+    ClassExtends                      = 0x10,
+    ClassTypeParameterBound           = 0x11,
+    MethodTypeParameterBound          = 0x12,
+    Field                             = 0x13,
+    MethodReturn                      = 0x14,
+    MethodReceiver                    = 0x15,
+    MethodFormalParameter             = 0x16,
+    Throws                            = 0x17,
+    LocalVariable                     = 0x40,
+    ResourceVariable                  = 0x41,
+    ExceptionParameter                = 0x42,
+    Instanceof                        = 0x43,
+    New                               = 0x44,
+    ConstructorReference              = 0x45,
+    MethodReference                   = 0x46,
+    Cast                              = 0x47,
+    ConstructorInvocationTypeArgument = 0x48,
+    MethodInvocationTypeArgument      = 0x49,
+    ConstructorReferenceTypeArgument  = 0x4A,
+    MethodReferenceTypeArgument       = 0x4B,
 }
 
 TargetInfo :: union {
