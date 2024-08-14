@@ -63,7 +63,7 @@ classfile_destroy :: proc(using classfile: ClassFile, allocator := context.alloc
 }
 
 // Returns the name of the given class, as how it is found in the constantpool.
-classfile_get_class_name :: proc(using classfile: ClassFile, loc := #caller_location) -> string {
+classfile_get_class_name :: proc(using classfile: ClassFile) -> string {
     class := cp_get(classfile, this_class)
     return cp_get_str(classfile, class.name_idx)
 }
@@ -134,7 +134,7 @@ cp_get_str :: proc(using classfile: ClassFile, ptr: Ptr(ConstantUtf8Info)) -> st
 
 // Returns the constantpool entry stored at the given index.
 // Panics if idx is invalid or the expected and actual type differ.
-cp_get :: proc(using classfile: ClassFile, ptr: Ptr($E), loc := #caller_location) -> E
+cp_get :: proc(using classfile: ClassFile, ptr: Ptr($E)) -> E
 where intrinsics.type_is_variant_of(CPInfo, E) {
     return constant_pool[ptr.idx - 1].info.(E)
 }
