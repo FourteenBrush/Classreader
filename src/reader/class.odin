@@ -370,61 +370,53 @@ ClassAccessFlagBit :: enum u16 {
 }
 
 // Returns the uppercase representation of the respective flag passed.
-access_flag_to_str :: proc {
-    class_access_flag_to_str,
-    field_access_flag_to_str,
-    method_access_flag_to_str,
+access_flag_to_str :: proc(flag: $F) -> string {
+    when F == ClassAccessFlagBit  do return class_access_flag_to_str[flag]; else
+    when F == FieldAccessFlagBit  do return field_access_flag_to_str[flag]; else
+    when F == MethodAccessFlagBit do return method_access_flag_to_str[flag]
+    else do #panic("invalid type passed to " + #procedure)
 }
 
-@private
-class_access_flag_to_str :: proc(flag: ClassAccessFlagBit) -> string {
-    switch flag {
-    case .Public:     return "ACC_PUBLIC"
-    case .Final:      return "ACC_FINAL"
-    case .Super:      return "ACC_SUPER"
-    case .Interface:  return "ACC_INTERFACE"
-    case .Abstract:   return "ACC_ABSTRACT"
-    case .Synthetic:  return "ACC_SYNTHETIC"
-    case .Annotation: return "ACC_ANNOTATION"
-    case .Enum:       return "ACC_ENUM"
-    case .Module:     return "ACC_MODULE"
-    case: panic("class_access_flag_to_str(): invalid args")
-    }
+@(private, rodata)
+class_access_flag_to_str := #sparse[ClassAccessFlagBit]string {
+    .Public     = "ACC_PUBLIC",
+    .Final      = "ACC_FINAL",
+    .Super      = "ACC_SUPER",
+    .Interface  = "ACC_INTERFACE",
+    .Abstract   = "ACC_ABSTRACT",
+    .Synthetic  = "ACC_SYNTHETIC",
+    .Annotation = "ACC_ANNOTATION",
+    .Enum       = "ACC_ENUM",
+    .Module     = "ACC_MODULE",
 }
 
-@private
-field_access_flag_to_str :: proc(flag: FieldAccessFlagBit) -> string {
-    switch flag {
-    case .Public:    return "ACC_PUBLIC"
-    case .Private:   return "ACC_PRIVATE"
-    case .Protected: return "ACC_PROTECTED"
-    case .Static:    return "ACC_STATIC"
-    case .Final:     return "ACC_FINAL"
-    case .Volatile:  return "ACC_VOLATILE"
-    case .Transient: return "ACC_TRANSIENT"
-    case .Synthetic: return "ACC_SYNTHETIC"
-    case .Enum:      return "ACC_ENUM"
-    case: panic("field_access_flag_to_str(): invalid args")
-    }
+@(private, rodata)
+field_access_flag_to_str := #sparse[FieldAccessFlagBit]string {
+    .Public    = "ACC_PUBLIC",
+    .Private   = "ACC_PRIVATE",
+    .Protected = "ACC_PROTECTED",
+    .Static    = "ACC_STATIC",
+    .Final     = "ACC_FINAL",
+    .Volatile  = "ACC_VOLATILE",
+    .Transient = "ACC_TRANSIENT",
+    .Synthetic = "ACC_SYNTHETIC",
+    .Enum      = "ACC_ENUM",
 }
 
-@private
-method_access_flag_to_str :: proc(flag: MethodAccessFlagBit) -> string {
-    switch flag {
-    case .Public:       return "ACC_PUBLIC"
-    case .Private:      return "ACC_PRIVATE"
-    case .Protected:    return "ACC_PROTECTED"
-    case .Static:       return "ACC_STATIC"
-    case .Final:        return "ACC_FINAL"
-    case .Synchronized: return "ACC_SYNCHRONIZED"
-    case .Bridge:       return "ACC_BRIDGE"
-    case .Varargs:      return "ACC_VARARGS"
-    case .Native:       return "ACC_NATIVE"
-    case .Abstract:     return "ACC_ABSTRACT"
-    case .Strict:       return "ACC_STRICT"
-    case .Synthetic:    return "ACC_SYNTHETIC"
-    case: panic("method_access_flag_to_str(): invalid args")
-    }
+@(private, rodata)
+method_access_flag_to_str := #sparse[MethodAccessFlagBit]string {
+    .Public       = "ACC_PUBLIC",
+    .Private      = "ACC_PRIVATE",
+    .Protected    = "ACC_PROTECTED",
+    .Static       = "ACC_STATIC",
+    .Final        = "ACC_FINAL",
+    .Synchronized = "ACC_SYNCHRONIZED",
+    .Bridge       = "ACC_BRIDGE",
+    .Varargs      = "ACC_VARARGS",
+    .Native       = "ACC_NATIVE",
+    .Abstract     = "ACC_ABSTRACT",
+    .Strict       = "ACC_STRICT",
+    .Synthetic    = "ACC_SYNTHETIC",
 }
 
 // A class field representation.

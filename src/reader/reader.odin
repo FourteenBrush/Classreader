@@ -249,6 +249,7 @@ read_flags :: proc(
 
 @(private, require_results)
 validate_flags :: proc(flags: $T/bit_set[$F; u16]) -> Error {
+    // TODO: verify that comparing with ~(T{}) works
     flags := transmute(u16) flags
 
     check_bit:
