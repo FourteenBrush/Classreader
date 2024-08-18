@@ -162,7 +162,9 @@ classfile_dump :: proc(using classfile: ClassFile) {
     for field in fields {
         field_info_dump(field, classfile)
     }
-    fmt.println()
+    if len(fields) > 0 {
+        fmt.println()
+    }
 
     constantpool_dump(classfile, constant_pool, constant_pool_count)
 
