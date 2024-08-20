@@ -2,6 +2,8 @@ package reader
 
 import "core:reflect"
 
+import "base:intrinsics"
+
 // An attribute that can be found in the ClassFile, FieldInfo, MethodInfo,
 // Code and RecordComponent structures.
 //
@@ -278,7 +280,7 @@ InnerClassEntry :: struct {
 InnerClassAccessFlag :: enum {
     Public     = 0x0001, 
     Private    = 0x0002, 
-    Proteced   = 0x0004, 
+    Protected  = 0x0004, 
     Static     = 0x0008, 
     Final      = 0x0010, 
     Interface  = 0x0200, 
@@ -292,16 +294,16 @@ InnerClassAccessFlags :: bit_set[InnerClassAccessFlagBit; u16]
 
 // Log 2's of InnerClassAccessFlag, for use within a bit_set.
 InnerClassAccessFlagBit :: enum u16 {
-    Public     = 0,
-    Private    = 1,
-    Protected  = 2,
-    Static     = 3,
-    Final      = 4,
-    Interface  = 9,
-    Abstract   = 10,
-    Synthetic  = 12,
-    Annotation = 13,
-    Enum       = 14,
+    Public     = LOG2(InnerClassAccessFlag.Public),
+    Private    = LOG2(InnerClassAccessFlag.Private),
+    Protected  = LOG2(InnerClassAccessFlag.Protected),
+    Static     = LOG2(InnerClassAccessFlag.Static),
+    Final      = LOG2(InnerClassAccessFlag.Final),
+    Interface  = LOG2(InnerClassAccessFlag.Interface),
+    Abstract   = LOG2(InnerClassAccessFlag.Abstract),
+    Synthetic  = LOG2(InnerClassAccessFlag.Synthetic),
+    Annotation = LOG2(InnerClassAccessFlag.Annotation),
+    Enum       = LOG2(InnerClassAccessFlag.Enum),
 }
 
 // A class must have an EnclosingMethod attribute if and only if
@@ -769,9 +771,9 @@ MethodParameterAccessFlags :: bit_set[MethodParameterAccessFlagBit; u16]
 
 // Log 2's of MethodParameterAccessFlag, for use within a bit_set.
 MethodParameterAccessFlagBit :: enum {
-    Final     = 5,
-    Synthetic = 12,
-    Mandated  = 15,
+    Final     = LOG2(MethodParameterAccessFlag.Final),
+    Synthetic = LOG2(MethodParameterAccessFlag.Synthetic),
+    Mandated  = LOG2(MethodParameterAccessFlag.Mandated),
 }
 
 // Indicates the modules required by a module, the packages exported and opened,
@@ -813,9 +815,9 @@ ModuleFlags :: bit_set[ModuleFlagBit; u16]
 
 // Log 2's of a ModuleFlag, for use within a bit_set.
 ModuleFlagBit :: enum u16 {
-    Open      = 5,
-    Synthetic = 12,
-    Mandated  = 15,
+    Open      = LOG2(ModuleFlag.Open),
+    Synthetic = LOG2(ModuleFlag.Synthetic),
+    Mandated  = LOG2(ModuleFlag.Mandated),
 }
 
 // Specifies a dependence of the current module.
@@ -849,10 +851,10 @@ ModuleRequireFlags :: bit_set[ModuleRequireFlagBit; u16]
 
 // Log 2's of ModuleRequireFlag, for use within a bit_set.
 ModuleRequireFlagBit :: enum u16 {
-    Transitive  = 5,
-    StaticPhase = 6,
-    Synthetic   = 12,
-    Mandated    = 15,
+    Transitive  = LOG2(ModuleRequireFlag.Transitive),
+    StaticPhase = LOG2(ModuleRequireFlag.StaticPhase),
+    Synthetic   = LOG2(ModuleRequireFlag.Synthetic),
+    Mandated    = LOG2(ModuleRequireFlag.Mandated),
 }
 
 // Represents a package exported by the current module.
@@ -879,8 +881,8 @@ ModuleExportFlags :: bit_set[ModuleExportFlagBit; u16]
 
 // Log 2's of ModuleExportFlag, for use within a bit_set.
 ModuleExportFlagBit :: enum u16 {
-    Synthetic = 12,
-    Mandated  = 15,
+    Synthetic = LOG2(ModuleExportFlag.Synthetic),
+    Mandated  = LOG2(ModuleExportFlag.Mandated),
 }
 
 // A package opened by the current module.
@@ -903,8 +905,8 @@ ModuleOpensFlags :: bit_set[ModuleOpensFlagBit; u16]
 
 // Log 2's of ModuleOpensFlag, for use within a bit_set.
 ModuleOpensFlagBit :: enum u16 {
-    Synthetic = 12,
-    Mandated  = 15,
+    Synthetic = LOG2(ModuleOpensFlag.Synthetic),
+    Mandated  = LOG2(ModuleOpensFlag.Mandated),
 }
 
 // Represents a service implementation for a given service name.

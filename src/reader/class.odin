@@ -343,6 +343,9 @@ count_digits :: proc(x: u16) -> (count: u8) {
     return count
 }
 
+@(private)
+LOG2 :: intrinsics.constant_log2
+
 // Access flags for a ClassFile structure.
 ClassAccessFlag :: enum u16 {
     Public     = 0x0001,
@@ -360,15 +363,15 @@ ClassAccessFlags :: bit_set[ClassAccessFlagBit; u16]
 
 // Log 2's of ClassAccessFlag, for use within a bit_set.
 ClassAccessFlagBit :: enum u16 {
-    Public     = 0,
-    Final      = 4,
-    Super      = 5,
-    Interface  = 9,
-    Abstract   = 10,
-    Synthetic  = 12,
-    Annotation = 13,
-    Enum       = 14,
-    Module     = 15,
+    Public     = LOG2(ClassAccessFlag.Public),
+    Final      = LOG2(ClassAccessFlag.Final),
+    Super      = LOG2(ClassAccessFlag.Super),
+    Interface  = LOG2(ClassAccessFlag.Interface),
+    Abstract   = LOG2(ClassAccessFlag.Abstract),
+    Synthetic  = LOG2(ClassAccessFlag.Synthetic),
+    Annotation = LOG2(ClassAccessFlag.Annotation),
+    Enum       = LOG2(ClassAccessFlag.Enum),
+    Module     = LOG2(ClassAccessFlag.Module),
 }
 
 // Returns the uppercase representation of the respective flag passed.
@@ -456,15 +459,15 @@ FieldAccessFlags :: bit_set[FieldAccessFlagBit; u16]
 
 // Log 2's of FieldAccessFlag, for use within a bit_set.
 FieldAccessFlagBit :: enum u16 {
-    Public    = 0,
-    Private   = 1,
-    Protected = 2,
-    Static    = 3,
-    Final     = 4,
-    Volatile  = 6,
-    Transient = 7,
-    Synthetic = 12,
-    Enum      = 14,
+    Public    = LOG2(FieldAccessFlag.Public),
+    Private   = LOG2(FieldAccessFlag.Private),
+    Protected = LOG2(FieldAccessFlag.Protected),
+    Static    = LOG2(FieldAccessFlag.Static),
+    Final     = LOG2(FieldAccessFlag.Final),
+    Volatile  = LOG2(FieldAccessFlag.Volatile),
+    Transient = LOG2(FieldAccessFlag.Transient),
+    Synthetic = LOG2(FieldAccessFlag.Synthetic),
+    Enum      = LOG2(FieldAccessFlag.Enum),
 }
 
 field_info_dump :: proc(using field: FieldInfo, classfile: ClassFile) {
@@ -570,18 +573,18 @@ MethodAccessFlags :: bit_set[MethodAccessFlagBit; u16]
 
 // Log 2's of MethodAccessFlag, for use within a bit_set.
 MethodAccessFlagBit :: enum u16 {
-    Public       = 0,
-    Private      = 1,
-    Protected    = 2,
-    Static       = 3,
-    Final        = 4,
-    Synchronized = 5,
-    Bridge       = 6,
-    Varargs      = 7,
-    Native       = 8,
-    Abstract     = 10,
-    Strict       = 11,
-    Synthetic    = 12,
+    Public       = LOG2(MethodAccessFlag.Public),
+    Private      = LOG2(MethodAccessFlag.Private),
+    Protected    = LOG2(MethodAccessFlag.Protected),
+    Static       = LOG2(MethodAccessFlag.Static),
+    Final        = LOG2(MethodAccessFlag.Final),
+    Synchronized = LOG2(MethodAccessFlag.Synchronized),
+    Bridge       = LOG2(MethodAccessFlag.Bridge),
+    Varargs      = LOG2(MethodAccessFlag.Varargs),
+    Native       = LOG2(MethodAccessFlag.Native),
+    Abstract     = LOG2(MethodAccessFlag.Abstract),
+    Strict       = LOG2(MethodAccessFlag.Strict),
+    Synthetic    = LOG2(MethodAccessFlag.Synthetic),
 }
 
 method_info_dump :: proc(using method: MethodInfo, classfile: ClassFile) {
