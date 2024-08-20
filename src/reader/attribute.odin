@@ -526,7 +526,7 @@ TypeParameterBoundTarget :: struct {
 // Indicates that an annotation appears on either the type in a field or record
 // component declaration, the return type of a method, the type of a newly constructed
 // object, or the receiver of a method or constructor.
-EmptyTarget :: distinct struct {}
+EmptyTarget :: struct {}
 
 // Indicates that an annotation appears on the type of a formal parameter declaration
 // of a method, constructor or lambda expression.
