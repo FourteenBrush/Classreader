@@ -43,16 +43,9 @@ import "core:strings"
 
 MAX_ARRAY_DEPTH :: 255
 
+// NOTE: we are including < and > because <init> and <clinit> are not validated here
 @(private)
-unqualified_name_invalid_chars := get_binary_class_name_invalid_chars()
-
-@(private)
-get_binary_class_name_invalid_chars :: proc() -> strings.Ascii_Set {
-    // NOTE: we are including < and > because <init> and <clinit> are not validated here
-    set, ok := strings.ascii_set_make(".;[/<>")
-    assert(ok, "sanity check")
-    return set
-}
+unqualified_name_invalid_chars := strings.ascii_set_make(".:[/<>") or_else panic("sanity check")
 
 // FieldDescriptor = FieldType
 // FieldType = BaseType | ObjectType | ArrayType
@@ -105,7 +98,7 @@ is_valid_method_descriptor :: proc(desc: string) -> bool #no_bounds_check {
 // Inputs:
 //  s: an ObjectType with the 'L' and ';' stripped, e.g. "java/lang/Thread"
 // Caller must guarantee len(s) > 0
-@private
+@(private)
 is_valid_object_type :: proc(s: string) -> bool {
     for i in 0..<len(s) {
         switch s[i] {
