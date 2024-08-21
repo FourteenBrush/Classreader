@@ -6,6 +6,8 @@ import "base:intrinsics"
 import "core:encoding/endian"
 
 MAGIC :: 0xCAFEBABE
+MIN_MAJOR :: 45
+MAX_MAJOR :: 65
 
 ClassFileReader :: struct {
     bytes: []u8,
@@ -37,6 +39,9 @@ read_classfile :: proc(
     using classfile 
     minor_version = read_u16(reader) or_return
     major_version = read_u16(reader) or_return
+    if major_version < MIN_MAJOR || major_version > MAX_MAJOR {
+        return classfile, .InvalidMajorVersion
+    }
     constant_pool_count = read_u16(reader) or_return
     constant_pool = read_constant_pool(reader, constant_pool_count, allocator) or_return
 
@@ -61,6 +66,8 @@ Error :: enum {
     AllocatorError,
     // Magic number was not present in the file header
     InvalidHeader,
+    // Major version is not recognized.
+    InvalidMajorVersion,
     // Expected more bytes
     UnexpectedEof,
     // Constant pool index is invalid.
