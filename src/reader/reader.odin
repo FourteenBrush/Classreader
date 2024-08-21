@@ -297,7 +297,7 @@ read_attributes :: proc(
 
 @(private, require_results)
 read_attribute_info :: proc(
-    using reader: ^ClassFileReader, 
+    reader: ^ClassFileReader, 
     classfile: ClassFile, 
     allocator := context.allocator,
 ) -> (
@@ -308,7 +308,7 @@ read_attribute_info :: proc(
     length := read_u32(reader) or_return
     attrib_name := cp_get_str(classfile, name_idx)
 
-    if pos + int(length) > len(bytes) {
+    if reader.pos + int(length) > len(reader.bytes) {
         return attribute, .UnexpectedEof
     }
 
@@ -935,7 +935,7 @@ read_u16_slice :: proc(reader: ^ClassFileReader) -> (ret: []u16, err: Error) {
     return slice.reinterpret([]u16, bytes), .None
 }
 
-@private
+@(private)
 read_idx :: proc($E: typeid, reader: ^ClassFileReader) -> (ret: Ptr(E), err: Error)
 where intrinsics.type_is_variant_of(CPInfo, E) {
     idx := #force_inline read_u16(reader) or_return

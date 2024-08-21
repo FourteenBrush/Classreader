@@ -27,6 +27,7 @@ make_instruction_stream :: proc(codeblob: []u8) -> Stream {
     return Stream{codeblob, 0}
 }
 
+// Returns a stream of Instructions, will panic if a reserved instruction is being used.
 instruction_stream :: proc(stream: ^Stream) -> (instr: Instruction, ok: bool) {
     if stream.pos >= len(stream.codeblob) do return
 
@@ -35,7 +36,7 @@ instruction_stream :: proc(stream: ^Stream) -> (instr: Instruction, ok: bool) {
     operand_byte_count := find_operand_byte_count(instr.opcode, stream) or_return
 
     ensure_readable(stream, operand_byte_count) or_return
-    instr.operands = stream.codeblob[stream.pos:][:operand_byte_count]
+    #no_bounds_check instr.operands = stream.codeblob[stream.pos:][:operand_byte_count]
 
     stream.pos += uint(operand_byte_count)
     return instr, true

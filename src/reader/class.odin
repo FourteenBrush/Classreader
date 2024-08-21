@@ -50,35 +50,35 @@ ClassFile :: struct {
 }
 
 // ClassFile destructor.
-classfile_destroy :: proc(using classfile: ClassFile, allocator := context.allocator) {
+classfile_destroy :: proc(classfile: ClassFile, allocator := context.allocator) {
     // recursively apply provided allocator
     context.allocator = allocator
-    for field in fields do attributes_destroy(field.attributes)
-    for method in methods do attributes_destroy(method.attributes)
-    attributes_destroy(attributes) 
+    for field in classfile.fields do attributes_destroy(field.attributes)
+    for method in classfile.methods do attributes_destroy(method.attributes)
+    attributes_destroy(classfile.attributes) 
 
-    delete(constant_pool)
-    delete(fields)
-    delete(methods)
+    delete(classfile.constant_pool)
+    delete(classfile.fields)
+    delete(classfile.methods)
 }
 
 // Returns the name of the given class, as how it is found in the constantpool.
-classfile_get_class_name :: proc(using classfile: ClassFile) -> string {
-    class := cp_get(classfile, this_class)
+classfile_get_class_name :: proc(classfile: ClassFile) -> string {
+    class := cp_get(classfile, classfile.this_class)
     return cp_get_str(classfile, class.name_idx)
 }
 
 // Returns the name of the super class, or "java/lang/Object" 
 // if there was no explicit superclass.
-classfile_get_super_class_name :: proc(using classfile: ClassFile) -> string {
-    if super_class.idx == 0 do return "java/lang/Object"
-    class := cp_get(classfile, super_class)
+classfile_get_super_class_name :: proc(classfile: ClassFile) -> string {
+    if classfile.super_class.idx == 0 do return "java/lang/Object"
+    class := cp_get(classfile, classfile.super_class)
     return cp_get_str(classfile, class.name_idx)
 }
 
 // Attempts to find a FieldInfo with the given field name.
-classfile_find_field :: proc(using classfile: ClassFile, name: string) -> Maybe(FieldInfo) {
-    for field in fields {
+classfile_find_field :: proc(classfile: ClassFile, name: string) -> Maybe(FieldInfo) {
+    for field in classfile.fields {
         field_name := cp_get_str(classfile, field.name_idx)
         if field_name == name do return field
     }
@@ -86,8 +86,8 @@ classfile_find_field :: proc(using classfile: ClassFile, name: string) -> Maybe(
 }
 
 // Attempts to find a MethodInfo with the given method name.
-classfile_find_method :: proc(using classfile: ClassFile, name: string) -> Maybe(MethodInfo) {
-    for method in methods {
+classfile_find_method :: proc(classfile: ClassFile, name: string) -> Maybe(MethodInfo) {
+    for method in classfile.methods {
         method_name := cp_get_str(classfile, method.name_idx)
         if method_name == name do return method
     } 
@@ -96,9 +96,9 @@ classfile_find_method :: proc(using classfile: ClassFile, name: string) -> Maybe
 
 // TODO: also apply on other attribute containers
 // Finds the first occurence of the given attribute type.
-classfile_find_attribute :: proc(using classfile: ClassFile, $T: typeid) -> Maybe(T)
+classfile_find_attribute :: proc(classfile: ClassFile, $T: typeid) -> Maybe(T)
 where intrinsics.type_is_variant_of(AttributeInfo, T) {
-    for attribute in attributes {
+    for attribute in classfile.attributes {
         return attribute.(T) or_continue
     }
     return nil
@@ -113,11 +113,11 @@ where intrinsics.type_is_variant_of(AttributeInfo, T) {
 }
 
 cp_find :: proc(
-    using classfile: ClassFile,
+    classfile: ClassFile,
     $E: typeid,
     predicate: proc(ClassFile, E) -> bool,
 ) -> Maybe(E) where intrinsics.type_is_variant_of(CPInfo, E) {
-    for entry in constant_pool {
+    for entry in classfile.constant_pool {
         entry := entry.info.(E) or_continue
         if predicate(classfile, entry) {
             return entry
@@ -128,22 +128,24 @@ cp_find :: proc(
 
 // Returns a string stored within the constantpool.
 // Panics if the entry at that index is not a ConstantUtf8Info.
-cp_get_str :: proc(using classfile: ClassFile, ptr: Ptr(ConstantUtf8Info)) -> string {
+cp_get_str :: proc(classfile: ClassFile, ptr: Ptr(ConstantUtf8Info)) -> string {
     return string(cp_get(classfile, ptr).bytes)
 }
 
 // Returns the constantpool entry stored at the given index.
 // Panics if idx is invalid or the expected and actual type differ.
-cp_get :: proc(using classfile: ClassFile, ptr: Ptr($E)) -> E
+cp_get :: proc(classfile: ClassFile, ptr: Ptr($E)) -> E
 where intrinsics.type_is_variant_of(CPInfo, E) {
-    return constant_pool[ptr.idx - 1].info.(E)
+    return classfile.constant_pool[ptr.idx - 1].info.(E)
 }
 
 // An alternative to cp_get(), with safe semantics.
-cp_get_safe :: proc(using classfile: ClassFile, ptr: Ptr($E)) -> (E, Error)
+cp_get_safe :: proc(classfile: ClassFile, ptr: Ptr($E)) -> (E, Error)
 where intrinsics.type_is_variant_of(CPInfo, E) {
-    if idx - 1 <= 0 || idx - 1 > constant_pool_count do return {}, .InvalidCPIndex
-    entry, ok := constant_pool[idx - 1].info.(E)
+    if idx - 1 <= 0 || idx - 1 > classfile.constant_pool_count {
+        return {}, .InvalidCPIndex
+    }
+    #no_bounds_check entry, ok := classfile.constant_pool[idx - 1].info.(E)
     if !ok do return entry, .WrongCPType
     return entry, .None
 }
@@ -159,10 +161,10 @@ classfile_dump :: proc(using classfile: ClassFile) {
     access_flags_dump(access_flags)
     fmt.println()
 
-    for field in fields {
-        field_info_dump(field, classfile)
-    }
     if len(fields) > 0 {
+        for field in fields {
+            field_info_dump(field, classfile)
+        }
         fmt.println()
     }
 
@@ -170,7 +172,9 @@ classfile_dump :: proc(using classfile: ClassFile) {
 
     if len(attributes) > 0 {
         fmt.println("Attributes:")
-        for attrib in attributes do fmt.println(" ", attribute_to_str(attrib))
+        for attrib in attributes {
+            fmt.println(" ", attribute_to_str(attrib))
+        }
     }
 }
 
@@ -223,8 +227,7 @@ major_version_to_str :: proc(major: u16) -> string {
     case 47: return "JDK 1.3"
     case 46: return "JDK 1.2"
     case 45: return "JDK 1.1"
-    // FIXME: probably want to apply verification before this gets reached
-    case: return "<unknown version>"
+    case: unreachable()
     }
 }
 
@@ -296,17 +299,17 @@ cp_entry_dump :: proc(classfile: ClassFile, cp_info: ConstantPoolEntry) {
         descriptor := cp_get_str(classfile, cp_info.descriptor_idx)
         fmt.println(descriptor)
     case ConstantDynamicInfo:
-        using name_and_type := cp_get(classfile, cp_info.name_and_type_idx)
-        method_name := cp_get_str(classfile, name_idx)
-        method_descriptor := cp_get_str(classfile, descriptor_idx)
+        name_and_type := cp_get(classfile, cp_info.name_and_type_idx)
+        method_name := cp_get_str(classfile, name_and_type.name_idx)
+        method_descriptor := cp_get_str(classfile, name_and_type.descriptor_idx)
         fmt.printfln(
             "#%v:%v:%v", 
             cp_info.bootstrap_method_attr_idx, method_name, method_descriptor,
         )
     case ConstantInvokeDynamicInfo:
-        using name_and_type := cp_get(classfile, cp_info.name_and_type_idx)
-        method_name := cp_get_str(classfile, name_idx)
-        method_descriptor := cp_get_str(classfile, descriptor_idx)
+        name_and_type := cp_get(classfile, cp_info.name_and_type_idx)
+        method_name := cp_get_str(classfile, name_and_type.name_idx)
+        method_descriptor := cp_get_str(classfile, name_and_type.descriptor_idx)
         fmt.printfln(
             "#%v:%v:%v", 
             cp_info.bootstrap_method_attr_idx, method_name, method_descriptor,
@@ -320,17 +323,17 @@ cp_entry_dump :: proc(classfile: ClassFile, cp_info: ConstantPoolEntry) {
     }
 }
 
-@private
-ref_dump :: proc(using classfile: ClassFile, using field_ref: ConstantFieldRefInfo) {
-    class_name_idx := cp_get(classfile, class_idx).name_idx
+@(private)
+ref_dump :: proc(classfile: ClassFile, field_ref: ConstantFieldRefInfo) {
+    class_name_idx := cp_get(classfile, field_ref.class_idx).name_idx
     class_name := cp_get_str(classfile, class_name_idx)
-    name_and_type := cp_get(classfile, name_and_type_idx)
+    name_and_type := cp_get(classfile, field_ref.name_and_type_idx)
     field_or_method_name := cp_get_str(classfile, name_and_type.name_idx)
     
     fmt.println(class_name, field_or_method_name, sep=".")
 }
 
-@private
+@(private)
 count_digits :: proc(x: u16) -> (count: u8) {
     if x == 0 do return 1
 
@@ -470,21 +473,21 @@ FieldAccessFlagBit :: enum u16 {
     Enum      = LOG2(FieldAccessFlag.Enum),
 }
 
-field_info_dump :: proc(using field: FieldInfo, classfile: ClassFile) {
-    if .Private in access_flags do fmt.print("private ")
-    else if .Protected in access_flags do fmt.print("protected ")
-    else if .Public in access_flags do fmt.print("public ")
+field_info_dump :: proc(field: FieldInfo, classfile: ClassFile) {
+    if .Private in field.access_flags do fmt.print("private ")
+    else if .Protected in field.access_flags do fmt.print("protected ")
+    else if .Public in field.access_flags do fmt.print("public ")
 
-    if .Static in access_flags do fmt.print("static ")
-    if .Final in access_flags do fmt.print("final ")
+    if .Static in field.access_flags do fmt.print("static ")
+    if .Final in field.access_flags do fmt.print("final ")
 
-    descriptor := cp_get_str(classfile, descriptor_idx)
-    name := cp_get_str(classfile, name_idx)
+    descriptor := cp_get_str(classfile, field.descriptor_idx)
+    name := cp_get_str(classfile, field.name_idx)
 
     fmt.print(field_descriptor_to_str(descriptor, context.temp_allocator), name)
     fmt.println(";\n  descriptor:", descriptor)
-    fmt.printf("  flags: (0x%4x) ", access_flags)
-    access_flags_dump(access_flags)
+    fmt.printf("  flags: (0x%4x) ", field.access_flags)
+    access_flags_dump(field.access_flags)
 }
 
 // Returns a human readable version of a field descriptor.
