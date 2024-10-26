@@ -5,7 +5,7 @@ vars:
   OUT_NAME: "classreader"
   COLLECTIONS: >-
     "-collection:back=dependencies/back"
-  CHECK_FLAGS: "{{.COLLECTIONS}} -strict-style"
+  CHECK_FLAGS: "{{.COLLECTIONS}} -strict-style -vet-cast -vet-using-stmt"
   FLAGS: "-out:{{.OUT_NAME}} {{.CHECK_FLAGS}}"
   DEBUG_FLAGS: "-debug -use-separate-modules"
 

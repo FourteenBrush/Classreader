@@ -5,7 +5,7 @@
     "enable_hover": true,
     "enable_snippets": true,
     "sort_imports": false,
-    "checker_args": "-strict-style -vet-unused -debug",
+    "checker_args": "-strict-style -vet-unused -debug -vet-cast -vet-using-stmt",
     "collections": [
         { "name": "back", "path": "dependencies/back" }
     ]
