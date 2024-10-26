@@ -1,7 +1,6 @@
 package reader
 
 import "core:mem"
-import "core:slice"
 import "base:intrinsics"
 import "core:encoding/endian"
 
@@ -36,23 +35,22 @@ read_classfile :: proc(
     magic := read_u32(reader) or_return
     if magic != MAGIC do return classfile, .InvalidHeader
 
-    using classfile 
-    minor_version = read_u16(reader) or_return
-    major_version = read_u16(reader) or_return
-    if major_version < MIN_MAJOR || major_version > MAX_MAJOR {
+    classfile.minor_version = read_u16(reader) or_return
+    classfile.major_version = read_u16(reader) or_return
+    if classfile.major_version < MIN_MAJOR || classfile.major_version > MAX_MAJOR {
         return classfile, .InvalidMajorVersion
     }
-    constant_pool_count = read_u16(reader) or_return
-    constant_pool = read_constant_pool(reader, constant_pool_count, allocator) or_return
+    classfile.constant_pool_count = read_u16(reader) or_return
+    classfile.constant_pool = read_constant_pool(reader, classfile.constant_pool_count, allocator) or_return
 
-    access_flags = read_flags(reader, ClassAccessFlags) or_return
-    this_class = read_idx(ConstantClassInfo, reader) or_return
-    super_class = read_idx(ConstantClassInfo, reader) or_return
+    classfile.access_flags = read_flags(reader, ClassAccessFlags) or_return
+    classfile.this_class = read_idx(ConstantClassInfo, reader) or_return
+    classfile.super_class = read_idx(ConstantClassInfo, reader) or_return
 
-    interfaces = read_indices(ConstantClassInfo, reader) or_return
-    fields = read_fields(reader, classfile, allocator) or_return
-    methods = read_methods(reader, classfile, allocator) or_return
-    attributes = read_attributes(reader, classfile, allocator) or_return
+    classfile.interfaces = read_indices(ConstantClassInfo, reader) or_return
+    classfile.fields = read_fields(reader, classfile, allocator) or_return
+    classfile.methods = read_methods(reader, classfile, allocator) or_return
+    classfile.attributes = read_attributes(reader, classfile, allocator) or_return
     return
 }
 
@@ -256,20 +254,12 @@ read_flags :: proc(
 
 @(private, require_results)
 validate_flags :: proc(flags: $T/bit_set[$F; u16]) -> Error {
-    // TODO: verify that comparing with ~(T{}) works
-    flags := transmute(u16) flags
-
-    check_bit:
-    for bit in 0..<uint(16) {
-        is_set := flags & (1 << bit) != 0
-        if !is_set do continue
-
-        for flag in F {
-            if bit == uint(flag) do continue check_bit
+    check: for flag in flags {
+        for f in F {
+            if flag == f do continue check
         }
         return .InvalidAccessFlags
     }
-
     return .None
 }
 
@@ -305,8 +295,10 @@ read_attribute_info :: proc(
     err: Error,
 ) {
     name_idx := read_idx(ConstantUtf8Info, reader) or_return
+    //fmt.println(name_idx.idx, classfile.constant_pool_count)
     length := read_u32(reader) or_return
     attrib_name := cp_get_str(classfile, name_idx)
+    //fmt.println("reading attrib", attrib_name)
 
     if reader.pos + int(length) > len(reader.bytes) {
         return attribute, .UnexpectedEof
@@ -378,7 +370,7 @@ read_attribute_info :: proc(
         debug_extension := unchecked_read_nbytes(reader, length)
         attribute = SourceDebugExtension { string(debug_extension) }
     case "LineNumberTable":
-        // TODO: slice.reinterpret?
+        // TODO: mem.slice_data_cast?
         table := alloc_slice(reader, []LineNumberTableEntry, allocator) or_return
 
         for &entry in table {
@@ -667,26 +659,25 @@ read_element_value :: proc(
     err: Error,
 ) {
     element_value_tag := read_u8(reader) or_return
-    using element_value 
 
     switch element_value_tag {
     case 'B', 'C', 'D', 'F', 'I', 'J', 'S', 'Z', 's':
-        value = ConstValueIdx(read_u16(reader) or_return)
+        element_value.value = ConstValueIdx(read_u16(reader) or_return)
     case 'e':
         type_name_idx := read_idx(ConstantUtf8Info, reader) or_return
         const_name_idx := read_idx(ConstantUtf8Info, reader) or_return
-        value = EnumConstValue { type_name_idx, const_name_idx }
+        element_value.value = EnumConstValue { type_name_idx, const_name_idx }
     case 'c':
         class_info_idx := read_u16(reader) or_return
-        value = ClassInfoIdx(class_info_idx)
+        element_value.value = ClassInfoIdx(class_info_idx)
     case '@':
-        value = read_annotation(reader) or_return
+        element_value.value = read_annotation(reader) or_return
     case '[':
         values := alloc_slice(reader, []ElementValue, allocator) or_return
         for &value in values {
             value = read_element_value(reader, allocator) or_return
         }
-        value = ArrayValue { values }
+        element_value.value = ArrayValue { values }
     case:
         return element_value, .UnknownElementValueTag
     }
@@ -759,7 +750,7 @@ read_type_annotations :: proc(
     err: Error,
 ) {
     type_annotations = alloc_slice(reader, []TypeAnnotation, allocator) or_return
-    for &annotation in type_annotations {
+    for &type_annotation in type_annotations {
         target_type := TargetType(read_u8(reader) or_return)
         target_info: TargetInfo
 
@@ -819,7 +810,7 @@ read_type_annotations :: proc(
         }
 
         path := alloc_slice(reader, []PathEntry, allocator) or_return
-        for &path in path {
+        for &path_entry in path {
             path_kind := PathKind(read_u8(reader) or_return)
             type_argument_idx: u8
 
@@ -836,19 +827,17 @@ read_type_annotations :: proc(
                 return type_annotations, .InvalidPathKind
             }
 
-            path = PathEntry { path_kind, type_argument_idx }
+            path_entry = PathEntry { path_kind, type_argument_idx }
         }
 
         target_path := TypePath { path }
-        type_idx := read_idx(ConstantUtf8Info, reader) or_return
-        element_value_pairs := read_element_value_pairs(reader, allocator) or_return
+        annotation := read_annotation(reader, allocator) or_return
 
-        annotation = TypeAnnotation {
+        type_annotation = TypeAnnotation {
             target_type,
             target_info,
             target_path,
-            type_idx,
-            element_value_pairs,
+            annotation,
         }
     }
 
@@ -886,7 +875,16 @@ alloc_slice :: proc(
 ) {
     length := read_u16(reader) or_return
     alloc_err: mem.Allocator_Error
-    ret, alloc_err = make(T, length, allocator, loc)
+    // TODO: non-zeroed slice in non debug mode
+    when true {
+        ret, alloc_err = make(T, length, allocator, loc)
+    } else {
+        bytes: []u8 = ---
+        bytes, alloc_err = mem.alloc_bytes_non_zeroed(int(length), align_of(T), allocator, loc)
+        ret = mem.slice_data_cast(T, bytes)
+        //mem.zero_slice(bytes)
+    }
+    //ret, alloc_err = make(T, length, allocator, loc)
 
     if alloc_err != .None do return ret, .AllocatorError
     return ret, .None
@@ -900,6 +898,8 @@ read_u8 :: proc(using reader: ^ClassFileReader) -> (u8, Error) {
     defer pos += 1
     #no_bounds_check return bytes[pos], .None
 }
+
+// TODO: determine impact of calls into encoding/endian vs inlining these manually
 
 @(private, require_results)
 read_u16 :: proc(using reader: ^ClassFileReader) -> (u16, Error) {
@@ -932,7 +932,7 @@ read_nbytes :: proc(using reader: ^ClassFileReader, #any_int n: int) -> ([]u8, E
 read_u16_slice :: proc(reader: ^ClassFileReader) -> (ret: []u16, err: Error) {
     elem_count := read_u16(reader) or_return
     bytes := read_nbytes(reader, elem_count * size_of(u16)) or_return
-    return slice.reinterpret([]u16, bytes), .None
+    return mem.slice_data_cast([]u16, bytes), .None
 }
 
 @(private)
@@ -948,7 +948,7 @@ read_indices :: proc($E: typeid, reader: ^ClassFileReader) -> (ret: []Ptr(E), er
 where intrinsics.type_is_variant_of(CPInfo, E) {
     elem_count := read_u16(reader) or_return
     bytes := read_nbytes(reader, elem_count * size_of(u16)) or_return
-    return slice.reinterpret([]Ptr(E), bytes), .None
+    return mem.slice_data_cast([]Ptr(E), bytes), .None
 }
 
 // -------------------------------------------------- 
@@ -977,7 +977,7 @@ unchecked_read_nbytes :: proc(using reader: ^ClassFileReader, #any_int n: int) -
 unchecked_read_u16_slice :: proc(reader: ^ClassFileReader) -> []u16 {
     elem_count := unchecked_read_u16(reader)
     bytes := unchecked_read_nbytes(reader, elem_count * size_of(u16))
-    return slice.reinterpret([]u16, bytes)
+    return mem.slice_data_cast([]u16, bytes)
 }
 
 @(private, require_results)
@@ -993,5 +993,5 @@ unchecked_read_indices :: proc($E: typeid, reader: ^ClassFileReader) -> []Ptr(E)
 where intrinsics.type_is_variant_of(CPInfo, E) {
     elem_count := unchecked_read_u16(reader)
     bytes := unchecked_read_nbytes(reader, elem_count * size_of(u16))
-    return slice.reinterpret([]Ptr(E), bytes)
+    return mem.slice_data_cast([]Ptr(E), bytes)
 }
