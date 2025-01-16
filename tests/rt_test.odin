@@ -45,8 +45,8 @@ test_java_stdlib :: proc(t: ^testing.T) {
 }
 
 @(private)
-visit_file :: proc(file: os.File_Info, in_err: os.Errno, user_data: rawptr) -> (err: os.Errno, skip_dir: bool) {
-    if in_err != 0 do return
+visit_file :: proc(file: os.File_Info, in_err: os.Error, user_data: rawptr) -> (err: os.Error, skip_dir: bool) {
+    if in_err != nil do return
 
     data := os.read_entire_file(file.fullpath) or_return
     defer delete(data)

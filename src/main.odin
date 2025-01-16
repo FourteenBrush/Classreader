@@ -36,7 +36,6 @@ main :: proc() {
 	}
 	defer delete(data)
 
-
 	creader := reader.reader_new(data)
 	classfile, cerr := reader.read_classfile(&creader)
 	defer reader.classfile_destroy(classfile)

@@ -11,7 +11,7 @@ ClassFile :: struct {
     major_version: u16,
     // Amount of actual entries.
     constant_pool_count: u16,
-    // The constant pool reserves the first entry as absent, we don't
+    // The constant pool reserves the first entry as absent, we don't.
     // So any accesses of the constant pool should offset the index by -1.
     // Indices valid from 0 to constant_pool_count - 2.
     // Interaction with the constant pool should happen with the appropriate cp_get() procedure.
@@ -51,7 +51,6 @@ ClassFile :: struct {
 
 // ClassFile destructor.
 classfile_destroy :: proc(classfile: ClassFile, allocator := context.allocator) {
-    // recursively apply provided allocator
     context.allocator = allocator
     for field in classfile.fields do attributes_destroy(field.attributes)
     for method in classfile.methods do attributes_destroy(method.attributes)
@@ -128,66 +127,70 @@ cp_find :: proc(
 
 // Returns a string stored within the constantpool.
 // Panics if the entry at that index is not a ConstantUtf8Info.
-cp_get_str :: proc(classfile: ClassFile, ptr: Ptr(ConstantUtf8Info)) -> string {
-    return string(cp_get(classfile, ptr).bytes)
+cp_get_str :: proc(classfile: ClassFile, ptr: Ptr(ConstantUtf8Info), loc := #caller_location) -> string {
+    return string(cp_get(classfile, ptr, loc).bytes)
 }
 
 // Returns the constantpool entry stored at the given index.
 // Panics if idx is invalid or the expected and actual type differ.
-cp_get :: proc(classfile: ClassFile, ptr: Ptr($E)) -> E
+cp_get :: proc(classfile: ClassFile, ptr: Ptr($E), loc := #caller_location) -> E
 where intrinsics.type_is_variant_of(CPInfo, E) {
     return classfile.constant_pool[ptr.idx - 1].info.(E)
 }
 
 // An alternative to cp_get(), with safe semantics.
+// TODO: never gets used
 cp_get_safe :: proc(classfile: ClassFile, ptr: Ptr($E)) -> (E, Error)
 where intrinsics.type_is_variant_of(CPInfo, E) {
-    if idx - 1 <= 0 || idx - 1 > classfile.constant_pool_count {
+    if ptr.idx == 1 || ptr.idx > classfile.constant_pool_count + 1 {
         return {}, .InvalidCPIndex
     }
-    #no_bounds_check entry, ok := classfile.constant_pool[idx - 1].info.(E)
+    #no_bounds_check entry, ok := classfile.constant_pool[ptr.idx - 1].info.(E)
     if !ok do return entry, .WrongCPType
     return entry, .None
 }
 
 // TODO: take in configuration options, e.g. verbosity
 // Dumps a ClassFile to the stdout.
-classfile_dump :: proc(using classfile: ClassFile) {
+classfile_dump :: proc(classfile: ClassFile) {
     fmt.println("Class name:", classfile_get_class_name(classfile))
 
-    version_str := major_version_to_str(major_version)
-    fmt.printfln("Version: minor=%v, major=%v (%v)", minor_version, major_version, version_str)
-    fmt.printf("Access flags: 0x%4x ", access_flags)
-    access_flags_dump(access_flags)
-    fmt.println()
+    version_str := major_version_to_str(classfile.major_version)
+    fmt.printfln(
+        "Version: minor=%v, major=%v (%v)",
+        classfile.minor_version, classfile.major_version, version_str,
+    )
+    fmt.printf("Access flags: 0x%4x ", classfile.access_flags)
+    access_flags_dump(classfile.access_flags)
+    // TODO: always prints 0?
+    fmt.printfln(
+        "Interfaces: %d, fields: %d, methods: %d, attributes: %d\n",
+        len(classfile.interfaces), len(classfile.fields), len(classfile.methods), len(classfile.attributes),
+    )
 
-    if len(fields) > 0 {
-        for field in fields {
+    if len(classfile.fields) > 0 {
+        for field in classfile.fields {
             field_info_dump(field, classfile)
         }
         fmt.println()
     }
 
-    constantpool_dump(classfile, constant_pool, constant_pool_count)
+    constantpool_dump(classfile)
 
-    if len(attributes) > 0 {
+    if len(classfile.attributes) > 0 {
         fmt.println("Attributes:")
-        for attrib in attributes {
+        for attrib in classfile.attributes {
             fmt.println(" ", attribute_to_str(attrib))
         }
     }
 }
 
-constantpool_dump :: proc(
-    classfile: ClassFile, 
-    constant_pool: []ConstantPoolEntry,
-    constant_pool_count: u16,
-) {
-    i := u16(1) 
-    max_idx_width := count_digits(constant_pool_count)
+constantpool_dump :: proc(classfile: ClassFile) {
+    max_idx_width := count_digits(classfile.constant_pool_count)
     fmt.println("Constant pool:")
 
-    for entry in constant_pool {
+    i := u16(1) 
+    for entry in classfile.constant_pool {
         defer i += 1
         if entry.info == nil do continue // skip unusable entry
 
@@ -227,7 +230,7 @@ major_version_to_str :: proc(major: u16) -> string {
     case 47: return "JDK 1.3"
     case 46: return "JDK 1.2"
     case 45: return "JDK 1.1"
-    case: unreachable()
+    case: panic("TODO: support java 21+ class file versions")
     }
 }
 
@@ -237,8 +240,7 @@ access_flags_dump :: proc(flags: $E/bit_set[$F; u16])
     where E == ClassAccessFlags || E == FieldAccessFlags || E == MethodAccessFlags {
     first := true
 
-    for flag in F {
-        if flag not_in flags do continue 
+    for flag in flags {
         str := access_flag_to_str(flag)
 
         if first {

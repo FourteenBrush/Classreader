@@ -103,9 +103,9 @@ attributes_destroy :: proc(attributes: []AttributeInfo, allocator := context.all
 // AttributeInfo destructor.
 attribute_destroy :: proc(attrib: AttributeInfo, allocator := context.allocator) {
     context.allocator = allocator
-    #partial switch &attrib in attrib {
+    #partial switch attrib in attrib {
     case Code:
-        delete(attrib.exception_table, allocator)
+        delete(attrib.exception_table)
         attributes_destroy(attrib.attributes)
     case StackMapTable:
         for frame in attrib.frames {
@@ -145,7 +145,7 @@ attribute_destroy :: proc(attrib: AttributeInfo, allocator := context.allocator)
 
 element_value_destroy :: proc(value: ElementValueInner, allocator := context.allocator) {
     context.allocator = allocator
-    #partial switch &value in value {
+    #partial switch value in value {
     case Annotation:
         annotation_destroy(value)
     case ArrayValue:
@@ -379,7 +379,7 @@ LocalVariableTypeTable :: struct {
 }
 
 // See LocalVariableTypeTable.
-// TODO: this could be an alias for LocalVariableTableEntry
+// FIXME: this could be an alias for LocalVariableTableEntry
 LocalVariableTypeTableEntry :: struct {
     start_pc: u16,
     length: u16,
@@ -417,7 +417,7 @@ RuntimeInvisibleTypeAnnotations :: struct {
     annotations: []TypeAnnotation, 
 }
 
-// TODO: aliases?
+// FIXME: aliases?
 
 // Records run-time-visible parameter annotations of the corresponding MethodInfo.
 RuntimeVisibleParameterAnnotations :: struct {
@@ -437,6 +437,7 @@ Annotation :: struct {
     // Points to a ConstantUtf8Info, representing a field descriptor 
     // for the annotation type.
     type_idx: Ptr(ConstantUtf8Info),
+    // A list of element-value pairs in the annotation.
     element_value_pairs: []ElementValuePair,
 }
 
@@ -445,10 +446,11 @@ Annotation :: struct {
 TypeAnnotation :: struct {
     // Denotes the kind of target on which the annotation appears.
     target_type: TargetType,
+    // Denotes which which type in a declaration or expression is annotated.
     target_info: TargetInfo,
+    // Denotes precisely which part of the type indicated by target_info is indicated.
     target_path: TypePath,
-    type_idx: Ptr(ConstantUtf8Info),
-    element_value_pairs: []ElementValuePair,
+    using annotation: Annotation,
 }
 
 // https://docs.oracle.com/javase/specs/jvms/se21/html/jvms-4.html#jvms-4.7.20-400
