@@ -67,8 +67,3 @@ Constant pool:
 Attributes:
   SourceFile
 ```
-
-## Building the project
-
-- Make sure you got the [Task build system](https://taskfile.dev/installation/) and the [Odin compiler](https://odin-lang.org/docs/install/) installed.
-- Build with `task` or run `task -l` to show all available options
