@@ -73,8 +73,6 @@ read_classfile :: proc(
 Error :: enum {
     // No error
     None,
-    // Some generic IO error
-    IO,
     // Provided allocator returned a mem.Allocator_Error
     AllocatorError,
     // Magic number was not present in the file header
