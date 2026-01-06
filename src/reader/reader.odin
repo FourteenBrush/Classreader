@@ -904,39 +904,39 @@ alloc_slice :: proc(
 }
 
 @(private, require_results)
-read_u8 :: proc(using reader: ^ClassFileReader) -> (u8, Error) {
-    if pos >= len(bytes) {
+read_u8 :: proc(r: ^ClassFileReader) -> (u8, Error) {
+    if r.pos >= len(r.bytes) {
         return 0, .UnexpectedEof
     }
-    defer pos += 1
-    #no_bounds_check return bytes[pos], .None
+    defer r.pos += 1
+    #no_bounds_check return r.bytes[r.pos], .None
 }
 
 // TODO: determine impact of calls into encoding/endian vs inlining these manually
 
 @(private, require_results)
-read_u16 :: proc(using reader: ^ClassFileReader) -> (u16, Error) {
-    ret, ok := endian.get_u16(bytes[pos:], .Big)
+read_u16 :: proc(r: ^ClassFileReader) -> (u16, Error) {
+    ret, ok := endian.get_u16(r.bytes[r.pos:], .Big)
     if !ok do return ret, .UnexpectedEof
-    pos += 2
+    r.pos += 2
     return ret, .None
 }
 
 @(private, require_results)
-read_u32 :: proc(using reader: ^ClassFileReader) -> (u32, Error) {
-    ret, ok := endian.get_u32(bytes[pos:], .Big)
+read_u32 :: proc(r: ^ClassFileReader) -> (u32, Error) {
+    ret, ok := endian.get_u32(r.bytes[r.pos:], .Big)
     if !ok do return ret, .UnexpectedEof
-    pos += 4
+    r.pos += 4
     return ret, .None
 }
 
 @(private, require_results)
-read_nbytes :: proc(using reader: ^ClassFileReader, #any_int n: int) -> ([]u8, Error) { 
-    if pos + n > len(bytes) {
+read_nbytes :: proc(r: ^ClassFileReader, #any_int n: int) -> ([]u8, Error) { 
+    if r.pos + n > len(r.bytes) {
         return nil, .UnexpectedEof
     }
-    defer pos += n
-    #no_bounds_check return bytes[pos:][:n], .None
+    defer r.pos += n
+    #no_bounds_check return r.bytes[r.pos:][:n], .None
 }
 
 // Reads a slice of u16s, the length is prepended as a u16 before the actual data.
@@ -969,21 +969,21 @@ where intrinsics.type_is_variant_of(CPInfo, E) {
 // -------------------------------------------------- 
 
 @(private, require_results)
-unchecked_read_u16 :: proc(using reader: ^ClassFileReader) -> u16 {
-    defer pos += 2
-    return endian.unchecked_get_u16be(bytes[pos:])
+unchecked_read_u16 :: proc(r: ^ClassFileReader) -> u16 {
+    defer r.pos += 2
+    return endian.unchecked_get_u16be(r.bytes[r.pos:])
 }
 
 @(private, require_results)
-unchecked_read_u32 :: proc(using reader: ^ClassFileReader) -> u32 {
-    defer pos += 4
-    return endian.unchecked_get_u32be(bytes[pos:])
+unchecked_read_u32 :: proc(r: ^ClassFileReader) -> u32 {
+    defer r.pos += 4
+    return endian.unchecked_get_u32be(r.bytes[r.pos:])
 }
 
 @(private, require_results)
-unchecked_read_nbytes :: proc(using reader: ^ClassFileReader, #any_int n: int) -> []u8 {
-    defer pos += n
-    #no_bounds_check return bytes[pos:][:n]
+unchecked_read_nbytes :: proc(r: ^ClassFileReader, #any_int n: int) -> []u8 {
+    defer r.pos += n
+    #no_bounds_check return r.bytes[r.pos:][:n]
 }
 
 @(private, require_results)

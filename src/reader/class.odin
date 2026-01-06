@@ -592,16 +592,16 @@ MethodAccessFlagBit :: enum u16 {
     Synthetic    = LOG2(MethodAccessFlag.Synthetic),
 }
 
-method_info_dump :: proc(using method: MethodInfo, classfile: ClassFile) {
-    if .Private in access_flags do fmt.print("private ")
-    else if .Protected in access_flags do fmt.print("protected ")
-    else if .Public in access_flags do fmt.println("public ")
+method_info_dump :: proc(method: MethodInfo, classfile: ClassFile) {
+    if .Private in method.access_flags do fmt.print("private ")
+    else if .Protected in method.access_flags do fmt.print("protected ")
+    else if .Public in method.access_flags do fmt.println("public ")
 
-    if .Static in access_flags do fmt.print("static ")
-    if .Final in access_flags do fmt.print("final ")
+    if .Static in method.access_flags do fmt.print("static ")
+    if .Final in method.access_flags do fmt.print("final ")
 
-    descriptor := cp_get_str(classfile, descriptor_idx)
-    name := cp_get_str(classfile, name_idx)
+    descriptor := cp_get_str(classfile, method.descriptor_idx)
+    name := cp_get_str(classfile, method.name_idx)
 
     // TODO: proper printing
     fmt.print(field_descriptor_to_str(descriptor, context.temp_allocator), name)
