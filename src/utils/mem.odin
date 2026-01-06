@@ -6,7 +6,7 @@ import "core:mem"
 import "core:c/libc"
 import "base:runtime"
 
-import "../../dependencies/back"
+import "lib:back"
 
 @(private)
 g_allocator: mem.Tracking_Allocator
@@ -36,6 +36,8 @@ tracking_allocator_report :: proc() {
         }
     }
 }
+
+// TODO: replace with back.register_sigill_handler
 
 register_sigill_handler :: proc() {
     libc.signal(libc.SIGILL, proc "c" (code: i32) {

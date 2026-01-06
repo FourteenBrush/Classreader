@@ -2,9 +2,14 @@
 /*.exe
 /*.pdb
 /*.o
-/classreader*
-/*.bin
+/build
 # LLVM IR
 /*.ll
+/*.S
 # Taskfile checksums
 .task
+/.odin-cache
+*.spall
+
+Session.vim
+Sessionx.vim

@@ -7,6 +7,6 @@
     "sort_imports": false,
     "checker_args": "-strict-style -vet-unused -debug -vet-cast -vet-using-stmt",
     "collections": [
-        { "name": "back", "path": "dependencies/back" }
+        { "name": "lib", "path": "lib" }
     ]
 }
