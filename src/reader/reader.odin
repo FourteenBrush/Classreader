@@ -23,8 +23,7 @@ reader_new :: proc(bytes: []u8) -> ClassFileReader {
 // IMPORTANT NOTE: the resulting ClassFile's lifetime is bound to the bytes 
 // it got from the reader. This might become subject to change, 
 // to only clone necessary byte slices instead.
-// The returned classfile explicitly needs to be freed using classfile_destroy()
-// even if an error was returned.
+// The returned classfile explicitly needs to be freed using classfile_destroy().
 read_classfile :: proc(
     reader: ^ClassFileReader, 
     allocator := context.allocator,
