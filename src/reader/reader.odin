@@ -32,6 +32,8 @@ read_classfile :: proc(
     classfile: ClassFile,
     err: Error,
 ) {
+    context.allocator = allocator
+
     magic := read_u32(reader) or_return
     if magic != MAGIC do return classfile, .InvalidHeader
 
@@ -42,6 +44,7 @@ read_classfile :: proc(
     }
     classfile.constant_pool_count = read_u16(reader) or_return
     classfile.constant_pool = read_constant_pool(reader, classfile.constant_pool_count, allocator) or_return
+    defer if err != .None do delete(classfile.constant_pool)
 
     classfile.access_flags = read_flags(reader, ClassAccessFlags) or_return
     classfile.this_class = read_idx(ConstantClassInfo, reader) or_return
@@ -49,8 +52,20 @@ read_classfile :: proc(
 
     classfile.interfaces = read_indices(ConstantClassInfo, reader) or_return
     classfile.fields = read_fields(reader, classfile, allocator) or_return
+    defer if err != .None {
+        for field in classfile.fields do attributes_destroy(field.attributes)
+        delete(classfile.fields)
+    }
+
     classfile.methods = read_methods(reader, classfile, allocator) or_return
+    defer if err != .None {
+        for method in classfile.methods do attributes_destroy(method.attributes)
+        delete(classfile.methods)
+    }
+
     classfile.attributes = read_attributes(reader, classfile, allocator) or_return
+    defer if err != .None do attributes_destroy(classfile.attributes)
+
     return
 }
 
