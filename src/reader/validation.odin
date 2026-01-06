@@ -45,7 +45,14 @@ MAX_ARRAY_DEPTH :: 255
 
 // NOTE: we are including < and > because <init> and <clinit> are not validated here
 @(private)
-unqualified_name_invalid_chars := strings.ascii_set_make(".:[/<>") or_else panic("sanity check")
+unqualified_name_invalid_chars: strings.Ascii_Set
+
+@(init, private="file")
+_init :: proc "contextless" () {
+    context = {} // unused below
+    unqualified_name_invalid_chars = strings.ascii_set_make(".:[/<>") \
+        or_else panic_contextless("sanity check")
+}
 
 // FieldDescriptor = FieldType
 // FieldType = BaseType | ObjectType | ArrayType
