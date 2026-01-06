@@ -13,11 +13,10 @@ classreader SomeJavaFile.class
 
 ```go
 import "core:os"
-import "../dependencies/classreader"
+import "lib:classreader"
 
 main :: proc() {
-    data, ok := os.read_entire_file("Demo.class")
-    assert(ok)
+    data := os.read_entire_file("Demo.class") or_else panic("failure")
     defer delete(data)
 
     reader := classreader.reader_new(data)
