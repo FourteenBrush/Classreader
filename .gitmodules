@@ -1,3 +1,3 @@
 [submodule "dependencies/back"]
-	path = dependencies/back
-	url = https://github.com/laytan/back.git
+    path = lib/back
+    url = https://github.com/laytan/back.git
