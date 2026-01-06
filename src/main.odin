@@ -6,16 +6,18 @@ import "core:os"
 import "reader"
 import "utils"
 
-main :: proc() {
-	when ODIN_DEBUG {
-		context = utils.tracking_allocator_setup()
-		utils.register_sigill_handler()
-	}
+_ :: utils
 
-	if len(os.args) < 2 {
-		fmt.printfln("Usage: %s <input file>", os.args[0])
-		os.exit(1)
-	}
+main :: proc() {
+    when ODIN_DEBUG {
+        context = utils.tracking_allocator_setup()
+        utils.register_sigill_handler()
+    }
+
+    if len(os.args) < 2 {
+        fmt.printfln("Usage: %s <input file>", os.args[0])
+        os.exit(1)
+    }
 
     fd, err := os.open(os.args[1])
     if err != nil {
@@ -28,22 +30,22 @@ main :: proc() {
         os.exit(1)
     }
 
-	data, ok := os.read_entire_file(fd)
-	if !ok {
+    data, ok := os.read_entire_file(fd)
+    if !ok {
         err := os.get_last_error()
-		fmt.eprintln("Error reading file,", os.error_string(err))
-		os.exit(1)
-	}
-	defer delete(data)
+        fmt.eprintln("Error reading file,", os.error_string(err))
+        os.exit(1)
+    }
+    defer delete(data)
 
-	creader := reader.reader_new(data)
-	classfile, cerr := reader.read_classfile(&creader)
-	defer reader.classfile_destroy(classfile)
+    creader := reader.reader_new(data)
+    classfile, cerr := reader.read_classfile(&creader)
+    defer reader.classfile_destroy(classfile)
 
-	if cerr != .None {
-		fmt.eprintln("Error parsing class file:", cerr)
-		os.exit(1)
-	}
+    if cerr != .None {
+        fmt.eprintln("Error parsing class file:", cerr)
+        os.exit(1)
+    }
 
-	reader.classfile_dump(classfile)
+    reader.classfile_dump(classfile)
 }
