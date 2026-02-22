@@ -1,18 +1,21 @@
 package classreader
 
-import "core:path/filepath"
-import "core:fmt"
 import "core:os"
+import "core:fmt"
+import "core:path/filepath"
 
 import "reader"
-import "utils"
 
-_ :: utils
+@(require) import "lib:back"
 
 main :: proc() {
     when ODIN_DEBUG {
-        context = utils.tracking_allocator_setup()
-        utils.register_sigill_handler()
+        tracking_alloc: back.Tracking_Allocator
+        back.tracking_allocator_init(&tracking_alloc, context.allocator)
+        context.allocator = back.tracking_allocator(&tracking_alloc)
+
+        defer back.tracking_allocator_print_results(&tracking_alloc, .Both)
+        back.register_segfault_handler()
     }
 
     if len(os.args) < 2 {
