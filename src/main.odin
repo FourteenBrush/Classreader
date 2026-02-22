@@ -1,5 +1,6 @@
 package classreader
 
+import "core:path/filepath"
 import "core:fmt"
 import "core:os"
 
@@ -15,25 +16,24 @@ main :: proc() {
     }
 
     if len(os.args) < 2 {
-        fmt.printfln("Usage: %s <input file>", os.args[0])
+        fmt.printfln("Usage: %s <input file>", filepath.base(os.args[0]))
         os.exit(1)
     }
 
-    fd, err := os.open(os.args[1])
-    if err != nil {
-        fmt.eprintln(os.error_string(err))
+    file, oerr := os.open(os.args[1])
+    if oerr != nil {
+        fmt.eprintln(os.error_string(oerr))
         os.exit(1)
     }
 
-    if !os.is_file(fd) {
+    if !os.is_file(os.name(file)) {
         fmt.eprintfln("File %s is not a normal file", os.args[1])
         os.exit(1)
     }
 
-    data, ok := os.read_entire_file(fd)
-    if !ok {
-        err := os.get_last_error()
-        fmt.eprintln("Error reading file,", os.error_string(err))
+    data, rerr := os.read_entire_file(file, context.allocator)
+    if rerr != nil {
+        fmt.eprintln("Error reading file,", os.error_string(rerr))
         os.exit(1)
     }
     defer delete(data)
